@@ -149,7 +149,8 @@ CREATE TABLE San_pham
 (
 	MaSP 		INT IDENTITY(1,1) PRIMARY KEY,
 	TenSP 		NVARCHAR(100) NOT NULL,
-	LoaiSP 		NVARCHAR(255) CHECK(LoaiSP IN (N'Thức ăn', N'Thuốc', N'Phụ kiện', 'Vaccine')),
+	LoaiSP 		NVARCHAR(10) CHECK(LoaiSP IN (N'Thức ăn', N'Thuốc', N'Phụ kiện', 'Vaccine')),
+    LoaiVaccine NVARCHAR(100) NULL,
 	NgaySX 		DATE
 )
 
@@ -259,7 +260,7 @@ CREATE TABLE Gia_san_pham
 (
 	MaSP		INT NOT NULL,
 	NgayApDung	DATE NOT NULL,
-	SoTien		DECIMAL(12,2) NOT NULL,
+	SoTien		DECIMAL(10,2) NOT NULL,
 	PRIMARY KEY (MaSP, NgayApDung),
 	
 	CONSTRAINT FK_GSP_San_pham
@@ -620,5 +621,35 @@ BEGIN
 
     INSERT INTO Tai_khoan(TenDangNhap, MatKhau, MaKH, MaNV, VaiTro)
     VALUES (@TenDangNhap, @MatKhau, @MaKH, @MaNV, @VaiTro);
+END;
+GO
+
+CREATE OR ALTER PROCEDURE Update_GiaSP
+    @MaSP INT
+    @SoTien DECIMAL(10, 2)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    DECLARE @Today = GETDATE()
+
+    IF EXISTS (SELECT 1 FROM Gia_san_pham WHERE MaSP = @MaSP AND NgayApDung = @Today)
+        UPDATE Gia_san_pham SET SoTien = @SoTien WHERE MaSP = @MaSP AND NgayApDung = @Today
+    ELSE
+        INSERT Gia_san_pham(MaSP, NgayApDung, SoTien) VALUES (@MaSP, @Today, @SoTien)
+END;
+GO
+
+CREATE OR ALTER PROCEDURE Update_GiaDV
+    @MaDV INT
+    @SoTien DECIMAL(10, 2)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    DECLARE @Today = GETDATE()
+
+    IF EXISTS (SELECT 1 FROM Gia_dich_vu WHERE MaDV = @MaDV AND NgayApDung = @Today)
+        UPDATE Gia_dich_vu SET SoTien = @SoTien WHERE MaDV = @MaDV AND NgayApDung = @Today
+    ELSE
+        INSERT Gia_dich_vu(MaDV, NgayApDung, SoTien) VALUES (@MaDV, @Today, @SoTien)
 END;
 GO
