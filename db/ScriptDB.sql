@@ -311,10 +311,10 @@ CREATE TABLE Tai_khoan
 (
 	MaTK			INT IDENTITY(1,1) PRIMARY KEY,
 	TenDangNhap		VARCHAR(50) NOT NULL UNIQUE,
-	MatKhau			VARCHAR(30) NOT NULL,
+	MatKhau			VARCHAR(100) NOT NULL,
 	MaKH			INT NULL,
 	MaNV			INT NULL,
-	VaiTro			NVARCHAR(30) CHECK (VaiTro IN (N'Bác sĩ', N'Bán hàng', N'Tiếp tân', N'Quản lý chi nhánh', N'Quản lý công ty'))
+	VaiTro			NVARCHAR(30) CHECK (VaiTro IN (N'Khách hàng', N'Bác sĩ', N'Bán hàng', N'Tiếp tân', N'Quản lý chi nhánh', N'Quản lý công ty'))
 	
 	CONSTRAINT FK_TK_Khach_hang
 	FOREIGN KEY (MaKH) REFERENCES Khach_hang(MaKH),
@@ -432,6 +432,7 @@ BEGIN
     END;
 END;
 GO
+
 
 CREATE OR ALTER PROCEDURE PhanCong_NhanVienChiNhanh
     @MaNV INT,
@@ -594,5 +595,30 @@ BEGIN
         IF XACT_STATE() <> 0 ROLLBACK;
         THROW;
     END CATCH;
+END;
+GO
+
+CREATE OR ALTER PROCEDURE Create_TaiKhoan 
+    @TenDangNhap VARCHAR(50),
+    @MatKhau VARCHAR(100),
+    @MaKH INT = NULL,
+    @MaNV INT = NULL,
+    @VaiTro NVARCHAR(30)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF (@MaKH IS NOT NULL AND EXISTS(
+            SELECT 1 FROM Tai_khoan WHERE MaKH = @MaKH
+        ))
+        THROW 60002, N'Khách hàng này đã có tài khoản.', 1;
+
+    IF (@MaNV IS NOT NULL AND EXISTS(
+            SELECT 1 FROM Tai_khoan WHERE MaNV = @MaNV
+        ))
+        THROW 60003, N'Nhân viên này đã có tài khoản.', 1;
+
+    INSERT INTO Tai_khoan(TenDangNhap, MatKhau, MaKH, MaNV, VaiTro)
+    VALUES (@TenDangNhap, @MatKhau, @MaKH, @MaNV, @VaiTro);
 END;
 GO
