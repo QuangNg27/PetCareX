@@ -716,13 +716,17 @@ BEGIN
         -- 11. CẬP NHẬT CHI TIÊU
         DECLARE @Nam INT = YEAR(@NgayLap);
 
-        MERGE Chi_tieu AS t
-        USING (SELECT @MaKH AS MaKH, @Nam AS Nam) AS s
-        ON t.MaKH = s.MaKH AND t.Nam = s.Nam
-        WHEN MATCHED THEN
-            UPDATE SET SoTien = SoTien + @TongTien
-        WHEN NOT MATCHED THEN
-            INSERT (MaKH, Nam, SoTien) VALUES (@MaKH, @Nam, @TongTien);
+        IF EXISTS (SELECT 1 FROM Chi_tieu WHERE MaKH = @MaKH AND Nam = @Nam)
+        BEGIN
+            UPDATE Chi_tieu
+            SET SoTien = SoTien + @TongTien
+            WHERE MaKH = @MaKH AND Nam = @Nam;
+        END
+        ELSE
+        BEGIN
+            INSERT INTO Chi_tieu (MaKH, Nam, SoTien)
+            VALUES (@MaKH, @Nam, @TongTien);
+        END
 
 
         -- 12. CẬP NHẬT HẠNG
