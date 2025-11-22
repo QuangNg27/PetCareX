@@ -128,7 +128,7 @@ CREATE TABLE Dich_vu_chi_nhanh
 
 CREATE TABLE Kham_benh
 (
-	MaKB 			INT IDENTITY(1,1) PRIMARY KEY,
+	MaKB 			INT IDENTITY(1,1),
 	MaCN 			INT NOT NULL,
 	MaDV 			INT NOT NULL,
 	MaTC 			INT NOT NULL,
@@ -138,6 +138,7 @@ CREATE TABLE Kham_benh
 	ChanDoan 		NVARCHAR(255),
 	NgayTaiKham 	DATE,
 	
+    CONSTRAINT PK_Kham_benh PRIMARY KEY (MaKB),
 	CONSTRAINT FK_KB_Thu_cung_MaTC
 	FOREIGN KEY (MaTC) REFERENCES Thu_cung(MaTC),
 	CONSTRAINT FK_KB_Nhan_vien_MaNV
@@ -182,7 +183,7 @@ CREATE TABLE Goi_tiem
 
 CREATE TABLE Tiem_phong
 (
-	MaTP 		INT IDENTITY(1,1) PRIMARY KEY,
+	MaTP 		INT IDENTITY(1,1),
     MaCN 		INT NOT NULL,
     MaDV		INT NOT NULL,
     MaTC 		INT NOT NULL,
@@ -193,6 +194,7 @@ CREATE TABLE Tiem_phong
     LieuLuong 	NVARCHAR(10),
     TrangThai 	NVARCHAR(15) CHECK(TrangThai IN (N'Đã tiêm', N'Chưa tiêm')),
 
+    CONSTRAINT PK_Tiem_phong PRIMARY KEY (MaTP),
     CONSTRAINT FK_TP_Thu_cung
     FOREIGN KEY (MaTC) REFERENCES Thu_cung(MaTC),
 
@@ -211,7 +213,7 @@ CREATE TABLE Tiem_phong
 
 CREATE TABLE Hoa_don
 (
-	MaHD 			INT IDENTITY(1,1) PRIMARY KEY,
+	MaHD 			INT IDENTITY(1,1),
 	MaKH 			INT NOT NULL,
 	MaCN 			INT NOT NULL,
 	MaNV 			INT NOT NULL,
@@ -220,6 +222,7 @@ CREATE TABLE Hoa_don
 	KhuyenMai 		DECIMAL(4,2) DEFAULT 0,
 	HinhThucTT 		NVARCHAR(20) CHECK(HinhThucTT IN (N'Chuyển khoản', N'Tiền mặt')) ,
 	
+    CONSTRAINT PK_Hoa_don PRIMARY KEY (MaHD),
 	CONSTRAINT FK_HD_Khach_hang
 	    FOREIGN KEY (MaKH) REFERENCES Khach_hang(MaKH),
 	CONSTRAINT FK_HD_Chi_nhanh
