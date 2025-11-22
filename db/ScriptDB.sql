@@ -18,7 +18,7 @@ CREATE TABLE Khach_hang
     HoTen 		NVARCHAR(100) NOT NULL,
     SoDT 		NVARCHAR(20) UNIQUE NOT NULL,
     Email 		NVARCHAR(255) UNIQUE NOT NULL,
-   	CCCD 		CHAR(12),
+   	CCCD 		CHAR(12) UNIQUE NOT NULL,
     GioiTinh 	NVARCHAR(5) CHECK (GioiTinh IN (N'Nam', N'Nữ')) NOT NULL,
     NgaySinh 	DATE NOT NULL CHECK (NgaySinh < CAST(GETDATE() AS DATE)),
     DiemLoyalty INT DEFAULT 0,
@@ -191,6 +191,7 @@ CREATE TABLE Tiem_phong
     MaGoi 		INT NULL,
     NgayTiem 	DATE NOT NULL,
     LieuLuong 	NVARCHAR(10),
+    TrangThai 	NVARCHAR(15) CHECK(TrangThai IN (N'Đã tiêm', N'Chưa tiêm')),
 
     CONSTRAINT FK_TP_Thu_cung
     FOREIGN KEY (MaTC) REFERENCES Thu_cung(MaTC),
@@ -206,20 +207,6 @@ CREATE TABLE Tiem_phong
 
  	CONSTRAINT FK_TP_Dich_vu_chi_nhanh
 	FOREIGN KEY (MaCN, MaDV) REFERENCES Dich_vu_chi_nhanh(MaCN, MaDV)
-)
-
-CREATE TABLE Chi_tiet_goi_tiem
-(
-	MaGoi 		INT NOT NULL,
-	MaSP 		INT NOT NULL,
-	NgayTiem 	DATE NOT NULL,
-	TrangThai 	NVARCHAR(15) CHECK(TrangThai IN (N'Đã tiêm', N'Chưa tiêm')) ,
-	PRIMARY KEY (MaGoi, MaSP),
-
-	CONSTRAINT FK_CTGT_Goi_tiem
-    FOREIGN KEY (MaGoi) REFERENCES Goi_tiem(MaGoi) ON DELETE CASCADE,
-	CONSTRAINT FK_CTGT_San_pham
-    FOREIGN KEY (MaSP) REFERENCES San_pham(MaSP)
 )
 
 CREATE TABLE Hoa_don
