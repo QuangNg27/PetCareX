@@ -230,12 +230,13 @@ CREATE TABLE Hoa_don
 
 CREATE TABLE Chi_tiet_hoa_don_DV
 (
-	MaHD INT NOT NULL,
-	MaCN INT NOT NULL,
-	MaDV INT NOT NULL,
-	MaTC INT NOT NULL,
-    MaKB INT NULL,
-    MaTP INT NULL,
+	MaHD        INT NOT NULL,
+	MaCN        INT NOT NULL,
+	MaDV        INT NOT NULL,
+	MaTC        INT NOT NULL,
+    MaKB        INT NULL,
+    MaTP        INT NULL,
+    GiaApDung   DECIMAL(10,2) NOT NULL,
 
 	PRIMARY KEY (MaHD, MaDV, MaCN, MaTC),
 	
@@ -277,9 +278,10 @@ CREATE TABLE San_pham_chi_nhanh
 
 CREATE TABLE Chi_tiet_hoa_don_SP
 (
-	MaHD	INT NOT NULL,
-	MaSP	INT NOT NULL,
-	SoLuong INT NOT NULL,
+	MaHD	    INT NOT NULL,
+	MaSP	    INT NOT NULL,
+	SoLuong     INT NOT NULL,
+    GiaApDung   DECIMAL(10,2) NOT NULL,
 	PRIMARY KEY (MaHD, MaSP),
 	
 	CONSTRAINT FK_CTHD_SP_Hoa_don
@@ -569,25 +571,21 @@ BEGIN
 
         DECLARE @MaHD INT;
 
-        -- 1. LẤY KHUYẾN MÃI THEO CẤP ĐỘ KHÁCH
+        -- 1. LẤY KHUYẾN MÃI CẤP ĐỘ
         DECLARE @CapDo INT = (SELECT CapDo FROM Khach_hang WHERE MaKH = @MaKH);
 
-        DECLARE @TiLeKM_Cap DECIMAL(4,2) =
-        (
-            SELECT TiLeKM FROM Cap_thanh_vien WHERE MaCap = @CapDo
-        );
+        DECLARE @TiLeKM_Cap DECIMAL(4,2) = (SELECT TiLeKM FROM Cap_thanh_vien WHERE MaCap = @CapDo);
+
         IF @TiLeKM_Cap IS NULL SET @TiLeKM_Cap = 0;
 
-
-        -- 2. INSERT HÓA ĐƠN
+        -- 2. TẠO HÓA ĐƠN
         INSERT INTO Hoa_don (MaKH, MaCN, MaNV, NgayLap, KhuyenMai, HinhThucTT)
         VALUES (@MaKH, @MaCN, @MaNV, @NgayLap, @TiLeKM_Cap, @HinhThucTT);
 
         SET @MaHD = SCOPE_IDENTITY();
 
-
-        -- 3. XỬ LÝ SẢN PHẨM BÁN LẺ
-        DECLARE @MaSP INT, @SL INT;
+        -- 3. XỬ LÝ SP BÁN LẺ
+        DECLARE @MaSP INT, @SL INT, @GiaSP DECIMAL(10,2);
 
         DECLARE curSP CURSOR LOCAL FOR
             SELECT MaSP, SoLuong FROM @CT_SanPham;
@@ -597,12 +595,18 @@ BEGIN
 
         WHILE @@FETCH_STATUS = 0
         BEGIN
+            -- Giá SP tại thời điểm lập hóa đơn
+            SELECT @GiaSP = SoTien
+            FROM Gia_san_pham
+            WHERE MaSP = @MaSP AND NgayApDung =
+                (SELECT MAX(NgayApDung) FROM Gia_san_pham WHERE MaSP = @MaSP AND NgayApDung <= @NgayLap);
+
             UPDATE San_pham_chi_nhanh
             SET SLTonKho = SLTonKho - @SL
             WHERE MaSP = @MaSP AND MaCN = @MaCN;
 
-            INSERT INTO Chi_tiet_hoa_don_SP(MaHD, MaSP, MaCN, SoLuong)
-            VALUES (@MaHD, @MaSP, @MaCN, @SL);
+            INSERT INTO Chi_tiet_hoa_don_SP(MaHD, MaSP, MaCN, SoLuong, GiaApDung)
+            VALUES (@MaHD, @MaSP, @MaCN, @SL, @GiaSP);
 
             FETCH NEXT FROM curSP INTO @MaSP, @SL;
         END
@@ -611,10 +615,23 @@ BEGIN
         DEALLOCATE curSP;
 
 
-        -- 4. INSERT CHI TIẾT HÓA ĐƠN DỊCH VỤ
-        INSERT INTO Chi_tiet_hoa_don_DV(MaHD, MaDV, MaCN, MaTC, MaKB, MaTP)
-        SELECT @MaHD, MaDV, @MaCN, MaTC, MaKB, MaTP
-        FROM @CT_DichVu;
+        -- 4. INSERT CHI TIẾT HÓA ĐƠN DỊCH VỤ + GHI GIÁ
+        INSERT INTO Chi_tiet_hoa_don_DV(MaHD, MaDV, MaCN, MaTC, MaKB, MaTP, GiaApDung)
+        SELECT 
+            @MaHD,
+            dv.MaDV,
+            @MaCN,
+            dv.MaTC,
+            dv.MaKB,
+            dv.MaTP,
+            (
+                SELECT TOP 1 SoTien
+                FROM Gia_dich_vu g
+                WHERE g.MaDV = dv.MaDV
+                  AND g.NgayApDung <= @NgayLap
+                ORDER BY NgayApDung DESC
+            )
+        FROM @CT_DichVu dv;
 
 
         -- 5. TRỪ KHO VACCINE
@@ -642,97 +659,75 @@ BEGIN
         DEALLOCATE curVac;
 
 
-        -- 6. TÍNH TỔNG SP = SP BÁN LẺ + VACCINE
-        DECLARE @TienSP DECIMAL(10,2) = 0;
-        DECLARE @TienVac DECIMAL(10,2) = 0;
-        DECLARE @TongSP DECIMAL(10,2);
+        -- 6. TÍNH TỔNG SP
+        DECLARE @TongSP DECIMAL(10,2) =
+        (
+            SELECT SUM(SoLuong * GiaApDung)
+            FROM Chi_tiet_hoa_don_SP
+            WHERE MaHD = @MaHD
+        );
 
-        -- SP bán lẻ
-        SELECT @TienSP = SUM(sp.SoLuong * gsp.SoTien)
-        FROM Chi_tiet_hoa_don_SP sp
-        JOIN Gia_san_pham gsp ON gsp.MaSP = sp.MaSP
-        WHERE sp.MaHD = @MaHD
-          AND gsp.NgayApDung = (
-                SELECT MAX(NgayApDung)
-                FROM Gia_san_pham 
-                WHERE MaSP = sp.MaSP AND NgayApDung <= @NgayLap
-          );
-
-        IF @TienSP IS NULL SET @TienSP = 0;
+        IF @TongSP IS NULL SET @TongSP = 0;
 
 
-        -- VACCINE tính như sản phẩm
-        SELECT @TienVac = SUM(
-                gsp.SoTien * (1 - ISNULL(gt.UuDai,0))
-        )
-        FROM Chi_tiet_hoa_don_DV dv
-        JOIN Tiem_phong tp ON tp.MaTP = dv.MaTP
-        JOIN Gia_san_pham gsp ON gsp.MaSP = tp.MaSP
-        LEFT JOIN Goi_tiem gt ON gt.MaGoi = tp.MaGoi
-        WHERE dv.MaHD = @MaHD
-          AND dv.MaTP IS NOT NULL
-          AND gsp.NgayApDung = (
-                SELECT MAX(NgayApDung)
-                FROM Gia_san_pham 
-                WHERE MaSP = tp.MaSP AND NgayApDung <= @NgayLap
-          );
+        -- 7. TÍNH TỔNG VACCINE (áp ưu đãi gói)
+        DECLARE @TienVac DECIMAL(10,2) =
+        (
+            SELECT SUM(
+                dv.GiaApDung * (1 - ISNULL(gt.UuDai,0))
+            )
+            FROM Chi_tiet_hoa_don_DV dv
+            LEFT JOIN Tiem_phong tp ON tp.MaTP = dv.MaTP
+            LEFT JOIN Goi_tiem gt ON gt.MaGoi = tp.MaGoi
+            WHERE dv.MaHD = @MaHD AND dv.MaTP IS NOT NULL
+        );
 
         IF @TienVac IS NULL SET @TienVac = 0;
 
-        SET @TongSP = @TienSP + @TienVac;
 
-
-        -- 7. TÍNH TỔNG TIỀN DỊCH VỤ
-        DECLARE @TongDV DECIMAL(10,2) = 0;
-
-        SELECT @TongDV = SUM(gdv.SoTien)
-        FROM Chi_tiet_hoa_don_DV dv
-        JOIN Gia_dich_vu gdv ON gdv.MaDV = dv.MaDV
-        WHERE dv.MaHD = @MaHD
-          AND dv.MaTP IS NULL    
-          AND dv.MaKB IS NULL    
-          AND gdv.NgayApDung = (
-                SELECT MAX(NgayApDung)
-                FROM Gia_dich_vu
-                WHERE MaDV = dv.MaDV AND NgayApDung <= @NgayLap
-          );
+        -- 8. TÍNH TỔNG DỊCH VỤ (KHÔNG TÍNH KHÁM, KHÔNG TIÊM)
+        DECLARE @TongDV DECIMAL(10,2) =
+        (
+            SELECT SUM(GiaApDung)
+            FROM Chi_tiet_hoa_don_DV
+            WHERE MaHD = @MaHD
+              AND MaTP IS NULL
+              AND MaKB IS NULL
+        );
 
         IF @TongDV IS NULL SET @TongDV = 0;
 
 
-        -- 8. TỔNG TIỀN CUỐI
-        DECLARE @TongTien DECIMAL(10,2);
-
-        SET @TongTien = (@TongSP + @TongDV) * (1 - @TiLeKM_Cap);
+        -- 9. TỔNG TIỀN CUỐI
+        DECLARE @TongTien DECIMAL(10,2) =
+            (@TongSP + @TienVac + @TongDV) * (1 - @TiLeKM_Cap);
 
         UPDATE Hoa_don
         SET TongTien = @TongTien
         WHERE MaHD = @MaHD;
 
 
-        -- 9. CỘNG ĐIỂM LOYALTY
+        -- 10. CỘNG ĐIỂM LOYALTY
         UPDATE Khach_hang
         SET DiemLoyalty = ISNULL(DiemLoyalty,0) + 1
         WHERE MaKH = @MaKH;
 
 
-        -- 10. CẬP NHẬT CHI TIÊU CHO KHÁCH HÀNG
+        -- 11. CẬP NHẬT CHI TIÊU
         DECLARE @Nam INT = YEAR(@NgayLap);
 
-        IF EXISTS (SELECT 1 FROM Chi_tieu WHERE MaKH = @MaKH AND Nam = @Nam)
-        BEGIN
-            UPDATE Chi_tieu
-            SET SoTien = SoTien + @TongTien
-            WHERE MaKH = @MaKH AND Nam = @Nam;
-        END
-        ELSE
-        BEGIN
-            INSERT INTO Chi_tieu (MaKH, Nam, SoTien)
-            VALUES (@MaKH, @Nam, @TongTien);
-        END;
+        MERGE Chi_tieu AS t
+        USING (SELECT @MaKH AS MaKH, @Nam AS Nam) AS s
+        ON t.MaKH = s.MaKH AND t.Nam = s.Nam
+        WHEN MATCHED THEN
+            UPDATE SET SoTien = SoTien + @TongTien
+        WHEN NOT MATCHED THEN
+            INSERT (MaKH, Nam, SoTien) VALUES (@MaKH, @Nam, @TongTien);
 
-        -- 11. CẬP NHẬT HẠNG THÀNH VIÊN
-        EXEC Update_HangKhachHang @MaKH, @NgayLap
+
+        -- 12. CẬP NHẬT HẠNG
+        EXEC Update_HangKhachHang @MaKH, @NgayLap;
+
 
         COMMIT;
     END TRY
