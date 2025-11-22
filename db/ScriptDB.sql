@@ -8,7 +8,8 @@ CREATE TABLE Cap_thanh_vien
 	MaCap 		INT IDENTITY(1,1) PRIMARY KEY,
 	TenCapDo 	NVARCHAR(15) CHECK (TenCapDo IN (N'Cơ bản', N'Thân thiết', 'VIP')) NOT NULL,
 	DKDat 		DECIMAL(10,2),
-	DKGiu 		DECIMAL(10,2)
+	DKGiu 		DECIMAL(10,2),
+    TiLeKM      DECIMAL(4,2)
 )
 
 CREATE TABLE Khach_hang
@@ -17,7 +18,7 @@ CREATE TABLE Khach_hang
     HoTen 		NVARCHAR(100) NOT NULL,
     SoDT 		NVARCHAR(20) UNIQUE NOT NULL,
     Email 		NVARCHAR(255) UNIQUE NOT NULL,
-   	CCCD 		CHAR(12),
+   	CCCD 		CHAR(12) UNIQUE NOT NULL,
     GioiTinh 	NVARCHAR(5) CHECK (GioiTinh IN (N'Nam', N'Nữ')) NOT NULL,
     NgaySinh 	DATE NOT NULL CHECK (NgaySinh < CAST(GETDATE() AS DATE)),
     DiemLoyalty INT DEFAULT 0,
@@ -190,6 +191,7 @@ CREATE TABLE Tiem_phong
     MaGoi 		INT NULL,
     NgayTiem 	DATE NOT NULL,
     LieuLuong 	NVARCHAR(10),
+    TrangThai 	NVARCHAR(15) CHECK(TrangThai IN (N'Đã tiêm', N'Chưa tiêm')),
 
     CONSTRAINT FK_TP_Thu_cung
     FOREIGN KEY (MaTC) REFERENCES Thu_cung(MaTC),
@@ -205,20 +207,6 @@ CREATE TABLE Tiem_phong
 
  	CONSTRAINT FK_TP_Dich_vu_chi_nhanh
 	FOREIGN KEY (MaCN, MaDV) REFERENCES Dich_vu_chi_nhanh(MaCN, MaDV)
-)
-
-CREATE TABLE Chi_tiet_goi_tiem
-(
-	MaGoi 		INT NOT NULL,
-	MaSP 		INT NOT NULL,
-	NgayTiem 	DATE NOT NULL,
-	TrangThai 	NVARCHAR(15) CHECK(TrangThai IN (N'Đã tiêm', N'Chưa tiêm')) ,
-	PRIMARY KEY (MaGoi, MaSP),
-
-	CONSTRAINT FK_CTGT_Goi_tiem
-    FOREIGN KEY (MaGoi) REFERENCES Goi_tiem(MaGoi) ON DELETE CASCADE,
-	CONSTRAINT FK_CTGT_San_pham
-    FOREIGN KEY (MaSP) REFERENCES San_pham(MaSP)
 )
 
 CREATE TABLE Hoa_don
@@ -242,10 +230,14 @@ CREATE TABLE Hoa_don
 
 CREATE TABLE Chi_tiet_hoa_don_DV
 (
-	MaHD INT NOT NULL,
-	MaCN INT NOT NULL,
-	MaDV INT NOT NULL,
-	MaTC INT NOT NULL,
+	MaHD        INT NOT NULL,
+	MaCN        INT NOT NULL,
+	MaDV        INT NOT NULL,
+	MaTC        INT NOT NULL,
+    MaKB        INT NULL,
+    MaTP        INT NULL,
+    GiaApDung   DECIMAL(10,2) NOT NULL,
+
 	PRIMARY KEY (MaHD, MaDV, MaCN, MaTC),
 	
 	CONSTRAINT FK_CTHD_DV_Hoa_don
@@ -253,7 +245,11 @@ CREATE TABLE Chi_tiet_hoa_don_DV
 	CONSTRAINT FK_CTHD_DV_Dich_vu_chi_nhanh
 	FOREIGN KEY (MaCN, MaDV) REFERENCES Dich_vu_chi_nhanh(MaCN, MaDV),
 	CONSTRAINT FK_CTHD_DV_Thu_cung
-	FOREIGN KEY (MaTC) REFERENCES Thu_cung(MaTC)
+	FOREIGN KEY (MaTC) REFERENCES Thu_cung(MaTC),
+    CONSTRAINT FK_CTHD_DV_Kham_benh
+    FOREIGN KEY (MaKB) REFERENCES Kham_benh(MaKB),
+    CONSTRAINT FK_CTHD_DV_Tiem_phong
+    FOREIGN KEY (MaTP) REFERENCES Tiem_phong(MaTP)
 )
 
 CREATE TABLE Gia_san_pham
@@ -282,9 +278,10 @@ CREATE TABLE San_pham_chi_nhanh
 
 CREATE TABLE Chi_tiet_hoa_don_SP
 (
-	MaHD	INT NOT NULL,
-	MaSP	INT NOT NULL,
-	SoLuong INT NOT NULL,
+	MaHD	    INT NOT NULL,
+	MaSP	    INT NOT NULL,
+	SoLuong     INT NOT NULL,
+    GiaApDung   DECIMAL(10,2) NOT NULL,
 	PRIMARY KEY (MaHD, MaSP),
 	
 	CONSTRAINT FK_CTHD_SP_Hoa_don
@@ -496,99 +493,241 @@ BEGIN
 END;
 GO
 
+CREATE OR ALTER PROCEDURE Update_HangKhachHang
+    @MaKH INT,
+    @Ngay DATE
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    BEGIN TRY
+        DECLARE @Nam INT = YEAR(@Ngay);
+        DECLARE @TongNam DECIMAL(10,2);
+
+        SELECT @TongNam = SoTien
+        FROM Chi_tieu
+        WHERE MaKH = @MaKH AND Nam = @Nam;
+
+        IF @TongNam IS NULL SET @TongNam = 0;
+
+        DECLARE @CapHienTai INT =
+            (SELECT CapDo FROM Khach_hang WHERE MaKH = @MaKH);
+
+
+        DECLARE @CapMoi INT =
+        (
+            SELECT TOP 1 MaCap
+            FROM Cap_thanh_vien
+            WHERE DKDat IS NOT NULL AND @TongNam >= DKDat
+            ORDER BY DKDat DESC
+        );
+
+        IF @CapMoi IS NULL SET @CapMoi = @CapHienTai;
+
+        IF @CapMoi > @CapHienTai
+        BEGIN
+            UPDATE Khach_hang 
+            SET CapDo = @CapMoi
+            WHERE MaKH = @MaKH;
+        END
+    END TRY
+    BEGIN CATCH
+        THROW;
+    END CATCH;
+END;
+GO
+
+CREATE TYPE TVP_SanPham AS TABLE
+(
+    MaSP INT NOT NULL,
+    SoLuong INT NOT NULL CHECK (SoLuong > 0)
+);
+GO
+
+CREATE TYPE TVP_DichVu AS TABLE
+(
+    MaDV INT NOT NULL,      
+    MaTC INT NOT NULL,      -- thú cưng liên quan
+    MaKB INT NULL,          -- mã khám bệnh (nếu là khám)
+    MaTP INT NULL           -- mã tiêm phòng (nếu là tiêm)
+);
+GO
+
+
 CREATE OR ALTER PROCEDURE Add_HoaDon
     @MaKH INT,
     @MaCN INT,
     @MaNV INT,
     @NgayLap DATE,
-    @KhuyenMai DECIMAL(4,2),
-	@HinhThucTT NVARCHAR(20),
-    @CT_SanPham TABLE (MaSP INT, SoLuong INT),
-    @CT_DichVu TABLE (MaDV INT, MaTC INT)
+    @HinhThucTT NVARCHAR(20),
+    @CT_SanPham TVP_SanPham READONLY,
+    @CT_DichVu  TVP_DichVu READONLY
 AS
 BEGIN
     SET NOCOUNT ON;
+
     BEGIN TRY
         BEGIN TRAN;
 
         DECLARE @MaHD INT;
 
-        -- 1. Insert hóa đơn
+        -- 1. LẤY KHUYẾN MÃI CẤP ĐỘ
+        DECLARE @CapDo INT = (SELECT CapDo FROM Khach_hang WHERE MaKH = @MaKH);
+
+        DECLARE @TiLeKM_Cap DECIMAL(4,2) = (SELECT TiLeKM FROM Cap_thanh_vien WHERE MaCap = @CapDo);
+
+        IF @TiLeKM_Cap IS NULL SET @TiLeKM_Cap = 0;
+
+        -- 2. TẠO HÓA ĐƠN
         INSERT INTO Hoa_don (MaKH, MaCN, MaNV, NgayLap, KhuyenMai, HinhThucTT)
-        VALUES (@MaKH, @MaCN, @MaNV, @NgayLap, @KhuyenMai, @HinhThucTT);
+        VALUES (@MaKH, @MaCN, @MaNV, @NgayLap, @TiLeKM_Cap, @HinhThucTT);
 
         SET @MaHD = SCOPE_IDENTITY();
 
+        -- 3. XỬ LÝ SP BÁN LẺ
+        DECLARE @MaSP INT, @SL INT, @GiaSP DECIMAL(10,2);
 
-        -- 2. Check tồn kho + trừ tồn kho
-        DECLARE @MaSP INT, @SL INT;
-
-        DECLARE cur CURSOR LOCAL FOR
+        DECLARE curSP CURSOR LOCAL FOR
             SELECT MaSP, SoLuong FROM @CT_SanPham;
 
-        OPEN cur;
-        FETCH NEXT FROM cur INTO @MaSP, @SL;
+        OPEN curSP;
+        FETCH NEXT FROM curSP INTO @MaSP, @SL;
 
         WHILE @@FETCH_STATUS = 0
         BEGIN
-            DECLARE @Ton INT = (
-                SELECT SLTonKho FROM San_pham_chi_nhanh
-                WHERE MaSP = @MaSP AND MaCN = @MaCN
-            );
-
-            IF @Ton IS NULL
-                THROW 70001, N'Sản phẩm không tồn tại tại chi nhánh.', 1;
-
-            IF @Ton < @SL
-                THROW 70002, N'Không đủ tồn kho.', 1;
+            -- Giá SP tại thời điểm lập hóa đơn
+            SELECT @GiaSP = SoTien
+            FROM Gia_san_pham
+            WHERE MaSP = @MaSP AND NgayApDung =
+                (SELECT MAX(NgayApDung) FROM Gia_san_pham WHERE MaSP = @MaSP AND NgayApDung <= @NgayLap);
 
             UPDATE San_pham_chi_nhanh
             SET SLTonKho = SLTonKho - @SL
             WHERE MaSP = @MaSP AND MaCN = @MaCN;
 
-            INSERT INTO Chi_tiet_hoa_don_SP(MaHD, MaSP, MaCN, SoLuong)
-            VALUES (@MaHD, @MaSP, @MaCN, @SL);
+            INSERT INTO Chi_tiet_hoa_don_SP(MaHD, MaSP, MaCN, SoLuong, GiaApDung)
+            VALUES (@MaHD, @MaSP, @MaCN, @SL, @GiaSP);
 
-            FETCH NEXT FROM cur INTO @MaSP, @SL;
+            FETCH NEXT FROM curSP INTO @MaSP, @SL;
         END
 
-        CLOSE cur;
-        DEALLOCATE cur;
+        CLOSE curSP;
+        DEALLOCATE curSP;
 
 
-        -- 3. Insert dịch vụ
-        INSERT INTO Chi_tiet_hoa_don_DV(MaHD, MaDV, MaTC)
-        SELECT @MaHD, MaDV, MaTC FROM @CT_DichVu;
+        -- 4. INSERT CHI TIẾT HÓA ĐƠN DỊCH VỤ + GHI GIÁ
+        INSERT INTO Chi_tiet_hoa_don_DV(MaHD, MaDV, MaCN, MaTC, MaKB, MaTP, GiaApDung)
+        SELECT 
+            @MaHD,
+            dv.MaDV,
+            @MaCN,
+            dv.MaTC,
+            dv.MaKB,
+            dv.MaTP,
+            (
+                SELECT TOP 1 SoTien
+                FROM Gia_dich_vu g
+                WHERE g.MaDV = dv.MaDV
+                  AND g.NgayApDung <= @NgayLap
+                ORDER BY NgayApDung DESC
+            )
+        FROM @CT_DichVu dv;
 
 
-        -- 4. Tính tổng tiền
-        DECLARE @TongSP DECIMAL(10,2), @TongDV DECIMAL(10,2);
+        -- 5. TRỪ KHO VACCINE
+        DECLARE @VacSP INT;
 
-        SELECT @TongSP = SUM(sp.SoLuong * g.SoTien)
-        FROM Chi_tiet_hoa_don_SP sp
-        JOIN Gia_san_pham g ON g.MaSP = sp.MaSP
-        WHERE sp.MaHD = @MaHD
-          AND g.NgayApDung = (
-                SELECT MAX(NgayApDung)
-                FROM Gia_san_pham
-                WHERE MaSP = sp.MaSP AND NgayApDung <= @NgayLap
-            );
-
-        SELECT @TongDV = SUM(gdv.SoTien)
+        DECLARE curVac CURSOR LOCAL FOR
+        SELECT tp.MaSP
         FROM Chi_tiet_hoa_don_DV dv
-        JOIN Gia_dich_vu gdv ON gdv.MaDV = dv.MaDV
-        WHERE dv.MaHD = @MaHD
-          AND gdv.NgayApDung = (
-                SELECT MAX(NgayApDung)
-                FROM Gia_dich_vu
-                WHERE MaDV = dv.MaDV AND NgayApDung <= @NgayLap
-            );
+        JOIN Tiem_phong tp ON tp.MaTP = dv.MaTP
+        WHERE dv.MaHD = @MaHD AND dv.MaTP IS NOT NULL;
 
-		DECLARE @TT DECIMAL(10,2) = ISNULL(@TongSP,0) + ISNULL(@TongDV,0)
-		SET @TT = @TT * (1 - @KhuyenMai)
+        OPEN curVac;
+        FETCH NEXT FROM curVac INTO @VacSP;
+
+        WHILE @@FETCH_STATUS = 0
+        BEGIN
+            UPDATE San_pham_chi_nhanh
+            SET SLTonKho = SLTonKho - 1
+            WHERE MaSP = @VacSP AND MaCN = @MaCN;
+
+            FETCH NEXT FROM curVac INTO @VacSP;
+        END
+
+        CLOSE curVac;
+        DEALLOCATE curVac;
+
+
+        -- 6. TÍNH TỔNG SP
+        DECLARE @TongSP DECIMAL(10,2) =
+        (
+            SELECT SUM(SoLuong * GiaApDung)
+            FROM Chi_tiet_hoa_don_SP
+            WHERE MaHD = @MaHD
+        );
+
+        IF @TongSP IS NULL SET @TongSP = 0;
+
+
+        -- 7. TÍNH TỔNG VACCINE (áp ưu đãi gói)
+        DECLARE @TienVac DECIMAL(10,2) =
+        (
+            SELECT SUM(
+                dv.GiaApDung * (1 - ISNULL(gt.UuDai,0))
+            )
+            FROM Chi_tiet_hoa_don_DV dv
+            LEFT JOIN Tiem_phong tp ON tp.MaTP = dv.MaTP
+            LEFT JOIN Goi_tiem gt ON gt.MaGoi = tp.MaGoi
+            WHERE dv.MaHD = @MaHD AND dv.MaTP IS NOT NULL
+        );
+
+        IF @TienVac IS NULL SET @TienVac = 0;
+
+
+        -- 8. TÍNH TỔNG DỊCH VỤ (KHÔNG TÍNH KHÁM, KHÔNG TIÊM)
+        DECLARE @TongDV DECIMAL(10,2) =
+        (
+            SELECT SUM(GiaApDung)
+            FROM Chi_tiet_hoa_don_DV
+            WHERE MaHD = @MaHD
+              AND MaTP IS NULL
+              AND MaKB IS NULL
+        );
+
+        IF @TongDV IS NULL SET @TongDV = 0;
+
+
+        -- 9. TỔNG TIỀN CUỐI
+        DECLARE @TongTien DECIMAL(10,2) =
+            (@TongSP + @TienVac + @TongDV) * (1 - @TiLeKM_Cap);
+
         UPDATE Hoa_don
-        SET TongTien = @TT
+        SET TongTien = @TongTien
         WHERE MaHD = @MaHD;
+
+
+        -- 10. CỘNG ĐIỂM LOYALTY
+        UPDATE Khach_hang
+        SET DiemLoyalty = ISNULL(DiemLoyalty,0) + 1
+        WHERE MaKH = @MaKH;
+
+
+        -- 11. CẬP NHẬT CHI TIÊU
+        DECLARE @Nam INT = YEAR(@NgayLap);
+
+        MERGE Chi_tieu AS t
+        USING (SELECT @MaKH AS MaKH, @Nam AS Nam) AS s
+        ON t.MaKH = s.MaKH AND t.Nam = s.Nam
+        WHEN MATCHED THEN
+            UPDATE SET SoTien = SoTien + @TongTien
+        WHEN NOT MATCHED THEN
+            INSERT (MaKH, Nam, SoTien) VALUES (@MaKH, @Nam, @TongTien);
+
+
+        -- 12. CẬP NHẬT HẠNG
+        EXEC Update_HangKhachHang @MaKH, @NgayLap;
+
 
         COMMIT;
     END TRY
@@ -598,6 +737,7 @@ BEGIN
     END CATCH;
 END;
 GO
+
 
 CREATE OR ALTER PROCEDURE Create_TaiKhoan 
     @TenDangNhap VARCHAR(50),
