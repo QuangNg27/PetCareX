@@ -540,7 +540,8 @@ GO
 CREATE TYPE TVP_SanPham AS TABLE
 (
     MaSP INT NOT NULL,
-    SoLuong INT NOT NULL CHECK (SoLuong > 0)
+    SoLuong INT NOT NULL CHECK (SoLuong > 0),
+    GiaApDung DECIMAL(10,2) NOT NULL
 );
 GO
 
@@ -578,41 +579,26 @@ BEGIN
 
         IF @TiLeKM_Cap IS NULL SET @TiLeKM_Cap = 0;
 
+
         -- 2. TẠO HÓA ĐƠN
         INSERT INTO Hoa_don (MaKH, MaCN, MaNV, NgayLap, KhuyenMai, HinhThucTT)
         VALUES (@MaKH, @MaCN, @MaNV, @NgayLap, @TiLeKM_Cap, @HinhThucTT);
 
         SET @MaHD = SCOPE_IDENTITY();
 
-        -- 3. XỬ LÝ SP BÁN LẺ
-        DECLARE @MaSP INT, @SL INT, @GiaSP DECIMAL(10,2);
 
-        DECLARE curSP CURSOR LOCAL FOR
-            SELECT MaSP, SoLuong FROM @CT_SanPham;
+        -- 3. INSERT CHI TIẾT HÓA ĐƠN SẢN PHẨM
+        INSERT INTO Chi_tiet_hoa_don_SP(MaHD, MaSP, MaCN, SoLuong, GiaApDung)
+        SELECT @MaHD, MaSP, @MaCN, SoLuong, GiaApDung
+        FROM @CT_SanPham;
 
-        OPEN curSP;
-        FETCH NEXT FROM curSP INTO @MaSP, @SL;
 
-        WHILE @@FETCH_STATUS = 0
-        BEGIN
-            -- Giá SP tại thời điểm lập hóa đơn
-            SELECT @GiaSP = SoTien
-            FROM Gia_san_pham
-            WHERE MaSP = @MaSP AND NgayApDung =
-                (SELECT MAX(NgayApDung) FROM Gia_san_pham WHERE MaSP = @MaSP AND NgayApDung <= @NgayLap);
-
-            UPDATE San_pham_chi_nhanh
-            SET SLTonKho = SLTonKho - @SL
-            WHERE MaSP = @MaSP AND MaCN = @MaCN;
-
-            INSERT INTO Chi_tiet_hoa_don_SP(MaHD, MaSP, MaCN, SoLuong, GiaApDung)
-            VALUES (@MaHD, @MaSP, @MaCN, @SL, @GiaSP);
-
-            FETCH NEXT FROM curSP INTO @MaSP, @SL;
-        END
-
-        CLOSE curSP;
-        DEALLOCATE curSP;
+        -- TRỪ SỐ LƯỢNG TỒN KHO
+        UPDATE spcn
+        SET spcn.SLTonKho = spcn.SLTonKho - src.SoLuong
+        FROM San_pham_chi_nhanh spcn
+        JOIN @CT_SanPham src ON src.MaSP = spcn.MaSP
+        WHERE spcn.MaCN = @MaCN;
 
 
         -- 4. INSERT CHI TIẾT HÓA ĐƠN DỊCH VỤ + GHI GIÁ
@@ -634,32 +620,7 @@ BEGIN
         FROM @CT_DichVu dv;
 
 
-        -- 5. TRỪ KHO VACCINE
-        DECLARE @VacSP INT;
-
-        DECLARE curVac CURSOR LOCAL FOR
-        SELECT tp.MaSP
-        FROM Chi_tiet_hoa_don_DV dv
-        JOIN Tiem_phong tp ON tp.MaTP = dv.MaTP
-        WHERE dv.MaHD = @MaHD AND dv.MaTP IS NOT NULL;
-
-        OPEN curVac;
-        FETCH NEXT FROM curVac INTO @VacSP;
-
-        WHILE @@FETCH_STATUS = 0
-        BEGIN
-            UPDATE San_pham_chi_nhanh
-            SET SLTonKho = SLTonKho - 1
-            WHERE MaSP = @VacSP AND MaCN = @MaCN;
-
-            FETCH NEXT FROM curVac INTO @VacSP;
-        END
-
-        CLOSE curVac;
-        DEALLOCATE curVac;
-
-
-        -- 6. TÍNH TỔNG SP
+        -- 5. TÍNH TỔNG SP
         DECLARE @TongSP DECIMAL(10,2) =
         (
             SELECT SUM(SoLuong * GiaApDung)
@@ -670,50 +631,33 @@ BEGIN
         IF @TongSP IS NULL SET @TongSP = 0;
 
 
-        -- 7. TÍNH TỔNG VACCINE (áp ưu đãi gói)
-        DECLARE @TienVac DECIMAL(10,2) =
-        (
-            SELECT SUM(
-                dv.GiaApDung * (1 - ISNULL(gt.UuDai,0))
-            )
-            FROM Chi_tiet_hoa_don_DV dv
-            LEFT JOIN Tiem_phong tp ON tp.MaTP = dv.MaTP
-            LEFT JOIN Goi_tiem gt ON gt.MaGoi = tp.MaGoi
-            WHERE dv.MaHD = @MaHD AND dv.MaTP IS NOT NULL
-        );
-
-        IF @TienVac IS NULL SET @TienVac = 0;
-
-
-        -- 8. TÍNH TỔNG DỊCH VỤ (KHÔNG TÍNH KHÁM, KHÔNG TIÊM)
+        -- 6. TÍNH TỔNG DỊCH VỤ
         DECLARE @TongDV DECIMAL(10,2) =
         (
             SELECT SUM(GiaApDung)
             FROM Chi_tiet_hoa_don_DV
             WHERE MaHD = @MaHD
-              AND MaTP IS NULL
-              AND MaKB IS NULL
         );
 
         IF @TongDV IS NULL SET @TongDV = 0;
 
 
-        -- 9. TỔNG TIỀN CUỐI
+        -- 7. TỔNG TIỀN CUỐI
         DECLARE @TongTien DECIMAL(10,2) =
-            (@TongSP + @TienVac + @TongDV) * (1 - @TiLeKM_Cap);
+            (@TongSP + @TongDV) * (1 - @TiLeKM_Cap);
 
         UPDATE Hoa_don
         SET TongTien = @TongTien
         WHERE MaHD = @MaHD;
 
 
-        -- 10. CỘNG ĐIỂM LOYALTY
+        -- 8. CỘNG ĐIỂM LOYALTY
         UPDATE Khach_hang
         SET DiemLoyalty = ISNULL(DiemLoyalty,0) + 1
         WHERE MaKH = @MaKH;
 
 
-        -- 11. CẬP NHẬT CHI TIÊU
+        -- 9. CẬP NHẬT CHI TIÊU
         DECLARE @Nam INT = YEAR(@NgayLap);
 
         IF EXISTS (SELECT 1 FROM Chi_tieu WHERE MaKH = @MaKH AND Nam = @Nam)
@@ -729,7 +673,7 @@ BEGIN
         END
 
 
-        -- 12. CẬP NHẬT HẠNG
+        -- 10. CẬP NHẬT HẠNG
         EXEC Update_HangKhachHang @MaKH, @NgayLap;
 
 
