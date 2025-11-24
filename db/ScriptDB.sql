@@ -128,7 +128,7 @@ CREATE TABLE Dich_vu_chi_nhanh
 
 CREATE TABLE Kham_benh
 (
-	MaKB 			INT IDENTITY(1,1) PRIMARY KEY,
+	MaKB 			INT IDENTITY(1,1),
 	MaCN 			INT NOT NULL,
 	MaDV 			INT NOT NULL,
 	MaTC 			INT NOT NULL,
@@ -138,6 +138,7 @@ CREATE TABLE Kham_benh
 	ChanDoan 		NVARCHAR(255),
 	NgayTaiKham 	DATE,
 	
+    CONSTRAINT PK_Kham_benh PRIMARY KEY (MaKB),
 	CONSTRAINT FK_KB_Thu_cung_MaTC
 	FOREIGN KEY (MaTC) REFERENCES Thu_cung(MaTC),
 	CONSTRAINT FK_KB_Nhan_vien_MaNV
@@ -182,7 +183,7 @@ CREATE TABLE Goi_tiem
 
 CREATE TABLE Tiem_phong
 (
-	MaTP 		INT IDENTITY(1,1) PRIMARY KEY,
+	MaTP 		INT IDENTITY(1,1),
     MaCN 		INT NOT NULL,
     MaDV		INT NOT NULL,
     MaTC 		INT NOT NULL,
@@ -193,6 +194,7 @@ CREATE TABLE Tiem_phong
     LieuLuong 	NVARCHAR(10),
     TrangThai 	NVARCHAR(15) CHECK(TrangThai IN (N'Đã tiêm', N'Chưa tiêm')),
 
+    CONSTRAINT PK_Tiem_phong PRIMARY KEY (MaTP),
     CONSTRAINT FK_TP_Thu_cung
     FOREIGN KEY (MaTC) REFERENCES Thu_cung(MaTC),
 
@@ -211,7 +213,7 @@ CREATE TABLE Tiem_phong
 
 CREATE TABLE Hoa_don
 (
-	MaHD 			INT IDENTITY(1,1) PRIMARY KEY,
+	MaHD 			INT IDENTITY(1,1),
 	MaKH 			INT NOT NULL,
 	MaCN 			INT NOT NULL,
 	MaNV 			INT NOT NULL,
@@ -220,6 +222,7 @@ CREATE TABLE Hoa_don
 	KhuyenMai 		DECIMAL(4,2) DEFAULT 0,
 	HinhThucTT 		NVARCHAR(20) CHECK(HinhThucTT IN (N'Chuyển khoản', N'Tiền mặt')) ,
 	
+    CONSTRAINT PK_Hoa_don PRIMARY KEY (MaHD),
 	CONSTRAINT FK_HD_Khach_hang
 	    FOREIGN KEY (MaKH) REFERENCES Khach_hang(MaKH),
 	CONSTRAINT FK_HD_Chi_nhanh
@@ -713,7 +716,7 @@ END;
 GO
 
 CREATE OR ALTER PROCEDURE Update_GiaSP
-    @MaSP INT
+    @MaSP INT,
     @SoTien DECIMAL(10, 2)
 AS
 BEGIN
@@ -740,4 +743,87 @@ BEGIN
     ELSE
         INSERT Gia_dich_vu(MaDV, NgayApDung, SoTien) VALUES (@MaDV, @Today, @SoTien)
 END;
+GO
+
+CREATE INDEX IX_TaiKhoan_TenDangNhap ON Tai_khoan(TenDangNhap);
+CREATE INDEX IX_KhachHang_CapDo ON Khach_hang(CapDo);
+CREATE INDEX IX_ThuCung_MaKH ON Thu_cung(MaKH);
+CREATE INDEX IX_KhamBenh_MaTC ON Kham_benh(MaTC, NgayKham DESC);
+CREATE INDEX IX_TiemPhong_MaTC_NgayTiem ON Tiem_phong(MaTC, NgayTiem DESC);
+CREATE INDEX IX_GoiTiem_MaKH ON Goi_tiem(MaKH);
+CREATE INDEX IX_HoaDon_MaKH ON Hoa_don(MaKH);
+CREATE INDEX IX_HoaDon_MaCN ON Hoa_don(MaCN);
+GO
+-- Tạo partition function và partition scheme theo năm
+CREATE PARTITION FUNCTION pf_TheoNam (DATE)
+AS RANGE RIGHT FOR VALUES 
+(
+    '2023-01-01', 
+    '2024-01-01', 
+    '2025-01-01', 
+    '2026-01-01', 
+    '2027-01-01'
+);
+GO
+
+CREATE PARTITION SCHEME ps_TheoNam
+AS PARTITION pf_TheoNam
+ALL TO ([PRIMARY]);
+GO
+
+ALTER TABLE Chi_tiet_hoa_don_SP DROP CONSTRAINT [FK_CTHD_SP_Hoa_don_Cua_Ban]; 
+ALTER TABLE Chi_tiet_hoa_don_DV DROP CONSTRAINT [FK_CTHD_DV_Hoa_don_Cua_Ban];
+GO
+
+ALTER TABLE Hoa_don DROP CONSTRAINT [PK_Hoa_don]; 
+GO
+
+ALTER TABLE Hoa_don
+ADD CONSTRAINT PK_HoaDon PRIMARY KEY NONCLUSTERED([MaHD] ASC)
+ON [PRIMARY];
+GO
+
+CREATE CLUSTERED INDEX ix_HD_NgayLap
+ON Hoa_don
+(
+    [NgayLap]
+) ON [ps_TheoNam]([NgayLap])
+GO
+
+ALTER TABLE Chi_tiet_hoa_don_SP WITH CHECK ADD CONSTRAINT FK_CTHD_SP_Hoa_don FOREIGN KEY([MaHD]) 
+REFERENCES Hoa_don([MaHD]) ON UPDATE CASCADE ON DELETE CASCADE;
+
+ALTER TABLE Chi_tiet_hoa_don_DV WITH CHECK ADD CONSTRAINT FK_CTHD_DV_Hoa_don FOREIGN KEY([MaHD]) 
+REFERENCES Hoa_don([MaHD]) ON UPDATE CASCADE ON DELETE CASCADE;
+GO
+ALTER TABLE Kham_benh 
+DROP CONSTRAINT [PK_Kham_benh]; 
+GO
+
+ALTER TABLE Kham_benh
+ADD CONSTRAINT PK_KhamBenh PRIMARY KEY NONCLUSTERED([MaKB] ASC)
+ON [PRIMARY];
+GO
+
+CREATE CLUSTERED INDEX ix_KB_NgayKham
+ON Kham_benh
+(
+    [NgayKham]
+) ON [ps_TheoNam]([NgayKham]);
+GO
+
+ALTER TABLE Tiem_phong 
+DROP CONSTRAINT [PK_Tiem_phong]; 
+GO
+
+ALTER TABLE Tiem_phong
+ADD CONSTRAINT PK_TiemPhong PRIMARY KEY NONCLUSTERED([MaTP] ASC)
+ON [PRIMARY];
+GO
+
+CREATE CLUSTERED INDEX ix_TP_NgayTiem
+ON Tiem_phong
+(
+    [NgayTiem]
+) ON [ps_TheoNam]([NgayTiem]);
 GO
