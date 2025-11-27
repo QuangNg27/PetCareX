@@ -67,7 +67,7 @@ CREATE TABLE Chi_tieu
     Nam INT NOT NULL,
     SoTien DECIMAL(10,2) DEFAULT 0 CHECK (SoTien >= 0),
     PRIMARY KEY (MaKH, Nam),
-    CONSTRAINT FK_Chi_tieu_Khach_hang FOREIGN KEY (MaKH) REFERENCES Khach_hang(MaKH)
+    CONSTRAINT FK_Chi_tieu_Khach_hang FOREIGN KEY (MaKH) REFERENCES Khach_hang(MaKH) ON DELETE CASCADE
 );
 GO
 
@@ -84,7 +84,7 @@ CREATE TABLE Gia_dich_vu
     NgayApDung DATE NOT NULL,
     SoTien DECIMAL(10,2) NOT NULL CHECK (SoTien >= 0),
     PRIMARY KEY (MaDV, NgayApDung),
-    CONSTRAINT FK_Gia_dv_Dich_vu FOREIGN KEY (MaDV) REFERENCES Dich_vu(MaDV)
+    CONSTRAINT FK_Gia_dv_Dich_vu FOREIGN KEY (MaDV) REFERENCES Dich_vu(MaDV) ON DELETE CASCADE
 );
 GO
 
@@ -337,7 +337,8 @@ GO
 CREATE TYPE TVP_SanPham AS TABLE
 (
     MaSP INT NOT NULL,
-    SoLuong INT NOT NULL CHECK (SoLuong > 0)
+    SoLuong INT NOT NULL CHECK (SoLuong > 0),
+    GiaApDung DECIMAL(10,2) NOT NULL
 );
 GO
 
@@ -347,7 +348,8 @@ CREATE TYPE TVP_DichVu AS TABLE
     MaDV INT NOT NULL,
     MaTC INT NOT NULL,
     MaKB INT NULL,
-    MaTP INT NULL
+    MaTP INT NULL,
+    GiaApDung DECIMAL(10,2) NOT NULL
 );
 GO
 
@@ -355,6 +357,8 @@ GO
 CREATE INDEX IX_TaiKhoan_TenDangNhap ON Tai_khoan(TenDangNhap);
 CREATE INDEX IX_KhachHang_CapDo ON Khach_hang(CapDo);
 CREATE INDEX IX_ThuCung_MaKH ON Thu_cung(MaKH);
+CREATE INDEX IX_KhamBenh_MaTC ON Kham_benh(MaTC, NgayKham DESC);
+CREATE INDEX IX_TiemPhong_MaTC_NgayTiem ON Tiem_phong(MaTC, NgayTiem DESC);
 CREATE INDEX IX_GoiTiem_MaKH ON Goi_tiem(MaKH);
 CREATE INDEX IX_HoaDon_MaKH ON Hoa_don(MaKH);
 CREATE INDEX IX_HoaDon_MaCN ON Hoa_don(MaCN);
@@ -465,12 +469,7 @@ BEGIN
 
 		--4. INSERT CHI TIẾT SP + GIẢM TỒN KHO
         INSERT INTO Chi_tiet_hoa_don_SP (MaHD, MaSP, SoLuong, GiaApDung)
-        SELECT @MaHD, sp.MaSP, sp.SoLuong,
-            ISNULL((
-                SELECT TOP 1 SoTien FROM Gia_san_pham g
-                WHERE g.MaSP = sp.MaSP AND g.NgayApDung <= @NgayLap
-                ORDER BY g.NgayApDung DESC
-            ), 0)
+        SELECT @MaHD, sp.MaSP, sp.SoLuong, sp.GiaApDung
         FROM @CT_SanPham sp;
 
         UPDATE spcn
@@ -481,12 +480,7 @@ BEGIN
 
         --5. INSERT CHI TIẾT DỊCH VỤ
         INSERT INTO Chi_tiet_hoa_don_DV (MaHD, MaCN, MaDV, MaTC, MaKB, MaTP, GiaApDung)
-        SELECT @MaHD, dv.MaCN, dv.MaDV, dv.MaTC, dv.MaKB, dv.MaTP,
-            ISNULL((
-                SELECT TOP 1 SoTien FROM Gia_dich_vu g
-                WHERE g.MaDV = dv.MaDV AND g.NgayApDung <= @NgayLap
-                ORDER BY g.NgayApDung DESC
-            ), 0)
+        SELECT @MaHD, dv.MaCN, dv.MaDV, dv.MaTC, dv.MaKB, dv.MaTP, dv.GiaApDung
         FROM @CT_DichVu dv;
 
         --6. TÍNH TỔNG TIỀN
@@ -502,7 +496,8 @@ BEGIN
         UPDATE Hoa_don SET TongTien = @TongTien WHERE MaHD = @MaHD;
 
         --7. CỘNG ĐIỂM LOYALTY
-        UPDATE Khach_hang SET DiemLoyalty = ISNULL(DiemLoyalty,0) + 1 WHERE MaKH = @MaKH;
+        DECLARE @DiemLoyalty INT = FLOOR(@TongTien / 50000.0);
+        UPDATE Khach_hang SET DiemLoyalty = ISNULL(DiemLoyalty,0) + @DiemLoyalty WHERE MaKH = @MaKH;
 
 		--8. CẬP NHẬT CHI TIÊU
         DECLARE @Nam INT = YEAR(@NgayLap);
@@ -704,17 +699,18 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
-    ;WITH AffectedCN AS (
-        SELECT MaCN FROM inserted
-        UNION
-        SELECT MaCN FROM deleted
-    )
+    DECLARE @Temp TABLE (MaCN INT PRIMARY KEY);
+
+    INSERT INTO @Temp (MaCN)
+    SELECT DISTINCT MaCN FROM inserted
+    UNION
+    SELECT DISTINCT MaCN FROM deleted;
 
     IF EXISTS
     (
         SELECT 1
-        FROM AffectedCN ac
-        WHERE NOT EXISTS (SELECT 1 FROM Dich_vu_chi_nhanh d WHERE d.MaCN = ac.MaCN)
+        FROM @Temp t
+        WHERE NOT EXISTS (SELECT 1 FROM Dich_vu_chi_nhanh d WHERE d.MaCN = t.MaCN)
     )
     BEGIN
         RAISERROR(N'Mỗi chi nhánh phải có ít nhất 1 dịch vụ.',16,1);
