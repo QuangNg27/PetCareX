@@ -428,6 +428,92 @@ BEGIN
 END;
 GO
 
+CREATE OR ALTER PROCEDURE Create_TaiKhoan 
+    @TenDangNhap VARCHAR(50),
+    @MatKhau VARCHAR(100),
+    @MaKH INT = NULL,
+    @MaNV INT = NULL,
+    @VaiTro NVARCHAR(30)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF (@MaKH IS NOT NULL AND EXISTS(
+            SELECT 1 FROM Tai_khoan WHERE MaKH = @MaKH
+        ))
+        THROW 60002, N'Khách hàng này đã có tài khoản.', 1;
+
+    IF (@MaNV IS NOT NULL AND EXISTS(
+            SELECT 1 FROM Tai_khoan WHERE MaNV = @MaNV
+        ))
+        THROW 60003, N'Nhân viên này đã có tài khoản.', 1;
+
+    INSERT INTO Tai_khoan(TenDangNhap, MatKhau, MaKH, MaNV, VaiTro)
+    VALUES (@TenDangNhap, @MatKhau, @MaKH, @MaNV, @VaiTro);
+END;
+GO
+
+CREATE OR ALTER PROCEDURE PhanCong_NhanVienChiNhanh
+    @MaNV INT,
+    @MaCN INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    BEGIN TRY
+        BEGIN TRAN;
+
+        -- Kiểm tra nhân viên tồn tại
+        IF NOT EXISTS (SELECT 1 FROM Nhan_vien WHERE MaNV = @MaNV)
+            THROW 60000, N'Nhân viên không tồn tại.', 1;
+
+        -- Kiểm tra chi nhánh tồn tại
+        IF NOT EXISTS (SELECT 1 FROM Chi_nhanh WHERE MaCN = @MaCN)
+            THROW 60001, N'Chi nhánh không tồn tại.', 1;
+
+        -- Lấy ngày hiện tại
+        DECLARE @Today DATE = CAST(GETDATE() AS DATE);
+
+        -- Ngày bắt đầu thực tế của chi nhánh mới = Hôm nay + 1
+        DECLARE @NgayBD DATE = DATEADD(day, 1, @Today);
+
+        -- Đóng lịch của chi nhánh cũ nếu đang active
+        UPDATE Lich_su_nhan_vien
+        SET NgayKT = @Today
+        WHERE MaNV = @MaNV AND NgayKT IS NULL;
+
+        -- Kiểm tra chồng lắp (DATE-based logic)
+        IF EXISTS (
+            SELECT 1
+            FROM Lich_su_nhan_vien ls
+            WHERE ls.MaNV = @MaNV
+              AND NOT (
+                    @NgayBD >= ISNULL(ls.NgayKT, '9999-12-31')
+                )
+        )
+            THROW 60005, N'Khoảng thời gian bị chồng lắp.', 1;
+
+        -- Thêm lịch mới
+        INSERT INTO Lich_su_nhan_vien (MaNV, MaCN, NgayBD, NgayKT)
+        VALUES (@MaNV, @MaCN, @NgayBD, NULL);
+
+        -- Nếu nhân viên là quản lý chi nhánh -> cập nhật chi nhánh
+        IF EXISTS (SELECT 1 FROM Nhan_vien WHERE MaNV = @MaNV AND ChucVu = N'Quản lý chi nhánh')
+        BEGIN
+            UPDATE Chi_nhanh
+            SET QuanLy = @MaNV
+            WHERE MaCN = @MaCN;
+        END
+
+        COMMIT;
+    END TRY
+    BEGIN CATCH
+        IF XACT_STATE() <> 0 ROLLBACK;
+        THROW;
+    END CATCH
+END;
+GO
+
 CREATE OR ALTER PROCEDURE Add_HoaDon
     @MaKH INT,
     @MaCN INT,
