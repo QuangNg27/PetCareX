@@ -11,4 +11,4 @@ const config = {
     }
 };
 
-module.exports = new sql.ConnectionPool(config).connect();
+module.exports = new sql.ConnectionPool(config)

@@ -4,6 +4,9 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 
+// Import database connection
+const pool = require('./config/db');
+
 // Import routes
 const authRoutes = require('./routes/authRoutes');
 const customerRoutes = require('./routes/customerRoutes');
@@ -17,7 +20,6 @@ const reviewRoutes = require('./routes/reviewRoutes');
 
 // Import middleware
 const { errorHandler } = require('./middleware/errorHandler');
-const { authMiddleware } = require('./middleware/authMiddleware');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -47,13 +49,13 @@ app.get('/health', (req, res) => {
 
 // API routes
 app.use('/api/auth', authRoutes);
-app.use('/api/customers', authMiddleware, customerRoutes);
-app.use('/api/services', authMiddleware, serviceRoutes);
-app.use('/api/products', authMiddleware, productRoutes);
-app.use('/api/invoices', authMiddleware, invoiceRoutes);
-app.use('/api/branches', authMiddleware, branchRoutes);
-app.use('/api/employees', authMiddleware, employeeRoutes);
-app.use('/api/reports', authMiddleware, reportRoutes);
+app.use('/api/customers', customerRoutes);
+app.use('/api/services', serviceRoutes);
+app.use('/api/products', productRoutes);
+app.use('/api/invoices', invoiceRoutes);
+app.use('/api/branches', branchRoutes);
+app.use('/api/employees', employeeRoutes);
+app.use('/api/reports', reportRoutes);
 app.use('/api/reviews', reviewRoutes);
 
 // 404 handler
@@ -68,10 +70,25 @@ app.use('*', (req, res) => {
 app.use(errorHandler);
 
 // Start server
-app.listen(PORT, () => {
-    console.log(`🚀 PetCareX Server is running on port ${PORT}`);
-    console.log(`🌍 Environment: ${process.env.NODE_ENV}`);
-    console.log(`🔗 Health check: http://localhost:${PORT}/health`);
-});
+const startServer = async () => {
+    try {
+        // Test database connection
+        console.log('📊 Connecting to database...');
+        await pool.connect();
+        console.log('✅ Database connected successfully');
+        
+        // Start Express server
+        app.listen(PORT, () => {
+            console.log(`🚀 PetCareX Server is running on port ${PORT}`);
+            console.log(`🌍 Environment: ${process.env.NODE_ENV}`);
+            console.log(`🔗 Health check: http://localhost:${PORT}/health`);
+        });
+    } catch (error) {
+        console.error('❌ Failed to connect to database:', error.message);
+        process.exit(1);
+    }
+};
+
+startServer();
 
 module.exports = app;

@@ -1,8 +1,8 @@
 const express = require('express');
 const EmployeeController = require('../controllers/EmployeeController');
-const auth = require('../middleware/auth');
-const authorizeRoles = require('../middleware/authorizeRoles');
-const validateRequest = require('../middleware/validateRequest');
+const { authMiddleware } = require('../middleware/authMiddleware');
+const { authorizeRoles } = require('../middleware/authorizeRoles');
+const { validate } = require('../utils/validation');
 const employeeValidation = require('../utils/employeeValidation');
 
 const router = express.Router();
@@ -10,78 +10,78 @@ const employeeController = new EmployeeController();
 
 // Employee self-service endpoints
 router.put('/profile',
-    auth,
+    authMiddleware,
     authorizeRoles(['Bác sĩ', 'Bán hàng', 'Tiếp tân', 'Quản lý chi nhánh', 'Quản lý công ty']),
-    validateRequest(employeeValidation.updateProfileSchema),
-    employeeController.updateMyProfile.bind(employeeController)
+    validate(employeeValidation.updateProfileSchema.body),
+    employeeController.updateMyProfile
 );
 
 // Management endpoints
 router.get('/',
-    auth,
+    authMiddleware,
     authorizeRoles(['Quản lý chi nhánh', 'Quản lý công ty']),
-    employeeController.getAllEmployees.bind(employeeController)
+    employeeController.getAllEmployees
 );
 
 router.get('/roles',
-    auth,
+    authMiddleware,
     authorizeRoles(['Quản lý chi nhánh', 'Quản lý công ty']),
-    employeeController.getEmployeeRoles.bind(employeeController)
+    employeeController.getEmployeeRoles
 );
 
 router.post('/',
-    auth,
+    authMiddleware,
     authorizeRoles(['Quản lý công ty']),
-    validateRequest(employeeValidation.createEmployeeSchema),
-    employeeController.createEmployee.bind(employeeController)
+    validate(employeeValidation.createEmployeeSchema.body),
+    employeeController.createEmployee
 );
 
 router.get('/:employeeId',
-    auth,
+    authMiddleware,
     authorizeRoles(['Bác sĩ', 'Bán hàng', 'Tiếp tân', 'Quản lý chi nhánh', 'Quản lý công ty']),
-    employeeController.getEmployee.bind(employeeController)
+    employeeController.getEmployee
 );
 
 router.put('/:employeeId',
-    auth,
+    authMiddleware,
     authorizeRoles(['Bác sĩ', 'Bán hàng', 'Tiếp tân', 'Quản lý chi nhánh', 'Quản lý công ty']),
-    validateRequest(employeeValidation.updateEmployeeSchema),
-    employeeController.updateEmployee.bind(employeeController)
+    validate(employeeValidation.updateEmployeeSchema.body),
+    employeeController.updateEmployee
 );
 
 router.get('/:employeeId/schedule',
-    auth,
+    authMiddleware,
     authorizeRoles(['Tiếp tân', 'Quản lý chi nhánh', 'Quản lý công ty']),
-    employeeController.getDoctorSchedule.bind(employeeController)
+    employeeController.getDoctorSchedule
 );
 
 // Branch assignment endpoints
 router.post('/assignments',
-    auth,
+    authMiddleware,
     authorizeRoles(['Quản lý chi nhánh', 'Quản lý công ty']),
-    validateRequest(employeeValidation.assignEmployeeSchema),
-    employeeController.assignEmployeeToBranch.bind(employeeController)
+    validate(employeeValidation.assignEmployeeSchema.body),
+    employeeController.assignEmployeeToBranch
 );
 
 router.put('/:employeeId/branches/:branchId/terminate',
-    auth,
+    authMiddleware,
     authorizeRoles(['Quản lý chi nhánh', 'Quản lý công ty']),
-    validateRequest(employeeValidation.terminateAssignmentSchema),
-    employeeController.terminateEmployeeAssignment.bind(employeeController)
+    validate(employeeValidation.terminateAssignmentSchema.body),
+    employeeController.terminateEmployeeAssignment
 );
 
 router.put('/:employeeId/branches/:branchId/salary',
-    auth,
+    authMiddleware,
     authorizeRoles(['Quản lý chi nhánh', 'Quản lý công ty']),
-    validateRequest(employeeValidation.updateSalarySchema),
-    employeeController.updateEmployeeSalary.bind(employeeController)
+    validate(employeeValidation.updateSalarySchema.body),
+    employeeController.updateEmployeeSalary
 );
 
 // Branch-specific endpoints
 router.get('/branches/:branchId',
-    auth,
+    authMiddleware,
     authorizeRoles(['Quản lý chi nhánh', 'Quản lý công ty']),
-    employeeController.getBranchEmployees.bind(employeeController)
+    employeeController.getBranchEmployees
 );
 
 module.exports = router;

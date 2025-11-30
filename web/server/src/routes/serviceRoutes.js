@@ -1,94 +1,88 @@
 const express = require('express');
 const ServiceController = require('../controllers/ServiceController');
-const auth = require('../middleware/auth');
-const authorizeRoles = require('../middleware/authorizeRoles');
-const validateRequest = require('../middleware/validateRequest');
+const { authMiddleware } = require('../middleware/authMiddleware');
+const { authorizeRoles } = require('../middleware/authorizeRoles');
+const { validate } = require('../utils/validation');
 const serviceValidation = require('../utils/serviceValidation');
 
 const router = express.Router();
 const serviceController = new ServiceController();
 
 // Get services available at a specific branch (with customer tier pricing)
-router.get('/branches/:branchId/services', 
-    auth, 
-    serviceController.getBranchServices.bind(serviceController)
-);
+router.get('/branches/:branchId/services', authMiddleware, serviceController.getBranchServices);
 
 // Medical examination endpoints
 router.post('/examinations',
-    auth,
+    authMiddleware,
     authorizeRoles(['Khách hàng']),
-    validateRequest(serviceValidation.createExaminationSchema),
-    serviceController.createMedicalExamination.bind(serviceController)
+    validate(serviceValidation.createExaminationSchema.body),
+    serviceController.createMedicalExamination
 );
 
 router.put('/examinations/:examinationId',
-    auth,
+    authMiddleware,
     authorizeRoles(['Bác sĩ']),
-    validateRequest(serviceValidation.updateExaminationSchema),
-    serviceController.updateMedicalExamination.bind(serviceController)
+    validate(serviceValidation.updateExaminationSchema.body),
+    serviceController.updateMedicalExamination
 );
 
 router.post('/examinations/:examinationId/prescriptions',
-    auth,
+    authMiddleware,
     authorizeRoles(['Bác sĩ']),
-    validateRequest(serviceValidation.addPrescriptionSchema),
-    serviceController.addPrescription.bind(serviceController)
+    validate(serviceValidation.addPrescriptionSchema.body),
+    serviceController.addPrescription
 );
 
 // Vaccination endpoints
 router.post('/vaccinations',
-    auth,
+    authMiddleware,
     authorizeRoles(['Khách hàng']),
-    validateRequest(serviceValidation.createVaccinationSchema),
-    serviceController.createVaccination.bind(serviceController)
+    validate(serviceValidation.createVaccinationSchema.body),
+    serviceController.createVaccination
 );
 
 router.post('/vaccinations/:vaccinationId/details',
-    auth,
+    authMiddleware,
     authorizeRoles(['Bác sĩ']),
-    validateRequest(serviceValidation.addVaccinationDetailsSchema),
-    serviceController.addVaccinationDetails.bind(serviceController)
+    validate(serviceValidation.addVaccinationDetailsSchema.body),
+    serviceController.addVaccinationDetails
 );
 
 // Vaccination package endpoints
 router.post('/vaccination-packages',
-    auth,
+    authMiddleware,
     authorizeRoles(['Khách hàng']),
-    validateRequest(serviceValidation.createVaccinationPackageSchema),
-    serviceController.createVaccinationPackage.bind(serviceController)
+    validate(serviceValidation.createVaccinationPackageSchema.body),
+    serviceController.createVaccinationPackage
 );
 
 router.get('/vaccination-packages',
-    auth,
+    authMiddleware,
     authorizeRoles(['Khách hàng']),
-    serviceController.getVaccinationPackages.bind(serviceController)
+    serviceController.getVaccinationPackages
 );
 
 // Service price management (admin only)
 router.put('/services/:serviceId/price',
-    auth,
+    authMiddleware,
     authorizeRoles(['Quản lý chi nhánh', 'Quản lý công ty']),
-    validateRequest(serviceValidation.updateServicePriceSchema),
-    serviceController.updateServicePrice.bind(serviceController)
+    validate(serviceValidation.updateServicePriceSchema.body),
+    serviceController.updateServicePrice
 );
 
 router.get('/services/:serviceId/price-history',
-    auth,
+    authMiddleware,
     authorizeRoles(['Quản lý chi nhánh', 'Quản lý công ty', 'Bác sĩ']),
-    serviceController.getServicePriceHistory.bind(serviceController)
+    serviceController.getServicePriceHistory
 );
 
 // Staff scheduling endpoints
-router.get('/branches/:branchId/veterinarians',
-    auth,
-    serviceController.getAvailableVeterinarians.bind(serviceController)
-);
+router.get('/branches/:branchId/veterinarians', authMiddleware, serviceController.getAvailableVeterinarians);
 
 router.get('/doctors/:doctorId/schedule',
-    auth,
+    authMiddleware,
     authorizeRoles(['Bác sĩ', 'Tiếp tân', 'Quản lý chi nhánh']),
-    serviceController.getDoctorSchedule.bind(serviceController)
+    serviceController.getDoctorSchedule
 );
 
 module.exports = router;

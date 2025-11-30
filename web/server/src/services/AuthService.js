@@ -62,8 +62,6 @@ class AuthService {
                     MaTK: account.MaTK,
                     TenDangNhap: account.TenDangNhap,
                     VaiTro: account.VaiTro,
-                    HoTen: account.HoTen,
-                    ChucVu: account.ChucVu,
                     MaKH: account.MaKH,
                     MaNV: account.MaNV
                 }
@@ -105,8 +103,6 @@ class AuthService {
                 MaTK: account.MaTK,
                 TenDangNhap: account.TenDangNhap,
                 VaiTro: account.VaiTro,
-                HoTen: account.HoTen,
-                ChucVu: account.ChucVu,
                 MaKH: account.MaKH,
                 MaNV: account.MaNV
             }

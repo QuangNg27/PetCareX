@@ -1,7 +1,7 @@
 const express = require('express');
 const AuthController = require('../controllers/AuthController');
 const { validate, registerSchema, loginSchema, changePasswordSchema } = require('../utils/validation');
-const auth = require('../middleware/auth');
+const { authMiddleware } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 const authController = new AuthController();
@@ -12,15 +12,10 @@ router.post('/login', validate(loginSchema), authController.login);
 
 // Password management
 router.post('/change-password', 
-    auth,
+    authMiddleware,
     validate(changePasswordSchema), 
     authController.changePassword
 );
 
-// Token refresh (if needed)
-router.post('/refresh-token', auth, authController.refreshToken);
-
-// Profile verification
-router.get('/verify', auth, authController.verifyToken);
-
+router.get('/profile', authMiddleware, authController.getProfile);
 module.exports = router;
