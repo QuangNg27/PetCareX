@@ -6,13 +6,10 @@ class AuthRepository extends BaseRepository {
         const { HoTen, SoDT, Email, CCCD, GioiTinh, NgaySinh } = userData;
         const { TenDangNhap, MatKhau } = accountData;
 
-        // Hash password
-        const hashedPassword = await bcrypt.hash(MatKhau, 12);
-
         const result = await this.execute(`
             BEGIN TRY
                 BEGIN TRANSACTION;
-                
+
                 -- Insert customer
                 INSERT INTO Khach_hang (HoTen, SoDT, Email, CCCD, GioiTinh, NgaySinh)
                 VALUES (@HoTen, @SoDT, @Email, @CCCD, @GioiTinh, @NgaySinh);
@@ -43,7 +40,7 @@ class AuthRepository extends BaseRepository {
             GioiTinh,
             NgaySinh,
             TenDangNhap,
-            MatKhau: hashedPassword
+            MatKhau
         });
 
         return result.recordset[0];
@@ -65,19 +62,13 @@ class AuthRepository extends BaseRepository {
         return result.recordset[0];
     }
 
-    async verifyPassword(plainPassword, hashedPassword) {
-        return await bcrypt.compare(plainPassword, hashedPassword);
-    }
-
     async changePassword(username, newPassword) {
-        const hashedPassword = await bcrypt.hash(newPassword, 12);
-        
         const result = await this.execute(`
             UPDATE Tai_khoan 
             SET MatKhau = @MatKhau 
             WHERE TenDangNhap = @TenDangNhap
         `, {
-            MatKhau: hashedPassword,
+            MatKhau: newPassword,
             TenDangNhap: username
         });
 

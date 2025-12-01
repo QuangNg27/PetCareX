@@ -143,12 +143,12 @@ class ServiceService {
         const durationDays = Math.floor((endDate - startDate) / (1000 * 60 * 60 * 24));
         
         let discountRate = 0;
-        if (durationDays >= 365) {
-            discountRate = 0.15; // 15% for 1+ year
+        if (durationDays >= 365 + 180) {
+            discountRate = 0.15; // 15% for 1.5+ year
+        } else if (durationDays >= 365) {
+            discountRate = 0.10; // 10% for 1+ year
         } else if (durationDays >= 180) {
-            discountRate = 0.10; // 10% for 6+ months
-        } else if (durationDays >= 90) {
-            discountRate = 0.05; // 5% for 3+ months
+            discountRate = 0.05; // 5% for 6+ months
         }
 
         const result = await this.serviceRepository.createVaccinationPackage({
