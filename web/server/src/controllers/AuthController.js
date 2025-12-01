@@ -1,5 +1,4 @@
 const AuthService = require('../services/AuthService');
-const { AppError } = require('../middleware/errorHandler');
 
 class AuthController {
     constructor() {
@@ -51,6 +50,25 @@ class AuthController {
             const username = req.user.TenDangNhap;
             
             const result = await this.authService.getProfile(username);
+
+            res.json(result);
+        } catch (error) {
+            next(error);
+        }
+    };
+
+    refreshToken = async (req, res, next) => {
+        try {
+            const { refreshToken } = req.body;
+            
+            if (!refreshToken) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Refresh token is required'
+                });
+            }
+
+            const result = await this.authService.refreshToken(refreshToken);
 
             res.json(result);
         } catch (error) {

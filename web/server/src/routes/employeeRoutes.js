@@ -2,8 +2,6 @@ const express = require('express');
 const EmployeeController = require('../controllers/EmployeeController');
 const { authMiddleware } = require('../middleware/authMiddleware');
 const { authorizeRoles } = require('../middleware/authorizeRoles');
-const { validate } = require('../utils/validation');
-const employeeValidation = require('../utils/employeeValidation');
 
 const router = express.Router();
 const employeeController = new EmployeeController();
@@ -12,7 +10,6 @@ const employeeController = new EmployeeController();
 router.put('/profile',
     authMiddleware,
     authorizeRoles(['Bác sĩ', 'Bán hàng', 'Tiếp tân', 'Quản lý chi nhánh', 'Quản lý công ty']),
-    validate(employeeValidation.updateProfileSchema.body),
     employeeController.updateMyProfile
 );
 
@@ -32,7 +29,6 @@ router.get('/roles',
 router.post('/',
     authMiddleware,
     authorizeRoles(['Quản lý công ty']),
-    validate(employeeValidation.createEmployeeSchema.body),
     employeeController.createEmployee
 );
 
@@ -45,7 +41,6 @@ router.get('/:employeeId',
 router.put('/:employeeId',
     authMiddleware,
     authorizeRoles(['Bác sĩ', 'Bán hàng', 'Tiếp tân', 'Quản lý chi nhánh', 'Quản lý công ty']),
-    validate(employeeValidation.updateEmployeeSchema.body),
     employeeController.updateEmployee
 );
 
@@ -59,21 +54,18 @@ router.get('/:employeeId/schedule',
 router.post('/assignments',
     authMiddleware,
     authorizeRoles(['Quản lý chi nhánh', 'Quản lý công ty']),
-    validate(employeeValidation.assignEmployeeSchema.body),
     employeeController.assignEmployeeToBranch
 );
 
 router.put('/:employeeId/branches/:branchId/terminate',
     authMiddleware,
     authorizeRoles(['Quản lý chi nhánh', 'Quản lý công ty']),
-    validate(employeeValidation.terminateAssignmentSchema.body),
     employeeController.terminateEmployeeAssignment
 );
 
 router.put('/:employeeId/branches/:branchId/salary',
     authMiddleware,
     authorizeRoles(['Quản lý chi nhánh', 'Quản lý công ty']),
-    validate(employeeValidation.updateSalarySchema.body),
     employeeController.updateEmployeeSalary
 );
 

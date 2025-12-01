@@ -2,8 +2,6 @@ const express = require('express');
 const ProductController = require('../controllers/ProductController');
 const { authMiddleware } = require('../middleware/authMiddleware');
 const { authorizeRoles } = require('../middleware/authorizeRoles');
-const { validate } = require('../utils/validation');
-const productValidation = require('../utils/productValidation');
 
 const router = express.Router();
 const productController = new ProductController();
@@ -23,14 +21,12 @@ router.get('/:productId/price-history', authMiddleware, productController.getPro
 router.post('/',
     authMiddleware,
     authorizeRoles(['Quản lý chi nhánh', 'Quản lý công ty']),
-    validate(productValidation.createProductSchema.body),
     productController.createProduct
 );
 
 router.put('/:productId',
     authMiddleware,
     authorizeRoles(['Quản lý chi nhánh', 'Quản lý công ty']),
-    validate(productValidation.updateProductSchema.body),
     productController.updateProduct
 );
 
@@ -44,7 +40,6 @@ router.delete('/:productId',
 router.put('/:productId/price',
     authMiddleware,
     authorizeRoles(['Quản lý chi nhánh', 'Quản lý công ty']),
-    validate(productValidation.updatePriceSchema.body),
     productController.updateProductPrice
 );
 
@@ -52,14 +47,12 @@ router.put('/:productId/price',
 router.post('/inventory/update',
     authMiddleware,
     authorizeRoles(['Bán hàng', 'Tiếp tân', 'Quản lý chi nhánh', 'Quản lý công ty']),
-    validate(productValidation.updateInventorySchema.body),
     productController.updateInventory
 );
 
 router.post('/inventory/bulk-update',
     authMiddleware,
     authorizeRoles(['Quản lý chi nhánh', 'Quản lý công ty']),
-    validate(productValidation.bulkUpdateInventorySchema.body),
     productController.bulkUpdateInventory
 );
 

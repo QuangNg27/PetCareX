@@ -1,0 +1,206 @@
+.signup-progress {
+  margin-bottom: var(--space-6);
+  text-align: center;
+}
+
+.progress-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: var(--space-3);
+}
+
+.progress-step {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 0.875rem;
+  background-color: var(--gray-200);
+  color: var(--gray-500);
+  border: 2px solid var(--gray-200);
+  transition: all 0.2s ease-in-out;
+}
+
+.progress-step.active {
+  background-color: var(--primary-500);
+  color: white;
+  border-color: var(--primary-500);
+}
+
+.progress-step.completed {
+  background-color: var(--success-500);
+  color: white;
+  border-color: var(--success-500);
+}
+
+.progress-line {
+  width: 60px;
+  height: 2px;
+  background-color: var(--gray-200);
+  margin: 0 var(--space-2);
+  transition: all 0.2s ease-in-out;
+}
+
+.progress-line.completed {
+  background-color: var(--success-500);
+}
+
+.progress-labels {
+  display: flex;
+  justify-content: space-between;
+  max-width: 300px;
+  margin: 0 auto;
+}
+
+.progress-labels span {
+  font-size: 0.875rem;
+  color: var(--gray-500);
+  font-weight: 500;
+}
+
+.progress-labels span.active {
+  color: var(--primary-600);
+}
+
+.progress-labels span.completed {
+  color: var(--success-600);
+}
+
+.signup-step2-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.form-row {
+  display: flex;
+  flex-direction: column;
+}
+
+.gender-options {
+  display: flex;
+  gap: var(--space-4);
+  margin-top: var(--space-2);
+}
+
+.gender-option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: var(--gray-700);
+}
+
+.gender-option input[type="radio"] {
+  display: none;
+}
+
+.radio-mark {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--gray-300);
+  border-radius: 50%;
+  position: relative;
+  transition: all 0.2s ease-in-out;
+}
+
+.gender-option input[type="radio"]:checked + .radio-mark {
+  border-color: var(--primary-500);
+  background-color: var(--primary-500);
+}
+
+.gender-option input[type="radio"]:checked + .radio-mark::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: white;
+}
+
+.form-actions {
+  display: flex;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+
+.back-button {
+  flex: 1;
+}
+
+.submit-button {
+  flex: 2;
+}
+
+.form-footer {
+  text-align: center;
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--gray-200);
+}
+
+.form-footer p {
+  margin: 0;
+  color: var(--gray-600);
+  font-size: 0.875rem;
+}
+
+.login-link {
+  color: var(--primary-600);
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s ease-in-out;
+}
+
+.login-link:hover {
+  color: var(--primary-700);
+  text-decoration: underline;
+}
+
+.error-message {
+  padding: var(--space-3);
+  background-color: var(--error-50);
+  border: 1px solid var(--error-200);
+  border-radius: var(--radius-md);
+  color: var(--error-700);
+  font-size: 0.875rem;
+  margin-bottom: var(--space-4);
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .progress-labels {
+    max-width: 250px;
+  }
+  
+  .progress-labels span {
+    font-size: 0.75rem;
+  }
+  
+  .progress-line {
+    width: 40px;
+  }
+  
+  .progress-step {
+    width: 35px;
+    height: 35px;
+    font-size: 0.75rem;
+  }
+  
+  .gender-options {
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+  
+  .form-actions {
+    flex-direction: column;
+  }
+}
