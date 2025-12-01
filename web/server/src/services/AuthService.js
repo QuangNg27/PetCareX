@@ -7,10 +7,7 @@ class AuthService {
         this.authRepo = new AuthRepository();
     }
 
-    async register(userData, accountData) {
-        // Remove redundant checks - let database handle unique constraints
-        // Database will throw appropriate errors that we'll translate in error handler
-        
+    async register(userData, accountData) {        
         try {
             const result = await this.authRepo.createAccount(userData, accountData);
             
@@ -20,7 +17,15 @@ class AuthService {
                 data: { MaKH: result.MaKH }
             };
         } catch (error) {
-            // Let global error handler translate SQL constraint violations
+            if (error.number === 2627) {
+                if (error.message.includes('UQ_KH_SoDT')) {
+                    throw new AppError('Số điện thoại đã được sử dụng');
+                } else if (error.message.includes('UQ_KH_Email')) {
+                    throw new AppError('Email đã được sử dụng');
+                } else if (error.message.includes('UQ_KH_CCCD')) {
+                    throw new AppError('CCCD đã được sử dụng');
+                }
+            }
             throw error;
         }
     }
@@ -35,8 +40,7 @@ class AuthService {
         }
 
         // Verify password
-        const isValidPassword = await this.authRepo.verifyPassword(MatKhau, account.MatKhau);
-        if (!isValidPassword) {
+        if (MatKhau !== account.MatKhau) {
             throw new AppError('Mật khẩu không đúng', 401);
         }
 
@@ -77,8 +81,7 @@ class AuthService {
         }
 
         // Verify old password
-        const isValidPassword = await this.authRepo.verifyPassword(oldPassword, account.MatKhau);
-        if (!isValidPassword) {
+        if (oldPassword !== account.MatKhau) {
             throw new AppError('Mật khẩu cũ không đúng', 400);
         }
 

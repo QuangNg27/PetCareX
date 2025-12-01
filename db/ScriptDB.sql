@@ -280,6 +280,7 @@ GO
 
 CREATE TABLE Chi_tiet_hoa_don_DV
 (
+    MaCTHDV INT IDENTITY(1,1) PRIMARY KEY,
     MaHD INT NOT NULL,
     MaCN INT NOT NULL,
     MaDV INT NOT NULL,
@@ -287,7 +288,6 @@ CREATE TABLE Chi_tiet_hoa_don_DV
     MaKB INT NULL,
     MaTP INT NULL,
     GiaApDung DECIMAL(10,2) NOT NULL,
-    PRIMARY KEY (MaHD, MaDV, MaCN, MaTC),
     CONSTRAINT FK_CTHD_DV_Hoa_don FOREIGN KEY (MaHD) REFERENCES Hoa_don(MaHD) ON DELETE CASCADE,
     CONSTRAINT FK_CTHD_DV_Dich_vu_chi_nhanh FOREIGN KEY (MaCN, MaDV) REFERENCES Dich_vu_chi_nhanh(MaCN, MaDV),
     CONSTRAINT FK_CTHD_DV_Thu_cung FOREIGN KEY (MaTC) REFERENCES Thu_cung(MaTC),
@@ -357,11 +357,12 @@ GO
 CREATE INDEX IX_TaiKhoan_TenDangNhap ON Tai_khoan(TenDangNhap);
 CREATE INDEX IX_KhachHang_CapDo ON Khach_hang(CapDo);
 CREATE INDEX IX_ThuCung_MaKH ON Thu_cung(MaKH);
-CREATE INDEX IX_KhamBenh_MaTC ON Kham_benh(MaTC, NgayKham DESC);
-CREATE INDEX IX_TiemPhong_MaTC_NgayTiem ON Tiem_phong(MaTC, NgayTiem DESC);
+CREATE INDEX IX_KhamBenh_MaTC ON Kham_benh(MaTC);
+CREATE INDEX IX_TiemPhong_MaTC_NgayTiem ON Tiem_phong(MaTC);
 CREATE INDEX IX_GoiTiem_MaKH ON Goi_tiem(MaKH);
 CREATE INDEX IX_HoaDon_MaKH ON Hoa_don(MaKH);
 CREATE INDEX IX_HoaDon_MaCN ON Hoa_don(MaCN);
+CREATE INDEX IX_ChiTietHoaDonDV_MaHD ON Chi_tiet_hoa_don_DV(MaHD);
 GO
 
 CREATE OR ALTER PROCEDURE Update_HangKhachHang
