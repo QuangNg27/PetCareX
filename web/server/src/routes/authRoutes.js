@@ -1,19 +1,19 @@
 const express = require('express');
 const AuthController = require('../controllers/AuthController');
-const { validate, registerSchema, loginSchema, changePasswordSchema } = require('../utils/validation');
+
 const { authMiddleware } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 const authController = new AuthController();
 
 // Auth routes
-router.post('/register', validate(registerSchema), authController.register);
-router.post('/login', validate(loginSchema), authController.login);
+router.post('/register', authController.register);
+router.post('/login', authController.login);
+router.post('/refresh-token', authController.refreshToken);
 
 // Password management
 router.post('/change-password', 
     authMiddleware,
-    validate(changePasswordSchema), 
     authController.changePassword
 );
 

@@ -44,8 +44,8 @@ class AuthService {
             throw new AppError('Mật khẩu không đúng', 401);
         }
 
-        // Generate JWT token
-        const token = jwt.sign(
+        // Generate JWT tokens
+        const accessToken = jwt.sign(
             { 
                 userId: account.MaTK,
                 username: account.TenDangNhap,
@@ -54,14 +54,25 @@ class AuthService {
                 employeeId: account.MaNV
             },
             process.env.JWT_SECRET,
-            { expiresIn: '7d' }
+            { expiresIn: '15m' } // Access token: 15 phút
+        );
+
+        const refreshToken = jwt.sign(
+            { 
+                userId: account.MaTK,
+                username: account.TenDangNhap,
+                tokenType: 'refresh'
+            },
+            process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET,
+            { expiresIn: '7d' } // Refresh token: 7 ngày
         );
 
         return {
             success: true,
             message: 'Đăng nhập thành công',
             data: {
-                token,
+                token: accessToken,
+                refreshToken,
                 user: {
                     MaTK: account.MaTK,
                     TenDangNhap: account.TenDangNhap,
@@ -110,6 +121,53 @@ class AuthService {
                 MaNV: account.MaNV
             }
         };
+    }
+
+    async refreshToken(refreshToken) {
+        try {
+            // Verify refresh token
+            const decoded = jwt.verify(
+                refreshToken, 
+                process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET
+            );
+
+            // Check if it's a refresh token
+            if (decoded.tokenType !== 'refresh') {
+                throw new AppError('Invalid refresh token', 401);
+            }
+
+            // Get user info
+            const account = await this.authRepo.findAccountByUsername(decoded.username);
+            if (!account) {
+                throw new AppError('Tài khoản không tồn tại', 404);
+            }
+
+            // Generate new access token
+            const newAccessToken = jwt.sign(
+                { 
+                    userId: account.MaTK,
+                    username: account.TenDangNhap,
+                    role: account.VaiTro,
+                    customerId: account.MaKH,
+                    employeeId: account.MaNV
+                },
+                process.env.JWT_SECRET,
+                { expiresIn: '15m' }
+            );
+
+            return {
+                success: true,
+                message: 'Token refreshed successfully',
+                data: {
+                    token: newAccessToken
+                }
+            };
+        } catch (error) {
+            if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
+                throw new AppError('Invalid or expired refresh token', 401);
+            }
+            throw error;
+        }
     }
 }
 

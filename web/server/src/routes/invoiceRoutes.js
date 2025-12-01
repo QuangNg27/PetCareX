@@ -2,8 +2,6 @@ const express = require('express');
 const InvoiceController = require('../controllers/InvoiceController');
 const { authMiddleware } = require('../middleware/authMiddleware');
 const { authorizeRoles } = require('../middleware/authorizeRoles');
-const { validate } = require('../utils/validation');
-const invoiceValidation = require('../utils/invoiceValidation');
 
 const router = express.Router();
 const invoiceController = new InvoiceController();
@@ -12,7 +10,6 @@ const invoiceController = new InvoiceController();
 router.post('/',
     authMiddleware,
     authorizeRoles(['Bán hàng', 'Tiếp tân', 'Quản lý chi nhánh', 'Quản lý công ty']),
-    validate(invoiceValidation.createInvoiceSchema.body),
     invoiceController.createInvoice
 );
 
