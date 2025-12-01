@@ -1,0 +1,33 @@
+.App {
+  min-height: 100vh;
+  font-family: var(--font-family);
+}
+
+/* Remove default margins and paddings */
+* {
+  box-sizing: border-box;
+}
+
+/* Ensure consistent font rendering */
+body {
+  font-family: var(--font-family);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Focus styles for accessibility */
+*:focus {
+  outline: 2px solid var(--primary-500);
+  outline-offset: 2px;
+}
+
+*:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Print styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}
