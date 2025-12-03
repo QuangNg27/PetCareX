@@ -117,6 +117,7 @@ class ReportRepository {
                 INNER JOIN Chi_tiet_hoa_don_DV ctdv ON dv.MaDV = ctdv.MaDV
                 INNER JOIN Hoa_don hd ON ctdv.MaHD = hd.MaHD
                 WHERE hd.NgayLap BETWEEN @StartDate AND @EndDate
+                AND dv.TenDV = N'Khám bệnh'
                 ${whereClause}
                 GROUP BY YEAR(hd.NgayLap), MONTH(hd.NgayLap)
                 ORDER BY YEAR(hd.NgayLap), MONTH(hd.NgayLap)
@@ -149,6 +150,7 @@ class ReportRepository {
                 INNER JOIN Chi_tiet_hoa_don_DV ctdv ON dv.MaDV = ctdv.MaDV
                 INNER JOIN Hoa_don hd ON ctdv.MaHD = hd.MaHD
                 WHERE hd.NgayLap BETWEEN @StartDate AND @EndDate
+                AND dv.TenDV = N'Tiêm phòng'
                 ${whereClause}
                 GROUP BY YEAR(hd.NgayLap), MONTH(hd.NgayLap)
                 ORDER BY YEAR(hd.NgayLap), MONTH(hd.NgayLap)
@@ -177,8 +179,7 @@ class ReportRepository {
                     YEAR(hd.NgayLap) as Nam,
                     MONTH(hd.NgayLap) as Thang,
                     ISNULL(SUM(ctsp.SoLuong * ctsp.GiaApDung), 0) as TongDoanhThu,
-                FROM San_pham sp
-                INNER JOIN Chi_tiet_hoa_don_SP ctsp ON sp.MaSP = ctsp.MaSP
+                FROM Chi_tiet_hoa_don_SP ctsp
                 INNER JOIN Hoa_don hd ON ctsp.MaHD = hd.MaHD
                 WHERE hd.NgayLap BETWEEN @StartDate AND @EndDate
                 ${whereClause}
@@ -257,14 +258,14 @@ class ReportRepository {
             
             const result = await request.query(`
                 SELECT 
-                    CAST(hd.NgayLap AS DATE) as NgayLap,
+                    hd.NgayLap as NgayLap,
                     SUM(hd.TongTien) as DoanhThu,
                     AVG(hd.TongTien) as DoanhThuTrungBinh
                 FROM Hoa_don hd
                 WHERE hd.NgayLap BETWEEN @StartDate AND @EndDate
                 ${whereClause}
-                GROUP BY CAST(hd.NgayLap AS DATE)
-                ORDER BY CAST(hd.NgayLap AS DATE)
+                GROUP BY hd.NgayLap
+                ORDER BY hd.NgayLap
             `);
             return result.recordset;
         } catch (error) {

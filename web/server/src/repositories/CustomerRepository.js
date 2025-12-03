@@ -109,7 +109,6 @@ class CustomerRepository extends BaseRepository {
                 OR kh.SoDT LIKE @SearchTerm
                 OR kh.Email LIKE @SearchTerm
                 OR kh.CCCD LIKE @SearchTerm
-            ORDER BY kh.HoTen
         `, { 
             SearchTerm: `%${searchTerm}%`,
             Limit: limit

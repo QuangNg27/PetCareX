@@ -33,7 +33,6 @@ class PetRepository extends BaseRepository {
                 tc.TinhTrangSucKhoe
             FROM Thu_cung tc
             WHERE tc.MaKH = @MaKH
-            ORDER BY tc.Ten
         `, { MaKH: customerId });
 
         return result.recordset;
