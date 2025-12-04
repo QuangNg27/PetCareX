@@ -45,7 +45,8 @@ export const ENDPOINTS = {
       LIST: '/api/services/examinations',
       GET_BY_ID: (examId) => `/api/services/examinations/${examId}`,
       UPDATE: (examId) => `/api/services/examinations/${examId}`,
-      DELETE: (examId) => `/api/services/examinations/${examId}`
+      DELETE: (examId) => `/api/services/examinations/${examId}`,
+      PRESCRIPTIONS: (examId) => `/api/services/examinations/${examId}/prescriptions`
     },
     
     VACCINATIONS: {

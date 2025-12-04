@@ -26,7 +26,7 @@ const SignupStep2 = () => {
     phone: signupData.phone || '',
     citizenId: signupData.citizenId || '',
     dateOfBirth: signupData.dateOfBirth || '',
-    gender: signupData.gender || 'male'
+    gender: signupData.gender || 'Nam'
   });
   
   const [errors, setErrors] = useState({});
@@ -202,47 +202,27 @@ const SignupStep2 = () => {
         </div>
 
         <div className="form-row">
-          <div className="form-field">
+          <div className="form-field form-field-inline">
             <label className="field-label">
               Giới tính <span className="required-asterisk">*</span>
             </label>
             <div className="gender-options">
-              <label className="gender-option">
-                <input
-                  type="radio"
-                  name="gender"
-                  value="male"
-                  checked={formData.gender === 'male'}
-                  onChange={handleInputChange}
-                />
-                <span className="radio-mark"></span>
-                Nam
-              </label>
-              <label className="gender-option">
-                <input
-                  type="radio"
-                  name="gender"
-                  value="female"
-                  checked={formData.gender === 'female'}
-                  onChange={handleInputChange}
-                />
-                <span className="radio-mark"></span>
-                Nữ
-              </label>
-              <label className="gender-option">
-                <input
-                  type="radio"
-                  name="gender"
-                  value="other"
-                  checked={formData.gender === 'other'}
-                  onChange={handleInputChange}
-                />
-                <span className="radio-mark"></span>
-                Khác
-              </label>
+              {['Nam', 'Nữ'].map((genderValue) => (
+                <label className="gender-option" key={genderValue}>
+                  <input
+                    type="radio"
+                    name="gender"
+                    value={genderValue}
+                    checked={formData.gender === genderValue}
+                    onChange={handleInputChange}
+                  />
+                  <span className="radio-mark"></span>
+                  {genderValue}
+                </label>
+              ))}
             </div>
-            {errors.gender && <span className="field-error">{errors.gender}</span>}
           </div>
+          {errors.gender && <span className="field-error" style={{ marginLeft: '1rem' }}>{errors.gender}</span>}
         </div>
 
         <div className="form-actions">

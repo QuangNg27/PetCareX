@@ -159,8 +159,7 @@ const SignupStep1 = () => {
           </button>
         </div>
 
-        <div className="form-actions">
-          <Button
+        <Button
             type="submit"
             variant="primary"
             size="lg"
@@ -168,8 +167,7 @@ const SignupStep1 = () => {
             className="next-button"
           >
             {loading ? 'Đang xử lý...' : 'Tiếp theo'}
-          </Button>
-        </div>
+        </Button>
 
         <div className="form-footer">
           <p>

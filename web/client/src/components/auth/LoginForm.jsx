@@ -114,7 +114,6 @@ const LoginForm = () => {
             type="button"
             className="password-toggle"
             onClick={togglePasswordVisibility}
-            aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
           >
             {showPassword ? <EyeOffIcon /> : <EyeIcon />}
           </button>
@@ -126,10 +125,6 @@ const LoginForm = () => {
             <span className="checkmark"></span>
             Ghi nhớ đăng nhập
           </label>
-          
-          <Link to="/forgot-password" className="forgot-link">
-            Quên mật khẩu?
-          </Link>
         </div>
 
         <Button
