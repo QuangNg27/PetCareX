@@ -32,7 +32,6 @@ class EmployeeRepository extends BaseRepository {
             LEFT JOIN Lich_su_nhan_vien ls ON nv.MaNV = ls.MaNV
             LEFT JOIN Chi_nhanh cn ON ls.MaCN = cn.MaCN
             ${whereClause}
-            ORDER BY nv.HoTen
         `, params);
 
         return result.recordset;
@@ -188,7 +187,6 @@ class EmployeeRepository extends BaseRepository {
             FROM Lich_su_nhan_vien ls
             JOIN Nhan_vien nv ON ls.MaNV = nv.MaNV
             ${whereClause}
-            ORDER BY nv.ChucVu, nv.HoTen
         `, params);
 
         return result.recordset;
@@ -234,7 +232,6 @@ class EmployeeRepository extends BaseRepository {
             WHERE tp.MaNV = @MaNV
             AND tp.NgayTiem = @NgayKham
             
-            ORDER BY ThoiGian
         `, { MaNV: employeeId, NgayKham: date });
 
         return result.recordset;

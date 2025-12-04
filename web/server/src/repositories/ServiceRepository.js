@@ -153,17 +153,18 @@ class ServiceRepository extends BaseRepository {
     }
 
     async updateVaccinationDetail(vaccinationDetailId, updateData) {
-        const { LieuLuong, TrangThai } = updateData;
+        const { MaSP, LieuLuong, TrangThai } = updateData;
         
         const result = await this.execute(`
             UPDATE Chi_tiet_tiem_phong
             SET LieuLuong = @LieuLuong,
                 TrangThai = @TrangThai
-            WHERE MaCTTP = @MaCTTP
+            WHERE MaTP = @MaTP AND MaSP = @MaSP
         `, {
             LieuLuong,
             TrangThai,
-            MaCTTP: vaccinationDetailId
+            MaTP: vaccinationDetailId,
+            MaSP
         });
 
         return result.rowsAffected[0] > 0;
@@ -278,7 +279,6 @@ class ServiceRepository extends BaseRepository {
             AND ls.MaCN = @MaCN
             AND ls.NgayBD <= @NgayKham
             AND (ls.NgayKT IS NULL OR ls.NgayKT >= @NgayKham)
-            ORDER BY nv.HoTen
         `, { 
             MaCN: branchId,
             NgayKham: date

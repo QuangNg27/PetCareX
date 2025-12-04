@@ -49,11 +49,11 @@ GO
 CREATE TABLE Khach_hang
 (
     MaKH INT IDENTITY(1,1) PRIMARY KEY,
-    HoTen NVARCHAR(100) NOT NULL,
-    SoDT NVARCHAR(20) NOT NULL CONSTRAINT UQ_KH_SoDT UNIQUE,
+    HoTen NVARCHAR(50) NOT NULL,
+    SoDT CHAR(10) NOT NULL CONSTRAINT UQ_KH_SoDT UNIQUE,
     Email NVARCHAR(255) NOT NULL CONSTRAINT UQ_KH_Email UNIQUE,
     CCCD CHAR(12) NOT NULL CONSTRAINT UQ_KH_CCCD UNIQUE,
-    GioiTinh NVARCHAR(5) NOT NULL CONSTRAINT CK_KH_GioiTinh CHECK (GioiTinh IN (N'Nam', N'Nữ')),
+    GioiTinh NVARCHAR(4) NOT NULL CONSTRAINT CK_KH_GioiTinh CHECK (GioiTinh IN (N'Nam', N'Nữ')),
     NgaySinh DATE NOT NULL,
     DiemLoyalty INT DEFAULT 0 CONSTRAINT CK_KH_Diem CHECK (DiemLoyalty >= 0),
     CapDo INT NULL,
@@ -91,8 +91,8 @@ GO
 CREATE TABLE Nhan_vien
 (
     MaNV INT IDENTITY(1,1) PRIMARY KEY,
-    HoTen NVARCHAR(100) NOT NULL,
-    GioiTinh NVARCHAR(5) NOT NULL CHECK (GioiTinh IN (N'Nam', N'Nữ')),
+    HoTen NVARCHAR(50) NOT NULL,
+    GioiTinh NVARCHAR(4) NOT NULL CHECK (GioiTinh IN (N'Nam', N'Nữ')),
     NgaySinh DATE NOT NULL,
     NgayVaoLam DATE NOT NULL,
     ChucVu NVARCHAR(30) NOT NULL CHECK (ChucVu IN (N'Bác sĩ', N'Bán hàng', N'Tiếp tân', N'Quản lý chi nhánh')),
@@ -103,12 +103,12 @@ GO
 CREATE TABLE Chi_nhanh
 (
     MaCN INT IDENTITY(1,1) PRIMARY KEY,
-    TenCN NVARCHAR(100) NOT NULL UNIQUE,
+    TenCN NVARCHAR(50) NOT NULL UNIQUE,
     DiaChi NVARCHAR(255) NOT NULL UNIQUE,
-    SoDT NVARCHAR(20) NOT NULL UNIQUE,
+    SoDT CHAR(10) NOT NULL UNIQUE,
     ThoiGianMo TIME NOT NULL,
     ThoiGianDong TIME NOT NULL,
-    QuanLy INT NULL,
+    QuanLy INT NOT NULL,
     CONSTRAINT CK_CN_Time CHECK (ThoiGianMo < ThoiGianDong),
     CONSTRAINT FK_Chi_nhanh_Nhan_vien FOREIGN KEY (QuanLy) REFERENCES Nhan_vien(MaNV)
 );
@@ -132,7 +132,7 @@ CREATE TABLE Thu_cung
     MaKH INT NOT NULL,
     Ten NVARCHAR(50) NOT NULL,
     Loai NVARCHAR(10) NOT NULL,
-    Giong NVARCHAR(50) NOT NULL,
+    Giong NVARCHAR(20) NOT NULL,
     GioiTinh NCHAR(3) NOT NULL CHECK (GioiTinh IN (N'Đực', N'Cái')),
     NgaySinh DATE NOT NULL,
     TinhTrangSucKhoe NVARCHAR(100),
@@ -143,7 +143,7 @@ GO
 CREATE TABLE San_pham
 (
     MaSP INT IDENTITY(1,1) PRIMARY KEY,
-    TenSP NVARCHAR(100) NOT NULL UNIQUE,
+    TenSP NVARCHAR(50) NOT NULL UNIQUE,
     LoaiSP NVARCHAR(10) NOT NULL CHECK (LoaiSP IN (N'Thức ăn', N'Thuốc', N'Phụ kiện', 'Vaccine')),
     LoaiVaccine NVARCHAR(100) NULL,
     NgaySX DATE NOT NULL
@@ -211,7 +211,7 @@ CREATE TABLE Chi_tiet_tiem_phong
 (
     MaTP INT NOT NULL,
     MaSP INT NOT NULL,
-    LieuLuong NVARCHAR(10),
+    LieuLuong VARCHAR(10),
     TrangThai NVARCHAR(15) DEFAULT N'Chưa tiêm' CHECK (TrangThai IN (N'Đã tiêm', N'Chưa tiêm')),
     MaGoi INT NULL,
     PRIMARY KEY (MaTP, MaSP),
@@ -259,7 +259,7 @@ CREATE TABLE Hoa_don
     NgayLap DATE NOT NULL DEFAULT CAST(GETDATE() AS DATE),
     TongTien DECIMAL(10,2) DEFAULT 0 NOT NULL,
     KhuyenMai DECIMAL(4,2) DEFAULT 0,
-    HinhThucTT NVARCHAR(20) NULL CHECK (HinhThucTT IS NULL OR HinhThucTT IN (N'Chuyển khoản', N'Tiền mặt')),
+    HinhThucTT NVARCHAR(13) NULL CHECK (HinhThucTT IS NULL OR HinhThucTT IN (N'Chuyển khoản', N'Tiền mặt')),
     CONSTRAINT FK_HD_Khach_hang FOREIGN KEY (MaKH) REFERENCES Khach_hang(MaKH),
     CONSTRAINT FK_HD_Chi_nhanh FOREIGN KEY (MaCN) REFERENCES Chi_nhanh(MaCN),
     CONSTRAINT FK_HD_Nhan_vien FOREIGN KEY (MaNV) REFERENCES Nhan_vien(MaNV)
@@ -314,8 +314,8 @@ GO
 CREATE TABLE Tai_khoan
 (
     MaTK INT IDENTITY(1,1) PRIMARY KEY,
-    TenDangNhap VARCHAR(50) NOT NULL UNIQUE,
-    MatKhau VARCHAR(100) NOT NULL,
+    TenDangNhap VARCHAR(20) NOT NULL UNIQUE,
+    MatKhau VARCHAR(50) NOT NULL,
     MaKH INT NULL,
     MaNV INT NULL,
     VaiTro NVARCHAR(30) CHECK (VaiTro IN (N'Khách hàng', N'Bác sĩ', N'Bán hàng', N'Tiếp tân', N'Quản lý chi nhánh', N'Quản lý công ty')),

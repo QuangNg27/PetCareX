@@ -25,7 +25,6 @@ class ProductRepository extends BaseRepository {
                 sp.LoaiVaccine,
                 sp.NgaySX,
                 gsp.SoTien as GiaHienTai,
-                ISNULL(SUM(spcn.SLTonKho), 0) as TongTonKho
             FROM San_pham sp
             LEFT JOIN Gia_san_pham gsp ON sp.MaSP = gsp.MaSP 
                 AND gsp.NgayApDung = (
@@ -34,10 +33,7 @@ class ProductRepository extends BaseRepository {
                     WHERE MaSP = sp.MaSP 
                     AND NgayApDung <= CAST(GETDATE() AS DATE)
                 )
-            LEFT JOIN San_pham_chi_nhanh spcn ON sp.MaSP = spcn.MaSP
             ${whereClause}
-            GROUP BY sp.MaSP, sp.TenSP, sp.LoaiSP, sp.LoaiVaccine, sp.NgaySX, gsp.SoTien, gsp.NgayApDung
-            ORDER BY sp.TenSP
             OFFSET @Offset ROWS FETCH NEXT @Limit ROWS ONLY
         `, params);
 
