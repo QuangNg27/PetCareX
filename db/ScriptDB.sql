@@ -42,7 +42,7 @@ CREATE TABLE Cap_thanh_vien
     CONSTRAINT UQ_Cap_Ten UNIQUE (TenCapDo),
     CONSTRAINT UQ_Cap_DKDat UNIQUE (DKDat),
     CONSTRAINT UQ_Cap_DKGiu UNIQUE (DKGiu),
-    CONSTRAINT CK_Cap_DKGiu_DKDat CHECK (DKGiu < DKDat)
+    CONSTRAINT CK_Cap_DKGiu_DKDat CHECK (DKGiu <= DKDat)
 );
 GO
 
@@ -56,7 +56,7 @@ CREATE TABLE Khach_hang
     GioiTinh NVARCHAR(4) NOT NULL CONSTRAINT CK_KH_GioiTinh CHECK (GioiTinh IN (N'Nam', N'Nữ')),
     NgaySinh DATE NOT NULL,
     DiemLoyalty INT DEFAULT 0 CONSTRAINT CK_KH_Diem CHECK (DiemLoyalty >= 0),
-    CapDo INT NULL,
+    CapDo INT DEFAULT 1,
     CONSTRAINT FK_Khach_hang_Cap_thanh_vien FOREIGN KEY (CapDo) REFERENCES Cap_thanh_vien(MaCap)
 );
 GO
