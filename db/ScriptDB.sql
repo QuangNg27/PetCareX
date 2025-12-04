@@ -108,7 +108,7 @@ CREATE TABLE Chi_nhanh
     SoDT CHAR(10) NOT NULL UNIQUE,
     ThoiGianMo TIME NOT NULL,
     ThoiGianDong TIME NOT NULL,
-    QuanLy INT NULL,
+    QuanLy INT NOT NULL,
     CONSTRAINT CK_CN_Time CHECK (ThoiGianMo < ThoiGianDong),
     CONSTRAINT FK_Chi_nhanh_Nhan_vien FOREIGN KEY (QuanLy) REFERENCES Nhan_vien(MaNV)
 );
