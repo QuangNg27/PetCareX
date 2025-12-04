@@ -119,7 +119,13 @@ export const AuthProvider = ({ children }) => {
     dispatch({ type: AUTH_ACTIONS.LOGIN_START });
     
     try {
-      const response = await authService.login(credentials);
+      // Map frontend data to backend format
+      const backendCredentials = {
+        TenDangNhap: credentials.username,
+        MatKhau: credentials.password
+      };
+      
+      const response = await authService.login(backendCredentials);
       
       if (response.success) {
         const { user, token } = response.data;

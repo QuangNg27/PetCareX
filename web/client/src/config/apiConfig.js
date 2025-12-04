@@ -1,8 +1,6 @@
 // API configuration
 export const API_CONFIG = {
-  baseURL: process.env.NODE_ENV === 'production' 
-    ? 'https://api.petcarex.com' 
-    : 'http://localhost:3000',
+  baseURL: import.meta.env.VITE_API_BASE_URL,
   timeout: 30000,
   withCredentials: true,
   headers: {

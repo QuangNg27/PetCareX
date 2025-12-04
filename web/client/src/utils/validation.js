@@ -10,7 +10,8 @@ export const validateEmail = (email) => {
 export const validatePassword = (password) => {
   // At least 6 characters, contains at least one uppercase letter, one lowercase letter, and one number
   const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[A-Za-z\d@$!%*?&]{6,50}$/;
-  return passwordRegex.test(password);
+  const vietnameseAccentRegex = /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđÀÁẠẢÃÂẦẤẬẨẪĂẰẮẶẲẴÈÉẸẺẼÊỀẾỆỂỄÌÍỊỈĨÒÓỌỎÕÔỒỐỘỔỖƠỜỚỢỞỠÙÚỤỦŨƯỪỨỰỬỮỲÝỴỶỸĐ]/;
+  return passwordRegex.test(password) && !vietnameseAccentRegex.test(password);
 };
 
 // Phone validation (Vietnamese format - synchronized with server: 10-11 digits)
@@ -87,7 +88,7 @@ export const validateSignupStep1 = (formData) => {
   if (!formData.password) {
     errors.password = 'Vui lòng nhập mật khẩu';
   } else if (!validatePassword(formData.password)) {
-    errors.password = 'Mật khẩu phải có từ 6-50 ký tự (gồm chữ hoa, chữ thường và số)';
+    errors.password = 'Mật khẩu phải có từ 6-50 ký tự (gồm chữ hoa, chữ thường và số, không dấu)';
   }
   
   // Confirm password validation
@@ -133,10 +134,10 @@ export const validateSignupStep2 = (formData) => {
   }
   
   // Birth date validation
-  if (!formData.birthDate) {
-    errors.birthDate = 'Ngày sinh không được để trống';
-  } else if (!validateAge(formData.birthDate)) {
-    errors.birthDate = 'Người dùng phải từ 18 tuổi trở lên';
+  if (!formData.dateOfBirth) {
+    errors.dateOfBirth = 'Ngày sinh không được để trống';
+  } else if (!validateAge(formData.dateOfBirth)) {
+    errors.dateOfBirth = 'Người dùng phải từ 18 tuổi trở lên';
   }
   
   return errors;
@@ -155,7 +156,7 @@ export const validateChangePasswordForm = (formData) => {
   if (!formData.newPassword) {
     errors.newPassword = 'Vui lòng nhập mật khẩu mới';
   } else if (!validatePassword(formData.newPassword)) {
-    errors.newPassword = 'Mật khẩu mới phải có 6-50 ký tự, bao gồm chữ hoa, chữ thường và số';
+    errors.newPassword = 'Mật khẩu mới phải có 6-50 ký tự (bao gồm chữ hoa, chữ thường và số, không dấu)';
   } else if (formData.newPassword === formData.currentPassword) {
     errors.newPassword = 'Mật khẩu mới phải khác mật khẩu hiện tại';
   }

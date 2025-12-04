@@ -59,12 +59,14 @@ const SignupStep2 = () => {
     
     // Validate form
     const validationErrors = validateSignupStep2(formData);
+    
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
       return;
     }
 
     setLoading(true);
+    setErrors({}); // Clear previous errors
     
     try {
       // Combine all data
@@ -75,14 +77,14 @@ const SignupStep2 = () => {
       
       // Map to backend format
       const backendData = {
-        tenDangNhap: fullSignupData.username,
-        matKhau: fullSignupData.password,
-        hoTen: fullSignupData.fullName,
-        email: fullSignupData.email,
-        soDT: fullSignupData.phone,
-        cccd: fullSignupData.citizenId,
-        ngaySinh: fullSignupData.dateOfBirth,
-        gioiTinh: fullSignupData.gender
+        TenDangNhap: fullSignupData.username,
+        MatKhau: fullSignupData.password,
+        HoTen: fullSignupData.fullName,
+        Email: fullSignupData.email,
+        SoDT: fullSignupData.phone,
+        CCCD: fullSignupData.citizenId,
+        NgaySinh: fullSignupData.dateOfBirth,
+        GioiTinh: fullSignupData.gender
       };
       
       // Register user
@@ -90,19 +92,27 @@ const SignupStep2 = () => {
       
       if (result.success) {
         resetSignup();
+        alert('Đăng ký thành công! Chuyển hướng đến trang đăng nhập...');
         navigate('/login', { 
           state: { 
             message: 'Đăng ký thành công! Vui lòng đăng nhập để tiếp tục.' 
           }
         });
       } else {
+        console.error('Signup failed:', result);
         setErrors({ general: result.message || 'Đăng ký thất bại' });
       }
     } catch (error) {
       console.error('Signup error:', error);
-      setErrors({ 
-        general: error.message || 'Có lỗi xảy ra. Vui lòng thử lại sau.' 
-      });
+      console.error('Error details:', error.response?.data || error.message);
+      
+      // Show more detailed error message
+      const errorMessage = error.response?.data?.message || 
+                          error.message || 
+                          'Có lỗi xảy ra. Vui lòng thử lại sau.';
+      
+      setErrors({ general: errorMessage });
+      alert(`Lỗi đăng ký: ${errorMessage}`); // Temporary alert for debugging
     } finally {
       setLoading(false);
     }
