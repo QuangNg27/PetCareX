@@ -315,7 +315,7 @@ CREATE TABLE Tai_khoan
 (
     MaTK INT IDENTITY(1,1) PRIMARY KEY,
     TenDangNhap VARCHAR(20) NOT NULL UNIQUE,
-    MatKhau VARCHAR(100) NOT NULL,
+    MatKhau VARCHAR(50) NOT NULL,
     MaKH INT NULL,
     MaNV INT NULL,
     VaiTro NVARCHAR(30) CHECK (VaiTro IN (N'Khách hàng', N'Bác sĩ', N'Bán hàng', N'Tiếp tân', N'Quản lý chi nhánh', N'Quản lý công ty')),
