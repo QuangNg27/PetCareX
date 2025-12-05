@@ -168,30 +168,6 @@ class EmployeeRepository extends BaseRepository {
         return result.rowsAffected[0] > 0;
     }
 
-    async getBranchEmployees(branchId, activeOnly = true) {
-        let whereClause = 'WHERE ls.MaCN = @MaCN';
-        const params = { MaCN: branchId };
-
-        if (activeOnly) {
-            whereClause += ' AND ls.NgayBD <= CAST(GETDATE() AS DATE) AND (ls.NgayKT IS NULL OR ls.NgayKT >= CAST(GETDATE() AS DATE))';
-        }
-
-        const result = await this.execute(`
-            SELECT 
-                nv.MaNV,
-                nv.HoTen,
-                nv.ChucVu,
-                nv.Luong as LuongCoBan,
-                ls.NgayBD,
-                ls.NgayKT
-            FROM Lich_su_nhan_vien ls
-            JOIN Nhan_vien nv ON ls.MaNV = nv.MaNV
-            ${whereClause}
-        `, params);
-
-        return result.recordset;
-    }
-
     async getEmployeeRoles() {
         const result = await this.execute(`
             SELECT DISTINCT ChucVu

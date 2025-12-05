@@ -164,6 +164,18 @@ class CustomerService {
             data: historyWithVaccines
         };
     }
+
+    async UpdatePassword(customerId, oldPassword, newPassword) {
+        const res = await this.customerRepo.updatePassword(customerId, oldPassword, newPassword);
+        if (!res) {
+            throw new AppError('Cập nhật mật khẩu thất bại. Vui lòng kiểm tra lại mật khẩu cũ.', 400);
+        }
+
+        return {
+            success: true,
+            message: 'Cập nhật mật khẩu thành công'
+        };
+    }
 }
 
 module.exports = CustomerService;

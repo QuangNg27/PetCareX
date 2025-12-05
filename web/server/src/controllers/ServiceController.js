@@ -221,27 +221,6 @@ class ServiceController {
         }
     }
 
-    async getDoctorSchedule(req, res, next) {
-        try {
-            const { doctorId } = req.params;
-            const { date } = req.query;
-
-            // Date validation handled by Joi schema
-
-            const schedule = await this.serviceService.getDoctorSchedule(doctorId, date);
-
-            res.json({
-                success: true,
-                data: {
-                    schedule,
-                    doctorId,
-                    date
-                }
-            });
-        } catch (error) {
-            next(error);
-        }
-    }
     // Bác sĩ tiếp nhận khám bệnh hoặc tiêm phòng
     async updateVaccination(req, res, next) {
         try {

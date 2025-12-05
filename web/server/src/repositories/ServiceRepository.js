@@ -286,29 +286,6 @@ class ServiceRepository extends BaseRepository {
 
         return result.recordset;
     }
-
-    async getDoctorSchedule(doctorId, date) {
-        const result = await this.execute(`
-            SELECT 
-                kb.MaKB,
-                kb.NgayKham,
-                tc.Ten as TenThuCung,
-                kh.HoTen as TenKhachHang,
-                dv.TenDV
-            FROM Kham_benh kb
-            JOIN Thu_cung tc ON kb.MaTC = tc.MaTC
-            JOIN Khach_hang kh ON tc.MaKH = kh.MaKH
-            JOIN Dich_vu dv ON kb.MaDV = dv.MaDV
-            WHERE kb.MaNV = @MaNV
-            AND kb.NgayKham = @NgayKham
-            ORDER BY kb.NgayKham
-        `, { 
-            MaNV: doctorId,
-            NgayKham: date
-        });
-
-        return result.recordset;
-    }
 }
 
 module.exports = ServiceRepository;

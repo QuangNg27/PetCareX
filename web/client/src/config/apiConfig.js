@@ -24,6 +24,7 @@ export const ENDPOINTS = {
     SPENDING: '/api/customers/spending',
     LOYALTY_HISTORY: '/api/customers/loyalty-history',
     SEARCH: '/api/customers/search',
+    UPDATE_PASSWORD: '/api/customers/change-password',
     
     PETS: {
       CREATE: '/api/customers/pets',
@@ -31,7 +32,8 @@ export const ENDPOINTS = {
       GET_BY_ID: (petId) => `/api/customers/pets/${petId}`,
       UPDATE: (petId) => `/api/customers/pets/${petId}`,
       DELETE: (petId) => `/api/customers/pets/${petId}`,
-      MEDICAL_HISTORY: (petId) => `/api/customers/pets/${petId}/medical-history`
+      MEDICAL_HISTORY: (petId) => `/api/customers/pets/${petId}/medical-history`,
+      VACCINATION_HISTORY: (petId) => `/api/customers/pets/${petId}/vaccination-history`
     }
   },
   
@@ -52,15 +54,18 @@ export const ENDPOINTS = {
       LIST: '/api/services/vaccinations',
       GET_BY_ID: (vaccId) => `/api/services/vaccinations/${vaccId}`,
       UPDATE: (vaccId) => `/api/services/vaccinations/${vaccId}`,
-      DELETE: (vaccId) => `/api/services/vaccinations/${vaccId}`
+      DELETE: (vaccId) => `/api/services/vaccinations/${vaccId}`,
+      DETAILS: (vaccId) => `/api/services/vaccinations/${vaccId}/details`
     },
     
     VACCINATION_PACKAGES: {
       CREATE: '/api/services/vaccination-packages',
       LIST: '/api/services/vaccination-packages',
-      GET_BY_ID: (packageId) => `/api/services/vaccination-packages/${packageId}`,
-      UPDATE: (packageId) => `/api/services/vaccination-packages/${packageId}`,
-      DELETE: (packageId) => `/api/services/vaccination-packages/${packageId}`
+    },
+
+    SERVICE_PRICE: {
+      UPDATE: (serviceId) => `/api/services/${serviceId}/price`,
+      HISTORY: (serviceId) => `/api/services/${serviceId}/price-history`
     }
   },
   
@@ -79,8 +84,7 @@ export const ENDPOINTS = {
     BRANCHES: '/api/employees/branches',
     GET_BY_ID: (employeeId) => `/api/employees/${employeeId}`,
     UPDATE: (employeeId) => `/api/employees/${employeeId}`,
-    DELETE: (employeeId) => `/api/employees/${employeeId}`,
-    ASSIGN_ROLE: (employeeId) => `/api/employees/${employeeId}/assign-role`
+    DOCTOR_SCHEDULE: (employeeId) => `/api/employees/${employeeId}/schedule`
   },
   
   PRODUCTS: {
@@ -90,13 +94,14 @@ export const ENDPOINTS = {
     GET_BY_ID: (productId) => `/api/products/${productId}`,
     UPDATE: (productId) => `/api/products/${productId}`,
     DELETE: (productId) => `/api/products/${productId}`,
+    UPDATE_PRICE: (productId) => `/api/products/${productId}/price`,
+    PRICE_HISTORY: (productId) => `/api/products/${productId}/price-history`,
     
     INVENTORY: {
-      CHECK: (productId) => `/api/products/inventory/${productId}`,
-      UPDATE: (productId) => `/api/products/inventory/${productId}`,
-      ALERTS: '/api/products/alerts',
-      LOW_STOCK: '/api/products/alerts/low-stock',
-      EXPIRED: '/api/products/alerts/expired'
+      CHECK: (productId) => `/api/products/${productId}/inventory`,
+      UPDATE: '/api/products/inventory/update',
+      BULK_UPDATE: '/api/products/inventory/bulk-update',
+      LOW_STOCK: '/api/products/alerts/low-stock'
     }
   },
   
@@ -104,8 +109,6 @@ export const ENDPOINTS = {
     LIST: '/api/invoices',
     CREATE: '/api/invoices',
     GET_BY_ID: (invoiceId) => `/api/invoices/${invoiceId}`,
-    UPDATE: (invoiceId) => `/api/invoices/${invoiceId}`,
-    DELETE: (invoiceId) => `/api/invoices/${invoiceId}`,
     BY_CUSTOMER: (customerId) => `/api/invoices/customer/${customerId}`,
     MY_INVOICES: '/api/invoices/my/invoices',
     BY_BRANCH: (branchId) => `/api/invoices/branch/${branchId}`
@@ -128,24 +131,13 @@ export const ENDPOINTS = {
       DAILY: '/api/reports/revenue/daily',
       MONTHLY: '/api/reports/revenue/monthly',
       YEARLY: '/api/reports/revenue/yearly',
-      BY_BRANCH: '/api/reports/revenue/by-branch',
-      BY_SERVICE: '/api/reports/revenue/by-service',
-      BY_EMPLOYEE: '/api/reports/revenue/by-employee'
+      QUARTERLY: '/api/reports/revenue/quarterly',
+      PRODUCTS_SALES: '/api/reports/product-sales-revenue',
+      EXAMINATION: '/api/reports/examination-revenue',
+      VACCINATION: '/api/reports/vaccination-revenue'
     },
-    
-    ANALYTICS: {
-      CUSTOMER: '/api/reports/analytics/customers',
-      SERVICES: '/api/reports/analytics/services',
-      PRODUCTS: '/api/reports/analytics/products',
-      BRANCH_PERFORMANCE: '/api/reports/analytics/branch-performance'
-    },
-    
-    DASHBOARD: '/api/reports/dashboard',
-    EXPORT: {
-      REVENUE: '/api/reports/export/revenue',
-      CUSTOMERS: '/api/reports/export/customers',
-      SERVICES: '/api/reports/export/services'
-    }
+    CUSTOMER_COUNT_BY_LEVEL: '/api/reports/customer-count-by-level',
+    POPULAR_VACCINES: '/api/reports/popular-vaccines'
   }
 };
 

@@ -171,6 +171,22 @@ class CustomerController {
             next(error);
         }
     };
+
+    UpdatePassword = async (req, res, next) => {
+        try {
+            const customerId = req.user.MaKH;
+            const { oldPassword, newPassword } = req.body;
+
+            if (!customerId) {
+                throw new AppError('Chỉ khách hàng mới có thể cập nhật mật khẩu', 403);
+            }
+
+            const result = await this.customerService.UpdatePassword(customerId, oldPassword, newPassword);
+            res.json(result);
+        } catch (error) {
+            next(error);
+        }
+    };
 }
 
 module.exports = CustomerController;

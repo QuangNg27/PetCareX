@@ -205,17 +205,6 @@ class EmployeeService {
         };
     }
 
-    async getBranchEmployees(branchId, activeOnly = true, userRole) {
-        // Only managers can view branch employees
-        if (!['Quản lý chi nhánh', 'Quản lý công ty'].includes(userRole)) {
-            throw new AppError('Bạn không có quyền xem danh sách nhân viên chi nhánh', 403);
-        }
-
-        const employees = await this.employeeRepository.getBranchEmployees(branchId, activeOnly);
-        
-        return employees;
-    }
-
     async getEmployeeRoles() {
         const roles = await this.employeeRepository.getEmployeeRoles();
         return roles;
