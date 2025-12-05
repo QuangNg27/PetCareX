@@ -26,7 +26,7 @@ const SignupStep2 = () => {
     phone: signupData.phone || '',
     citizenId: signupData.citizenId || '',
     dateOfBirth: signupData.dateOfBirth || '',
-    gender: signupData.gender || 'male'
+    gender: signupData.gender || 'Nam'
   });
   
   const [errors, setErrors] = useState({});
@@ -59,12 +59,14 @@ const SignupStep2 = () => {
     
     // Validate form
     const validationErrors = validateSignupStep2(formData);
+    
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
       return;
     }
 
     setLoading(true);
+    setErrors({}); // Clear previous errors
     
     try {
       // Combine all data
@@ -75,14 +77,14 @@ const SignupStep2 = () => {
       
       // Map to backend format
       const backendData = {
-        tenDangNhap: fullSignupData.username,
-        matKhau: fullSignupData.password,
-        hoTen: fullSignupData.fullName,
-        email: fullSignupData.email,
-        soDT: fullSignupData.phone,
-        cccd: fullSignupData.citizenId,
-        ngaySinh: fullSignupData.dateOfBirth,
-        gioiTinh: fullSignupData.gender
+        TenDangNhap: fullSignupData.username,
+        MatKhau: fullSignupData.password,
+        HoTen: fullSignupData.fullName,
+        Email: fullSignupData.email,
+        SoDT: fullSignupData.phone,
+        CCCD: fullSignupData.citizenId,
+        NgaySinh: fullSignupData.dateOfBirth,
+        GioiTinh: fullSignupData.gender
       };
       
       // Register user
@@ -90,19 +92,27 @@ const SignupStep2 = () => {
       
       if (result.success) {
         resetSignup();
+        alert('Đăng ký thành công! Chuyển hướng đến trang đăng nhập...');
         navigate('/login', { 
           state: { 
             message: 'Đăng ký thành công! Vui lòng đăng nhập để tiếp tục.' 
           }
         });
       } else {
+        console.error('Signup failed:', result);
         setErrors({ general: result.message || 'Đăng ký thất bại' });
       }
     } catch (error) {
       console.error('Signup error:', error);
-      setErrors({ 
-        general: error.message || 'Có lỗi xảy ra. Vui lòng thử lại sau.' 
-      });
+      console.error('Error details:', error.response?.data || error.message);
+      
+      // Show more detailed error message
+      const errorMessage = error.response?.data?.message || 
+                          error.message || 
+                          'Có lỗi xảy ra. Vui lòng thử lại sau.';
+      
+      setErrors({ general: errorMessage });
+      alert(`Lỗi đăng ký: ${errorMessage}`); // Temporary alert for debugging
     } finally {
       setLoading(false);
     }
@@ -202,47 +212,27 @@ const SignupStep2 = () => {
         </div>
 
         <div className="form-row">
-          <div className="form-field">
+          <div className="form-field form-field-inline">
             <label className="field-label">
               Giới tính <span className="required-asterisk">*</span>
             </label>
             <div className="gender-options">
-              <label className="gender-option">
-                <input
-                  type="radio"
-                  name="gender"
-                  value="male"
-                  checked={formData.gender === 'male'}
-                  onChange={handleInputChange}
-                />
-                <span className="radio-mark"></span>
-                Nam
-              </label>
-              <label className="gender-option">
-                <input
-                  type="radio"
-                  name="gender"
-                  value="female"
-                  checked={formData.gender === 'female'}
-                  onChange={handleInputChange}
-                />
-                <span className="radio-mark"></span>
-                Nữ
-              </label>
-              <label className="gender-option">
-                <input
-                  type="radio"
-                  name="gender"
-                  value="other"
-                  checked={formData.gender === 'other'}
-                  onChange={handleInputChange}
-                />
-                <span className="radio-mark"></span>
-                Khác
-              </label>
+              {['Nam', 'Nữ'].map((genderValue) => (
+                <label className="gender-option" key={genderValue}>
+                  <input
+                    type="radio"
+                    name="gender"
+                    value={genderValue}
+                    checked={formData.gender === genderValue}
+                    onChange={handleInputChange}
+                  />
+                  <span className="radio-mark"></span>
+                  {genderValue}
+                </label>
+              ))}
             </div>
-            {errors.gender && <span className="field-error">{errors.gender}</span>}
           </div>
+          {errors.gender && <span className="field-error" style={{ marginLeft: '1rem' }}>{errors.gender}</span>}
         </div>
 
         <div className="form-actions">
