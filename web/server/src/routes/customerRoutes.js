@@ -5,16 +5,13 @@ const { authorizeRoles } = require('../middleware/authorizeRoles');
 
 const router = express.Router();
 const customerController = new CustomerController();
-const authController = new AuthController();
 
 // Customer profile routes
 router.get('/profile', authorizeRoles('Khách hàng'), customerController.getProfile);
 router.put('/profile', authorizeRoles('Khách hàng'), customerController.updateProfile);
 router.get('/spending', authorizeRoles('Khách hàng'), customerController.getMembershipSpending);
 router.get('/loyalty-history', authorizeRoles('Khách hàng'), customerController.getLoyaltyHistory);
-
-// Password change
-router.put('/change-password', authController.changePassword);
+router.post('/change-password', authorizeRoles('Khách hàng'), customerController.UpdatePassword);
 
 // Pet management routes
 router.get('/pets', authorizeRoles('Khách hàng'), customerController.getPets);

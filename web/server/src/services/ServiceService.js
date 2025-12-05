@@ -190,11 +190,6 @@ class ServiceService {
         return doctors;
     }
 
-    async getDoctorSchedule(doctorId, date) {
-        const schedule = await this.serviceRepository.getDoctorSchedule(doctorId, date);
-        return schedule;
-    }
-
     // Bác sĩ tiếp nhận khám bệnh hoặc tiêm phòng
     async updateVaccination(vaccinationId, updateData, doctorId) {
         // Validate doctor assignment

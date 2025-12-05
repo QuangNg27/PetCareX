@@ -116,6 +116,31 @@ class CustomerRepository extends BaseRepository {
 
         return result.recordset;
     }
+
+    async UpdatePassword(customerId, oldPassword, newPassword) {
+        const isMatch = await this.execute(`
+            SELECT 1
+            FROM Tai_khoan
+            WHERE MaKH = @MaKH AND MatKhau = @OldMatKhau
+        `, {
+            MaKH: customerId,
+            OldMatKhau: oldPassword
+        });
+
+        if (isMatch.recordset.length === 0) {
+            return false;
+        }
+
+        const result = await this.execute(`
+            UPDATE Khach_hang
+            SET MatKhau = @MatKhau
+            WHERE MaKH = @MaKH
+        `, {
+            MatKhau: newPassword,
+            MaKH: customerId
+        });
+        return result.rowsAffected[0] > 0;
+    }
 }
 
 module.exports = CustomerRepository;

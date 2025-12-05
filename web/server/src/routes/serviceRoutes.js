@@ -70,10 +70,4 @@ router.get('/services/:serviceId/price-history',
 // Staff scheduling endpoints
 router.get('/branches/:branchId/veterinarians', authMiddleware, serviceController.getAvailableVeterinarians);
 
-router.get('/doctors/:doctorId/schedule',
-    authMiddleware,
-    authorizeRoles(['Bác sĩ', 'Tiếp tân', 'Quản lý chi nhánh']),
-    serviceController.getDoctorSchedule
-);
-
 module.exports = router;

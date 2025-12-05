@@ -187,27 +187,6 @@ class EmployeeController {
         }
     }
 
-    async getBranchEmployees(req, res, next) {
-        try {
-            const { branchId } = req.params;
-            const { activeOnly } = req.query;
-            const userRole = req.user.role;
-
-            const employees = await this.employeeService.getBranchEmployees(
-                branchId,
-                activeOnly !== 'false',
-                userRole
-            );
-
-            res.json({
-                success: true,
-                data: { employees }
-            });
-        } catch (error) {
-            next(error);
-        }
-    }
-
     async getEmployeeRoles(req, res, next) {
         try {
             const roles = await this.employeeService.getEmployeeRoles();
