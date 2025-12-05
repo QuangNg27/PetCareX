@@ -3,25 +3,20 @@
 // Email validation
 export const validateEmail = (email) => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
+  return emailRegex.test(email) && email.length <= 255;
 };
 
 // Password validation (synchronized with server: minimum 6 characters)
 export const validatePassword = (password) => {
-  // At least 6 characters (matching server validation)
-  return password && password.length >= 6;
-};
-
-// Strong password validation (optional, for better security)
-export const validateStrongPassword = (password) => {
-  // At least 8 characters, contains letters and numbers
-  const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@$!%*#?&]{8,}$/;
-  return passwordRegex.test(password);
+  // At least 6 characters, contains at least one uppercase letter, one lowercase letter, and one number
+  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[A-Za-z\d@$!%*?&]{6,50}$/;
+  const vietnameseAccentRegex = /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđÀÁẠẢÃÂẦẤẬẨẪĂẰẮẶẲẴÈÉẸẺẼÊỀẾỆỂỄÌÍỊỈĨÒÓỌỎÕÔỒỐỘỔỖƠỜỚỢỞỠÙÚỤỦŨƯỪỨỰỬỮỲÝỴỶỸĐ]/;
+  return passwordRegex.test(password) && !vietnameseAccentRegex.test(password);
 };
 
 // Phone validation (Vietnamese format - synchronized with server: 10-11 digits)
 export const validatePhone = (phone) => {
-  const phoneRegex = /^[0-9]{10,11}$/;
+  const phoneRegex = /^0[3-9]\d{8}$/;
   return phoneRegex.test(phone);
 };
 
@@ -33,13 +28,13 @@ export const validateCCCD = (cccd) => {
 
 // Username validation (synchronized with server: alphanumeric, 3-50 characters)
 export const validateUsername = (username) => {
-  const usernameRegex = /^[a-zA-Z0-9]{3,50}$/;
+  const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
   return usernameRegex.test(username);
 };
 
 // Name validation
 export const validateName = (name) => {
-  const nameRegex = /^[a-zA-ZÀ-ÿ\s]{2,50}$/;
+  const nameRegex = /^[a-zA-ZÀ-ỹ\s]{2,50}$/;
   return nameRegex.test(name.trim());
 };
 
@@ -64,8 +59,8 @@ export const validateLoginForm = (formData) => {
   // Username validation
   if (!formData.username || !formData.username.trim()) {
     errors.username = 'Vui lòng nhập tên đăng nhập';
-  } else if (formData.username.trim().length < 3) {
-    errors.username = 'Tên đăng nhập phải có ít nhất 3 ký tự';
+  } else if (!validateUsername(formData.username)) {
+    errors.username = 'Tên đăng nhập không hợp lệ (3-20 ký tự, chỉ chữ, số và dấu gạch dưới)';
   }
   
   // Password validation
@@ -86,14 +81,14 @@ export const validateSignupStep1 = (formData) => {
   if (!formData.username || !formData.username.trim()) {
     errors.username = 'Vui lòng nhập tên đăng nhập';
   } else if (!validateUsername(formData.username)) {
-    errors.username = 'Tên đăng nhập không hợp lệ (3-50 ký tự, chỉ chữ và số)';
+    errors.username = 'Tên đăng nhập không hợp lệ (3-20 ký tự, chỉ chữ, số và dấu gạch dưới)';
   }
   
   // Password validation
   if (!formData.password) {
     errors.password = 'Vui lòng nhập mật khẩu';
   } else if (!validatePassword(formData.password)) {
-    errors.password = 'Mật khẩu phải có ít nhất 6 ký tự';
+    errors.password = 'Mật khẩu phải có từ 6-50 ký tự (gồm chữ hoa, chữ thường và số, không dấu)';
   }
   
   // Confirm password validation
@@ -128,7 +123,7 @@ export const validateSignupStep2 = (formData) => {
   if (!formData.phone || !formData.phone.trim()) {
     errors.phone = 'Vui lòng nhập số điện thoại';
   } else if (!validatePhone(formData.phone)) {
-    errors.phone = 'Số điện thoại không hợp lệ (10-11 chữ số)';
+    errors.phone = 'Số điện thoại không hợp lệ';
   }
   
   // Citizen ID validation
@@ -139,8 +134,10 @@ export const validateSignupStep2 = (formData) => {
   }
   
   // Birth date validation
-  if (!formData.gender) {
-    errors.gender = 'Vui lòng chọn giới tính';
+  if (!formData.dateOfBirth) {
+    errors.dateOfBirth = 'Ngày sinh không được để trống';
+  } else if (!validateAge(formData.dateOfBirth)) {
+    errors.dateOfBirth = 'Người dùng phải từ 18 tuổi trở lên';
   }
   
   return errors;
@@ -159,7 +156,7 @@ export const validateChangePasswordForm = (formData) => {
   if (!formData.newPassword) {
     errors.newPassword = 'Vui lòng nhập mật khẩu mới';
   } else if (!validatePassword(formData.newPassword)) {
-    errors.newPassword = 'Mật khẩu mới phải có ít nhất 6 ký tự';
+    errors.newPassword = 'Mật khẩu mới phải có 6-50 ký tự (bao gồm chữ hoa, chữ thường và số, không dấu)';
   } else if (formData.newPassword === formData.currentPassword) {
     errors.newPassword = 'Mật khẩu mới phải khác mật khẩu hiện tại';
   }

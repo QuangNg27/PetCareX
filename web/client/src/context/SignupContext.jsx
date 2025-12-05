@@ -23,7 +23,7 @@ export const SignupProvider = ({ children }) => {
     phone: '',
     citizenId: '',
     dateOfBirth: '',
-    gender: 'male'
+    gender: 'Nam'
   });
 
   const [currentStep, setCurrentStep] = useState(1);
@@ -57,7 +57,7 @@ export const SignupProvider = ({ children }) => {
       phone: '',
       citizenId: '',
       dateOfBirth: '',
-      gender: 'male'
+      gender: 'Nam'
     });
     setCurrentStep(1);
   };

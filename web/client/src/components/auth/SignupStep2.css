@@ -175,6 +175,17 @@
   margin-bottom: var(--space-4);
 }
 
+.form-field-inline {
+  display: flex;
+  align-items: center;
+  gap: 1rem; /* Adjust gap as needed */
+}
+
+.form-field-inline .field-label {
+  margin-bottom: 0; /* Override default margin */
+  flex-shrink: 0;
+}
+
 /* Responsive */
 @media (max-width: 640px) {
   .progress-labels {

@@ -35,7 +35,7 @@ export const authService = {
   // Change password
   async changePassword(passwordData) {
     try {
-      const response = await apiClient.put(ENDPOINTS.AUTH.CHANGE_PASSWORD, passwordData);
+      const response = await apiClient.post(ENDPOINTS.AUTH.CHANGE_PASSWORD, passwordData);
       return response.data;
     } catch (error) {
       throw error;

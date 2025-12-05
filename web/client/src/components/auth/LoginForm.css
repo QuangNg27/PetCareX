@@ -18,14 +18,23 @@
   position: relative;
 }
 
-.password-field .field-input {
-  padding-right: 3rem !important;
+/* Ẩn eye icon mặc định của Edge trong password field */
+.password-field .field-input[type="password"]::-ms-reveal,
+.password-field .field-input[type="password"]::-ms-clear {
+  display: none !important;
+}
+
+/* Phòng trường hợp Chromium/Edge expose button khác */
+.password-field .field-input[type="password"]::-webkit-credentials-auto-fill-button,
+.password-field .field-input[type="password"]::-webkit-contacts-auto-fill-button {
+  display: none !important;
+  visibility: hidden;
 }
 
 .password-toggle {
   position: absolute;
   right: var(--space-3);
-  top: 2.15rem !important;
+  top: 2.25rem !important;
   background: rgba(255, 255, 255, 0.9);
   border: none;
   cursor: pointer;

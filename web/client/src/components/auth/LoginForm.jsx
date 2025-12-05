@@ -48,22 +48,36 @@ const LoginForm = () => {
     }
 
     setLoading(true);
+    setErrors({}); // Clear previous errors
     
     try {
       const result = await login(formData);
       
       if (result.success) {
         // Redirect based on user role
-        const redirectPath = result.user.role === 'admin' ? '/admin' : '/dashboard';
+        let redirectPath;
+        if (result.user.role === 'Khách hàng') {
+          redirectPath = '/customer/dashboard';
+        } else if (result.user.role === 'Bác sĩ') {
+          redirectPath = '/doctor/dashboard';
+        } else if (result.user.role === 'Bán hàng') {
+          redirectPath = '/sales/dashboard';
+        } else if (result.user.role === 'Quản lý chi nhánh') {
+          redirectPath = '/branch-manager/dashboard';
+        } else if (result.user.role === 'Quản lý công ty') {
+          redirectPath = '/admin/dashboard';
+        }
         navigate(redirectPath, { replace: true });
       } else {
+        console.log('Login failed:', result.message);
         setErrors({ general: result.message || 'Đăng nhập thất bại' });
       }
     } catch (error) {
       console.error('Login error:', error);
-      setErrors({ 
-        general: error.message || 'Có lỗi xảy ra. Vui lòng thử lại sau.' 
-      });
+      const errorMessage = error.response?.data?.message || 
+                          error.message || 
+                          'Có lỗi xảy ra. Vui lòng thử lại sau.';
+      setErrors({ general: errorMessage });
     } finally {
       setLoading(false);
     }
@@ -114,7 +128,6 @@ const LoginForm = () => {
             type="button"
             className="password-toggle"
             onClick={togglePasswordVisibility}
-            aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
           >
             {showPassword ? <EyeOffIcon /> : <EyeIcon />}
           </button>
@@ -126,10 +139,6 @@ const LoginForm = () => {
             <span className="checkmark"></span>
             Ghi nhớ đăng nhập
           </label>
-          
-          <Link to="/forgot-password" className="forgot-link">
-            Quên mật khẩu?
-          </Link>
         </div>
 
         <Button
