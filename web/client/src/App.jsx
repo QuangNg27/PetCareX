@@ -3,6 +3,14 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider } from '@context/AuthContext';
 import LoginPage from '@pages/LoginPage';
 import SignUpPage from '@pages/SignUpPage';
+import DashboardHome from '@pages/customer/DashboardHome';
+import ProfilePage from '@pages/customer/ProfilePage';
+import PetsPage from '@pages/customer/PetsPage';
+import AppointmentsPage from '@pages/customer/AppointmentsPage';
+import ServicesPage from '@pages/customer/ServicesPage';
+import VaccinationPackagesPage from '@pages/customer/VaccinationPackagesPage';
+import LoyaltyPage from '@pages/customer/LoyaltyPage';
+import ReviewsPage from '@pages/customer/ReviewsPage';
 import '@styles/globals.css';
 import './App.css';
 
@@ -15,6 +23,16 @@ function App() {
             {/* Public routes */}
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup/*" element={<SignUpPage />} />
+            
+            {/* Customer routes */}
+            <Route path="/customer/dashboard" element={<DashboardHome />} />
+            <Route path="/customer/profile" element={<ProfilePage />} />
+            <Route path="/customer/pets" element={<PetsPage />} />
+            <Route path="/customer/appointments" element={<AppointmentsPage />} />
+            <Route path="/customer/services" element={<ServicesPage />} />
+            <Route path="/customer/vaccination-packages" element={<VaccinationPackagesPage />} />
+            <Route path="/customer/loyalty" element={<LoyaltyPage />} />
+            <Route path="/customer/reviews" element={<ReviewsPage />} />
             
             {/* Default redirect */}
             <Route path="/" element={<Navigate to="/login" replace />} />

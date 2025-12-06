@@ -1,0 +1,623 @@
+.services-view {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Header */
+.services-header {
+  padding-bottom: 16px;
+  border-bottom: 2px solid var(--gray-200);
+}
+
+.header-info h2 {
+  margin: 0 0 2px 0;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--gray-900);
+}
+
+.services-count {
+  margin: 0;
+  font-size: 13px;
+  color: var(--gray-600);
+}
+
+/* Category Filter */
+.category-filter {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.category-btn {
+  padding: 8px 16px;
+  background: white;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius-lg);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--gray-700);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.category-btn:hover {
+  border-color: var(--primary-400);
+  color: var(--primary-700);
+  background: var(--primary-50);
+}
+
+.category-btn.active {
+  background: linear-gradient(135deg, var(--primary-500), var(--primary-700));
+  color: white;
+  border-color: var(--primary-500);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Services Grid */
+.services-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.service-card {
+  background: white;
+  border-radius: var(--radius-xl);
+  padding: 40px 32px;
+  border: 1px solid var(--gray-200);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  min-height: 300px;
+  position: relative;
+  overflow: hidden;
+}
+
+.service-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 5px;
+  transition: all 0.3s ease;
+}
+
+.service-card.blue::before {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+}
+
+.service-card.green::before {
+  background: linear-gradient(135deg, #10b981, #059669);
+}
+
+.service-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.service-card.blue::after {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.05), rgba(37, 99, 235, 0.05));
+}
+
+.service-card.green::after {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.05), rgba(5, 150, 105, 0.05));
+}
+
+.service-icon {
+  font-size: 72px;
+  margin-bottom: 16px;
+}
+
+.service-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  position: relative;
+  z-index: 1;
+}
+
+.service-content h3 {
+  margin: 0 0 16px 0;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--gray-900);
+  letter-spacing: -0.5px;
+}
+
+.service-description {
+  margin: 0 0 32px 0;
+  font-size: 15px;
+  color: var(--gray-600);
+  line-height: 1.7;
+  flex: 1;
+  max-width: 280px;
+}
+
+.service-pricing {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding: 12px;
+  background: var(--gray-50);
+  border-radius: var(--radius-md);
+}
+
+.price-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.original-price {
+  font-size: 13px;
+  color: var(--gray-500);
+  text-decoration: line-through;
+}
+
+.discount-price {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--success-600);
+}
+
+.discount-badge {
+  padding: 6px 12px;
+  background: var(--error-500);
+  color: white;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.book-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px 40px;
+  background: linear-gradient(135deg, var(--primary-500), var(--primary-700));
+  color: white;
+  border: none;
+  border-radius: var(--radius-lg);
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  width: 100%;
+  max-width: 220px;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.book-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
+}
+
+.book-btn:active {
+  transform: translateY(0);
+}
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.modal-content {
+  background: white;
+  border-radius: var(--radius-xl);
+  width: 100%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-xl);
+}
+
+.modal-header {
+  padding: 20px;
+  border-bottom: 1px solid var(--gray-200);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--gray-900);
+}
+
+.close-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  border: none;
+  background: var(--gray-100);
+  color: var(--gray-600);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.close-btn:hover {
+  background: var(--gray-200);
+  color: var(--gray-900);
+}
+
+.modal-body {
+  padding: 20px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.booking-service-info {
+  display: flex;
+  gap: 16px;
+  padding: 16px;
+  background: var(--primary-50);
+  border-radius: var(--radius-lg);
+  margin-bottom: 20px;
+  border: 1px solid var(--primary-200);
+}
+
+.service-icon-large {
+  display: none;
+}
+
+.booking-service-info h4 {
+  margin: 0 0 4px 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--gray-900);
+}
+
+.booking-service-info p {
+  margin: 0 0 8px 0;
+  font-size: 13px;
+  color: var(--gray-600);
+}
+
+.modal-pricing {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.modal-price {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--success-600);
+}
+
+.modal-discount {
+  padding: 4px 8px;
+  background: var(--error-500);
+  color: white;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-group.full-width {
+  grid-column: 1 / -1;
+}
+
+.form-group label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--gray-700);
+}
+
+.form-input {
+  padding: 10px 14px;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  color: var(--gray-900);
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: var(--primary-500);
+  box-shadow: 0 0 0 3px var(--primary-50);
+}
+
+.modal-footer {
+  padding: 16px 20px;
+  border-top: 1px solid var(--gray-200);
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.cancel-btn {
+  padding: 10px 20px;
+  background: white;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius-md);
+  color: var(--gray-700);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.cancel-btn:hover {
+  background: var(--gray-50);
+  border-color: var(--gray-400);
+}
+
+.confirm-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: linear-gradient(135deg, var(--primary-500), var(--primary-700));
+  border: none;
+  border-radius: var(--radius-md);
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.confirm-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+/* Vaccines List */
+.vaccines-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.vaccines-header label {
+  margin: 0;
+}
+
+.add-vaccine-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: linear-gradient(135deg, var(--success-500), var(--success-600));
+  border: none;
+  border-radius: var(--radius-md);
+  color: white;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.add-vaccine-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.vaccines-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.vaccine-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.vaccine-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: var(--primary-100);
+  color: var(--primary-700);
+  border-radius: 50%;
+  font-size: 13px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.vaccine-item .form-input {
+  flex: 1;
+  margin: 0;
+}
+
+.remove-vaccine-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: var(--error-50);
+  border: 1px solid var(--error-200);
+  border-radius: var(--radius-md);
+  color: var(--error-600);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.remove-vaccine-btn:hover {
+  background: var(--error-100);
+  border-color: var(--error-300);
+  color: var(--error-700);
+}
+
+/* Package Vaccines List */
+.package-vaccines-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  background: var(--gray-50);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--gray-200);
+}
+
+.package-vaccine-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: white;
+  border: 2px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.package-vaccine-item:not(.completed):hover {
+  border-color: var(--primary-400);
+  background: var(--primary-50);
+}
+
+.package-vaccine-item.completed {
+  background: var(--gray-100);
+  border-color: var(--gray-300);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.package-vaccine-item input[type="checkbox"] {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.vaccine-checkbox-custom {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--gray-400);
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.package-vaccine-item:not(.completed) input[type="checkbox"]:checked ~ .vaccine-checkbox-custom {
+  background: var(--primary-500);
+  border-color: var(--primary-500);
+}
+
+.package-vaccine-item:not(.completed) input[type="checkbox"]:checked ~ .vaccine-checkbox-custom::after {
+  content: '✓';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.vaccine-name {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--gray-900);
+}
+
+.completed-badge {
+  padding: 4px 10px;
+  background: var(--success-100);
+  color: var(--success-700);
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .services-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .service-card {
+    min-height: 240px;
+    padding: 24px;
+  }
+
+  .service-icon {
+    font-size: 56px;
+  }
+
+  .service-content h3 {
+    font-size: 20px;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .category-filter {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: 8px;
+  }
+
+  .modal-content {
+    max-height: 95vh;
+  }
+
+  .booking-service-info {
+    flex-direction: column;
+    text-align: center;
+  }
+}
