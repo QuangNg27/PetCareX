@@ -11,7 +11,6 @@ import ServicesPage from '@pages/customer/ServicesPage';
 import VaccinationPackagesPage from '@pages/customer/VaccinationPackagesPage';
 import LoyaltyPage from '@pages/customer/LoyaltyPage';
 import ReviewsPage from '@pages/customer/ReviewsPage';
-import '@styles/globals.css';
 import './App.css';
 
 function App() {

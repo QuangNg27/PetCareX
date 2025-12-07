@@ -11,7 +11,6 @@ import {
   PlusIcon,
   DeleteIcon
 } from '@components/common/icons';
-import './ServicesView.css';
 
 const ServicesView = () => {
   const { user } = useAuth();
@@ -111,24 +110,26 @@ const ServicesView = () => {
   };
 
   return (
-    <div className="services-view">
-      <div className="services-header">
-        <div className="header-info">
-          <h2>Dịch vụ chăm sóc thú cưng</h2>
-          <p className="services-count">{services.length} dịch vụ</p>
-        </div>
+    <div className="p-6">
+      <div className="mb-6">
+        <h2 className="text-2xl font-bold text-gray-900">Dịch vụ chăm sóc thú cưng</h2>
+        <p className="text-sm text-gray-600 mt-1">{services.length} dịch vụ</p>
       </div>
 
       {/* Services Grid */}
-      <div className="services-grid">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {services.map(service => (
-          <div key={service.id} className={`service-card ${service.Color}`}>
-            <div className="service-content">
-              <h3>{service.TenDichVu}</h3>
-              <p className="service-description">{service.MoTa}</p>
+          <div key={service.id} className={`p-6 rounded-xl shadow-sm border-2 hover:shadow-md transition-all ${
+            service.Color === 'blue' ? 'border-blue-200 bg-gradient-to-br from-blue-50 to-blue-100' :
+            service.Color === 'green' ? 'border-green-200 bg-gradient-to-br from-green-50 to-green-100' :
+            'border-gray-200 bg-white'
+          }`}>
+            <div>
+              <h3 className="text-xl font-bold text-gray-900 mb-3">{service.TenDichVu}</h3>
+              <p className="text-gray-600 mb-6">{service.MoTa}</p>
 
               <button 
-                className="book-btn"
+                className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
                 onClick={() => handleBookService(service)}
               >
                 <CalendarIcon size={16} /> Đặt lịch
@@ -140,20 +141,20 @@ const ServicesView = () => {
 
       {/* Booking Modal */}
       {showBookingModal && selectedService && (
-        <div className="modal-overlay" onClick={() => setShowBookingModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>Đặt lịch - {selectedService.TenDichVu}</h3>
-              <button className="close-btn" onClick={() => setShowBookingModal(false)}>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowBookingModal(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <h3 className="text-xl font-bold text-gray-900">Đặt lịch - {selectedService.TenDichVu}</h3>
+              <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors" onClick={() => setShowBookingModal(false)}>
                 <XIcon size={20} />
               </button>
             </div>
             
-            <div className="modal-body">
-              <div className="form-grid">
-                <div className="form-group">
-                  <label>Thú cưng *</label>
-                  <select className="form-input">
+            <div className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Thú cưng *</label>
+                  <select className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent">
                     <option value="">Chọn thú cưng</option>
                     <option value="1">Max</option>
                     <option value="2">Luna</option>
@@ -161,9 +162,9 @@ const ServicesView = () => {
                   </select>
                 </div>
 
-                <div className="form-group">
-                  <label>Chi nhánh *</label>
-                  <select className="form-input">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Chi nhánh *</label>
+                  <select className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent">
                     <option value="">Chọn chi nhánh</option>
                     <option value="1">123 Nguyễn Huệ, Q.1</option>
                     <option value="2">456 Lê Văn Sỹ, Q.3</option>
@@ -172,21 +173,21 @@ const ServicesView = () => {
                 </div>
 
                 {selectedService.LoaiDichVu === 'tiem-phong' && (
-                  <div className="form-group full-width">
-                    <div className="vaccines-header">
-                      <label>Danh sách mũi tiêm *</label>
-                      <button type="button" className="add-vaccine-btn" onClick={addVaccine}>
+                  <div className="md:col-span-2">
+                    <div className="flex items-center justify-between mb-3">
+                      <label className="block text-sm font-medium text-gray-700">Danh sách mũi tiêm *</label>
+                      <button type="button" className="flex items-center gap-2 px-3 py-1.5 bg-primary-50 text-primary-700 rounded-lg hover:bg-primary-100 transition-colors text-sm" onClick={addVaccine}>
                         <PlusIcon size={16} /> Thêm mũi tiêm
                       </button>
                     </div>
                     
-                    <div className="vaccines-list">
+                    <div className="space-y-3">
                       {vaccines.map((vaccine, index) => (
-                        <div key={vaccine.id} className="vaccine-item">
-                          <span className="vaccine-number">{index + 1}</span>
+                        <div key={vaccine.id} className="flex items-center gap-3">
+                          <span className="flex-shrink-0 w-8 h-8 bg-primary-100 text-primary-700 rounded-full flex items-center justify-center text-sm font-semibold">{index + 1}</span>
                           <input 
                             type="text" 
-                            className="form-input" 
+                            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent" 
                             placeholder="Nhập tên mũi tiêm"
                             value={vaccine.name}
                             onChange={(e) => updateVaccineName(vaccine.id, e.target.value)}
@@ -195,7 +196,7 @@ const ServicesView = () => {
                           {vaccines.length > 1 && (
                             <button 
                               type="button" 
-                              className="remove-vaccine-btn"
+                              className="p-2 text-error-600 hover:bg-error-50 rounded-lg transition-colors"
                               onClick={() => removeVaccine(vaccine.id)}
                             >
                               <DeleteIcon size={18} />
@@ -216,18 +217,18 @@ const ServicesView = () => {
                   </div>
                 )}
 
-                <div className="form-group full-width">
-                  <label>Ngày hẹn *</label>
-                  <input type="date" className="form-input" />
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Ngày hẹn *</label>
+                  <input type="date" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
                 </div>
               </div>
             </div>
 
-            <div className="modal-footer">
-              <button className="cancel-btn" onClick={() => setShowBookingModal(false)}>
+            <div className="flex gap-3 px-6 py-4 bg-gray-50 border-t border-gray-200">
+              <button className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors" onClick={() => setShowBookingModal(false)}>
                 Hủy
               </button>
-              <button className="confirm-btn">
+              <button className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
                 <CheckIcon size={18} /> Xác nhận đặt lịch
               </button>
             </div>

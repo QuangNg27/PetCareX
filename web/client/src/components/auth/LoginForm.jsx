@@ -6,7 +6,6 @@ import Button from '@components/common/Button';
 import { UserIcon, PasswordIcon, EyeIcon, EyeOffIcon } from '@components/common/icons';
 import { useAuth } from '@context/AuthContext';
 import { validateLoginForm } from '@utils/validation';
-import './LoginForm.css';
 
 const LoginForm = () => {
   const navigate = useNavigate();
@@ -92,9 +91,9 @@ const LoginForm = () => {
       title="Đăng nhập" 
       subtitle="Chào mừng bạn quay trở lại với PetCareX"
     >
-      <form onSubmit={handleSubmit} className="login-form">
+      <form onSubmit={handleSubmit} className="space-y-5">
         {errors.general && (
-          <div className="error-message">
+          <div className="p-4 bg-error-50 border border-error-200 text-error-700 rounded-lg text-sm">
             {errors.general}
           </div>
         )}
@@ -111,7 +110,7 @@ const LoginForm = () => {
           required
         />
 
-        <div className="password-field">
+        <div className="relative">
           <FormField
             label="Mật khẩu"
             name="password"
@@ -124,20 +123,21 @@ const LoginForm = () => {
             required
           />
           
-          <button
-            type="button"
-            className="password-toggle"
-            onClick={togglePasswordVisibility}
-          >
-            {showPassword ? <EyeOffIcon /> : <EyeIcon />}
-          </button>
+          {formData.password && (
+            <button
+              type="button"
+              className="absolute right-3 top-[38px] text-gray-400 hover:text-gray-600 transition-colors"
+              onClick={togglePasswordVisibility}
+            >
+              {showPassword ? <EyeOffIcon size={20} /> : <EyeIcon size={20} />}
+            </button>
+          )}
         </div>
 
-        <div className="form-options">
-          <label className="remember-me">
-            <input type="checkbox" />
-            <span className="checkmark"></span>
-            Ghi nhớ đăng nhập
+        <div className="flex items-center">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-2 focus:ring-primary-500" />
+            <span className="text-sm text-gray-700">Ghi nhớ đăng nhập</span>
           </label>
         </div>
 
@@ -146,15 +146,15 @@ const LoginForm = () => {
           variant="primary"
           size="lg"
           loading={loading}
-          className="login-button"
+          className="w-full"
         >
           {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
         </Button>
 
-        <div className="form-footer">
-          <p>
+        <div className="text-center pt-4 border-t border-gray-200">
+          <p className="text-sm text-gray-600">
             Chưa có tài khoản?{' '}
-            <Link to="/signup" className="signup-link">
+            <Link to="/signup" className="text-primary-600 hover:text-primary-700 font-semibold transition-colors">
               Đăng ký ngay
             </Link>
           </p>
