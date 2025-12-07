@@ -11,13 +11,16 @@ const authorizeRoles = (allowedRoles) => {
                 );
             }
 
-            const userRole = req.user.role;
+            const userRole = req.user.role || req.user.VaiTro; // Support both formats
+            
+            // Convert to array if string
+            const rolesArray = Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles];
             
             // Check if user role is in allowed roles
-            if (!allowedRoles.includes(userRole)) {
+            if (!rolesArray.includes(userRole)) {
                 return res.status(403).json(
                     RESPONSE_FORMAT.error(
-                        `Chỉ ${allowedRoles.join(', ')} mới có quyền truy cập`,
+                        `Chỉ ${rolesArray.join(', ')} mới có quyền truy cập`,
                         403
                     )
                 );

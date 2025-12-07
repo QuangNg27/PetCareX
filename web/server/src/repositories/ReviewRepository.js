@@ -5,10 +5,9 @@ class ReviewRepository extends BaseRepository {
     async createReview(customerId, branchId, chatLuong, thaiDo, mucDoHaiLong, binhLuan) {
         try {
             const query = `
+                DECLARE @OutputTable TABLE (MaDG INT);
                 INSERT INTO Danh_gia (MaKH, MaCN, DiemChatLuong, ThaiDoNV, MucDoHaiLong, BinhLuan, NgayDG)
-                OUTPUT INSERTED.MaDG, INSERTED.MaKH, INSERTED.MaCN, 
-                       INSERTED.DiemChatLuong, INSERTED.ThaiDoNV, INSERTED.MucDoHaiLong,
-                       INSERTED.BinhLuan, INSERTED.NgayDG
+                OUTPUT INSERTED.MaDG INTO @OutputTable
                 VALUES (@MaKH, @MaCN, @DiemChatLuong, @ThaiDoNV, @MucDoHaiLong, @BinhLuan, @NgayDG)
             `;
             

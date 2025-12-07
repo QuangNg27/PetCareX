@@ -32,6 +32,26 @@ export const customerService = {
     }
   },
 
+  // Update customer profile
+  async updateProfile(profileData) {
+    try {
+      const response = await apiClient.put(ENDPOINTS.CUSTOMERS.PROFILE, profileData);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Update password
+  async updatePassword(passwordData) {
+    try {
+      const response = await apiClient.post(ENDPOINTS.CUSTOMERS.UPDATE_PASSWORD, passwordData);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
   // Search customers
   async searchCustomers(query) {
     try {
@@ -100,6 +120,16 @@ export const customerService = {
     async getMedicalHistory(petId) {
       try {
         const response = await apiClient.get(ENDPOINTS.CUSTOMERS.PETS.MEDICAL_HISTORY(petId));
+        return response.data;
+      } catch (error) {
+        throw error;
+      }
+    },
+
+    // Get pet vaccination history
+    async getVaccinationHistory(petId) {
+      try {
+        const response = await apiClient.get(ENDPOINTS.CUSTOMERS.PETS.VACCINATION_HISTORY(petId));
         return response.data;
       } catch (error) {
         throw error;

@@ -34,11 +34,26 @@ apiClient.interceptors.response.use(
   (error) => {
     // Handle common errors
     if (error.response?.status === 401) {
-      // Unauthorized - clear token and redirect to login
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      localStorage.removeItem('refreshToken');
-      window.location.href = '/login';
+      // Only redirect if not already on login page and not a login request
+      const isLoginPage = window.location.pathname === '/login';
+      const isLoginRequest = error.config?.url?.includes('/auth/login');
+      const isCustomerRoute = window.location.pathname.startsWith('/customer');
+      
+      // Don't redirect if on customer routes - just log the error
+      if (isCustomerRoute && !isLoginPage && !isLoginRequest) {
+        console.error('401 Unauthorized on customer route:', error.config?.url);
+        console.error('This API endpoint may not be implemented or requires different authentication');
+        // Don't redirect - just return the error
+        return Promise.reject(error);
+      }
+      
+      if (!isLoginPage && !isLoginRequest) {
+        // Unauthorized - clear token and redirect to login
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        localStorage.removeItem('refreshToken');
+        window.location.href = '/login';
+      }
     }
     
     return Promise.reject(error);

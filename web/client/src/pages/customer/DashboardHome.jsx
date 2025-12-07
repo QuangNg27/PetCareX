@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '@context/AuthContext';
 import CustomerDashboard from '@components/layout/CustomerDashboard/CustomerDashboard';
 import { 
   PetIcon, 
@@ -10,6 +11,66 @@ import {
 } from '@components/common/icons';
 
 const DashboardHome = () => {
+  const { user, pets: cachedPets, spending: cachedSpending, fetchPets, fetchUserData } = useAuth();
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    loadDashboardData();
+  }, []);
+
+  const loadDashboardData = async () => {
+    // If we have cached data, use it immediately
+    if (cachedPets && cachedSpending) {
+      return;
+    }
+
+    // Otherwise, fetch fresh data
+    setLoading(true);
+    try {
+      await Promise.all([
+        fetchPets(),
+        fetchUserData()
+      ]);
+    } catch (err) {
+      console.error('Error loading dashboard data:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const calculateAge = (birthDate) => {
+    if (!birthDate) return '';
+    const today = new Date();
+    const birth = new Date(birthDate);
+    const ageInMonths = (today.getFullYear() - birth.getFullYear()) * 12 + today.getMonth() - birth.getMonth();
+    
+    if (ageInMonths < 12) {
+      return `${ageInMonths} tháng`;
+    } else {
+      const years = Math.floor(ageInMonths / 12);
+      return `${years} tuổi`;
+    }
+  };
+
+  const getPetColor = (type) => {
+    const colors = {
+      'Chó': 'from-blue-500 to-blue-600',
+      'Mèo': 'from-orange-500 to-orange-600',
+      'Thỏ': 'from-pink-500 to-pink-600',
+      'Chim': 'from-green-500 to-green-600',
+      'Khác': 'from-gray-500 to-gray-600'
+    };
+    return colors[type] || 'from-gray-500 to-gray-600';
+  };
+
+  const totalPets = cachedPets?.length || 0;
+  const upcomingAppointments = 0; // Sẽ update khi có API appointments
+  const loyaltyPoints = user?.DiemLoyalty || 0;
+  const membershipTier = user?.TenCapDo || 'Cơ bản';
+  const yearlySpending = cachedSpending?.ChiTieuNam || 0;
+
+  const displayPets = cachedPets || [];
+
   return (
     <CustomerDashboard>
       <div className="p-6">
@@ -22,7 +83,7 @@ const DashboardHome = () => {
               </div>
               <div className="flex-1">
                 <h3 className="text-sm font-medium text-gray-600 mb-1">Thú cưng</h3>
-                <p className="text-3xl font-bold text-gray-900">3</p>
+                <p className="text-3xl font-bold text-gray-900">{totalPets}</p>
                 <span className="text-xs text-gray-500">Đang chăm sóc</span>
               </div>
             </div>
@@ -35,7 +96,7 @@ const DashboardHome = () => {
               </div>
               <div className="flex-1">
                 <h3 className="text-sm font-medium text-gray-600 mb-1">Lịch hẹn</h3>
-                <p className="text-3xl font-bold text-gray-900">2</p>
+                <p className="text-3xl font-bold text-gray-900">{upcomingAppointments}</p>
                 <span className="text-xs text-gray-500">Sắp tới</span>
               </div>
             </div>
@@ -48,8 +109,8 @@ const DashboardHome = () => {
               </div>
               <div className="flex-1">
                 <h3 className="text-sm font-medium text-gray-600 mb-1">Điểm tích lũy</h3>
-                <p className="text-3xl font-bold text-gray-900">1,250</p>
-                <span className="text-xs text-gray-500">Điểm khả dụng</span>
+                <p className="text-3xl font-bold text-gray-900">{loyaltyPoints.toLocaleString('vi-VN')}</p>
+                <span className="text-xs text-gray-500">Hạng {membershipTier}</span>
               </div>
             </div>
           </div>
@@ -113,38 +174,24 @@ const DashboardHome = () => {
               </a>
             </div>
             <div className="space-y-4">
-              <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-xl flex items-center justify-center">
-                  <PetIcon size={24} />
-                </div>
-                <div className="flex-1">
-                  <h4 className="font-semibold text-gray-900">Max</h4>
-                  <p className="text-sm text-gray-600">Golden Retriever • 3 tuổi</p>
-                </div>
-                <button className="px-4 py-2 bg-primary-50 text-primary-700 rounded-lg hover:bg-primary-100 transition-colors text-sm font-medium">Chi tiết</button>
-              </div>
-
-              <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-xl flex items-center justify-center">
-                  <PetIcon size={24} />
-                </div>
-                <div className="flex-1">
-                  <h4 className="font-semibold text-gray-900">Luna</h4>
-                  <p className="text-sm text-gray-600">Mèo Ba Tư • 2 tuổi</p>
-                </div>
-                <button className="px-4 py-2 bg-primary-50 text-primary-700 rounded-lg hover:bg-primary-100 transition-colors text-sm font-medium">Chi tiết</button>
-              </div>
-
-              <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                <div className="w-12 h-12 bg-gradient-to-br from-pink-500 to-pink-600 text-white rounded-xl flex items-center justify-center">
-                  <PetIcon size={24} />
-                </div>
-                <div className="flex-1">
-                  <h4 className="font-semibold text-gray-900">Bunny</h4>
-                  <p className="text-sm text-gray-600">Thỏ Hà Lan • 1 tuổi</p>
-                </div>
-                <button className="px-4 py-2 bg-primary-50 text-primary-700 rounded-lg hover:bg-primary-100 transition-colors text-sm font-medium">Chi tiết</button>
-              </div>
+              {loading ? (
+                <div className="text-center py-8 text-gray-500">Đang tải...</div>
+              ) : displayPets.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">Chưa có thú cưng nào</div>
+              ) : (
+                displayPets.slice(0, 3).map((pet) => (
+                  <div key={pet.MaTC} className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                    <div className={`w-12 h-12 bg-gradient-to-br ${getPetColor(pet.Loai)} text-white rounded-xl flex items-center justify-center`}>
+                      <PetIcon size={24} />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-gray-900">{pet.Ten}</h4>
+                      <p className="text-sm text-gray-600">{pet.Giong} • {calculateAge(pet.NgaySinh)}</p>
+                    </div>
+                    <a href="/customer/pets" className="px-4 py-2 bg-primary-50 text-primary-700 rounded-lg hover:bg-primary-100 transition-colors text-sm font-medium">Chi tiết</a>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>

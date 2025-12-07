@@ -5,9 +5,13 @@ class PetRepository extends BaseRepository {
         const { Ten, Loai, Giong, GioiTinh, NgaySinh, TinhTrangSucKhoe } = petData;
         
         const result = await this.execute(`
+            DECLARE @OutputTable TABLE (MaTC INT);
+            
             INSERT INTO Thu_cung (MaKH, Ten, Loai, Giong, GioiTinh, NgaySinh, TinhTrangSucKhoe)
-            OUTPUT INSERTED.MaTC
-            VALUES (@MaKH, @Ten, @Loai, @Giong, @GioiTinh, @NgaySinh, @TinhTrangSucKhoe)
+            OUTPUT INSERTED.MaTC INTO @OutputTable
+            VALUES (@MaKH, @Ten, @Loai, @Giong, @GioiTinh, @NgaySinh, @TinhTrangSucKhoe);
+            
+            SELECT MaTC FROM @OutputTable;
         `, {
             MaKH: customerId,
             Ten,

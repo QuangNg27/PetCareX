@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@context/AuthContext';
 import { 
   CalendarIcon,
@@ -14,58 +14,28 @@ const AppointmentsView = () => {
   const { user } = useAuth();
   const [showDetails, setShowDetails] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState(null);
-  
-  const [appointments] = useState([
-    {
-      id: 1,
-      MaLichHen: 'KB001',
-      NgayHen: '2025-12-15',
-      TenDichVu: 'Khám sức khỏe định kỳ',
-      TenThuCung: 'Max',
-      LoaiThuCung: 'Chó',
-      TenChiNhanh: '123 Nguyễn Huệ, Q.1',
-      DiaChiChiNhanh: '123 Nguyễn Huệ, Q.1',
-      TrangThai: 'Đã xác nhận',
-      GhiChu: '',
-      TenBacSi: 'Chưa cập nhật',
-      Thuoc: 'Chưa cập nhật'
-    },
-    {
-      id: 2,
-      MaLichHen: 'TP002',
-      NgayHen: '2025-12-20',
-      TenDichVu: 'Tiêm phòng',
-      TenThuCung: 'Luna',
-      LoaiThuCung: 'Mèo',
-      TenChiNhanh: '456 Lê Văn Sỹ, Q.3',
-      DiaChiChiNhanh: '456 Lê Văn Sỹ, Q.3',
-      TrangThai: 'Chờ xác nhận',
-      GhiChu: '',
-      TenBacSi: 'Chưa cập nhật',
-      GoiTiem: {
-        TenGoi: 'Gói tiêm phòng cơ bản cho mèo',
-        CacVacxin: [
-          { TenVaccine: 'Vắc-xin phòng bệnh dại', LieuLuong: 'Chưa cập nhật' },
-          { TenVaccine: 'Vắc-xin phòng cúm mèo', LieuLuong: 'Chưa cập nhật' },
-          { TenVaccine: 'Vắc-xin phòng giun đũa', LieuLuong: 'Chưa cập nhật' }
-        ],
-        UuDai: '15%'
-      }
-    },
-    {
-      id: 3,
-      MaLichHen: 'DV003',
-      NgayHen: '2025-11-10',
-      TenDichVu: 'Tắm và cắt tỉa lông',
-      TenThuCung: 'Max',
-      LoaiThuCung: 'Chó',
-      TenChiNhanh: '123 Nguyễn Huệ, Q.1',
-      DiaChiChiNhanh: '123 Nguyễn Huệ, Q.1',
-      TrangThai: 'Hoàn thành',
-      GhiChu: '',
-      TenBacSi: 'Chưa cập nhật'
+  const [appointments, setAppointments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    loadAppointments();
+  }, []);
+
+  const loadAppointments = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      // Sử dụng Pet Medical History và Vaccination History làm "appointments"
+      // Vì backend chưa có API appointments riêng
+      setAppointments([]);
+    } catch (err) {
+      console.error('Error loading appointments:', err);
+      setError('Không thể tải danh sách lịch hẹn');
+    } finally {
+      setLoading(false);
     }
-  ]);
+  };
 
   return (
     <div className="p-6">
@@ -74,14 +44,23 @@ const AppointmentsView = () => {
         <p className="text-sm text-gray-600 mt-1">Tổng số: {appointments.length} lịch hẹn</p>
       </div>
 
-      <div className="space-y-4">
-        {appointments.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20">
-            <CalendarIcon size={64} className="text-gray-300 mb-4" />
-            <p className="text-gray-500">Không có lịch hẹn nào</p>
-          </div>
-        ) : (
-          appointments.map((appointment) => (
+      {loading ? (
+        <div className="flex justify-center items-center py-20">
+          <div className="text-gray-500">Đang tải...</div>
+        </div>
+      ) : error ? (
+        <div className="flex justify-center items-center py-20">
+          <div className="text-red-500">{error}</div>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {appointments.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20">
+              <CalendarIcon size={64} className="text-gray-300 mb-4" />
+              <p className="text-gray-500">Không có lịch hẹn nào</p>
+            </div>
+          ) : (
+            appointments.map((appointment) => (
             <div key={appointment.id} className="bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
               <div className="flex">
                 <div className="flex flex-col items-center justify-center px-6 py-4 bg-primary-50 border-r border-primary-100">
@@ -125,8 +104,9 @@ const AppointmentsView = () => {
               </div>
             </div>
           ))
-        )}
-      </div>
+          )}
+        </div>
+      )}
 
       {showDetails && selectedAppointment && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowDetails(false)}>

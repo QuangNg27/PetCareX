@@ -59,17 +59,6 @@ class BranchController {
         }
     };
 
-    // Tạo chi nhánh mới (chỉ quản lý công ty)
-    createBranch = async (req, res, next) => {
-        try {
-            const branchData = req.body;
-            const result = await this.branchService.createBranch(branchData);
-            res.status(201).json(result);
-        } catch (error) {
-            next(error);
-        }
-    };
-
     // Cập nhật thông tin chi nhánh
     updateBranch = async (req, res, next) => {
         try {

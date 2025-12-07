@@ -78,10 +78,14 @@ const Sidebar = () => {
                     }`
                   }
                 >
-                  <span className={({ isActive }) => isActive ? 'text-primary-600' : 'text-gray-500'}>
-                    <IconComponent size={20} />
-                  </span>
-                  <span>{item.label}</span>
+                  {({ isActive }) => (
+                    <>
+                      <span className={isActive ? 'text-primary-600' : 'text-gray-500'}>
+                        <IconComponent size={20} />
+                      </span>
+                      <span>{item.label}</span>
+                    </>
+                  )}
                 </NavLink>
               </li>
             );

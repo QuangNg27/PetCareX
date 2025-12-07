@@ -48,7 +48,11 @@ const authMiddleware = async (req, res, next) => {
         }
 
         // Add user info to request
-        req.user = result.recordset[0];
+        const userData = result.recordset[0];
+        req.user = {
+            ...userData,
+            role: userData.VaiTro // Map VaiTro to role for compatibility
+        };
         next();
 
     } catch (error) {

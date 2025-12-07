@@ -132,7 +132,7 @@ class CustomerRepository extends BaseRepository {
         }
 
         const result = await this.execute(`
-            UPDATE Khach_hang
+            UPDATE Tai_khoan
             SET MatKhau = @MatKhau
             WHERE MaKH = @MaKH
         `, {

@@ -49,8 +49,9 @@ class ServiceRepository extends BaseRepository {
         const { MaCN, MaDV, MaTC, MaNV, NgayKham, TrieuChung, ChanDoan, NgayTaiKham } = examinationData;
         
         const result = await this.execute(`
+            DECLARE @OutputTable TABLE (MaKB INT);
             INSERT INTO Kham_benh (MaCN, MaDV, MaTC, MaNV, NgayKham, TrieuChung, ChanDoan, NgayTaiKham)
-            OUTPUT INSERTED.MaKB
+            OUTPUT INSERTED.MaKB INTO @OutputTable
             VALUES (@MaCN, @MaDV, @MaTC, @MaNV, @NgayKham, @TrieuChung, @ChanDoan, @NgayTaiKham)
         `, {
             MaCN,
@@ -106,8 +107,9 @@ class ServiceRepository extends BaseRepository {
         const { MaCN, MaDV, MaTC, MaNV, NgayTiem } = vaccinationData;
         
         const result = await this.execute(`
+            DECLARE @OutputTable TABLE (MaTP INT);
             INSERT INTO Tiem_phong (MaCN, MaDV, MaTC, MaNV, NgayTiem)
-            OUTPUT INSERTED.MaTP
+            OUTPUT INSERTED.MaTP INTO @OutputTable
             VALUES (@MaCN, @MaDV, @MaTC, @MaNV, @NgayTiem)
         `, {
             MaCN,
@@ -174,8 +176,9 @@ class ServiceRepository extends BaseRepository {
         const { MaKH, NgayBatDau, NgayKetThuc, UuDai } = packageData;
         
         const result = await this.execute(`
+            DECLARE @OutputTable TABLE (MaGoi INT);
             INSERT INTO Goi_tiem (MaKH, NgayBatDau, NgayKetThuc, UuDai)
-            OUTPUT INSERTED.MaGoi
+            OUTPUT INSERTED.MaGoi INTO @OutputTable
             VALUES (@MaKH, @NgayBatDau, @NgayKetThuc, @UuDai)
         `, {
             MaKH,
