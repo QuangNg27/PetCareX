@@ -1,5 +1,4 @@
 const BaseRepository = require('./BaseRepository');
-const bcrypt = require('bcryptjs');
 
 class AuthRepository extends BaseRepository {
     async createAccount(userData, accountData) {

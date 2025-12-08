@@ -6,9 +6,7 @@ class ReviewRepository extends BaseRepository {
         try {
             const query = `
                 INSERT INTO Danh_gia (MaKH, MaCN, DiemChatLuong, ThaiDoNV, MucDoHaiLong, BinhLuan, NgayDG)
-                OUTPUT INSERTED.MaDG, INSERTED.MaKH, INSERTED.MaCN, 
-                       INSERTED.DiemChatLuong, INSERTED.ThaiDoNV, INSERTED.MucDoHaiLong,
-                       INSERTED.BinhLuan, INSERTED.NgayDG
+                OUTPUT INSERTED.MaDG
                 VALUES (@MaKH, @MaCN, @DiemChatLuong, @ThaiDoNV, @MucDoHaiLong, @BinhLuan, @NgayDG)
             `;
             
@@ -126,7 +124,7 @@ class ReviewRepository extends BaseRepository {
     async getRecentReviews(limit = 5) {
         try {
             const query = `
-                SELECT TOP (@Limit)
+                SELECT
                     dg.MaDG,
                     dg.MaKH,
                     kh.HoTen as TenKhachHang,
@@ -143,7 +141,42 @@ class ReviewRepository extends BaseRepository {
                 ORDER BY dg.NgayDG DESC
             `;
 
-            const params = { Limit: limit };
+            const result = await this.execute(query);
+            return result.recordset;
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    // Lấy tất cả đánh giá
+    async getAllReviews(limit = 0, offset = 0) {
+        try {
+            let query = `
+                SELECT 
+                    dg.MaDG,
+                    dg.MaKH,
+                    kh.HoTen as TenKhachHang,
+                    dg.MaCN,
+                    cn.TenCN as TenChiNhanh,
+                    dg.DiemChatLuong,
+                    dg.ThaiDoNV,
+                    dg.MucDoHaiLong,
+                    dg.BinhLuan,
+                    dg.NgayDG
+                FROM Danh_gia dg
+                INNER JOIN Khach_hang kh ON dg.MaKH = kh.MaKH
+                INNER JOIN Chi_nhanh cn ON dg.MaCN = cn.MaCN
+                ORDER BY dg.NgayDG DESC
+            `;
+
+            let params = {};
+            
+            // Only add pagination if limit > 0
+            if (limit > 0) {
+                query += ' OFFSET @Offset ROWS FETCH NEXT @Limit ROWS ONLY';
+                params = { Limit: limit, Offset: offset };
+            }
+
             const result = await this.execute(query, params);
             return result.recordset;
         } catch (error) {

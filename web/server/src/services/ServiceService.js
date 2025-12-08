@@ -1,6 +1,7 @@
 const ServiceRepository = require('../repositories/ServiceRepository');
 const CustomerRepository = require('../repositories/CustomerRepository');
 const PetRepository = require('../repositories/PetRepository');
+const ProductRepository = require('../repositories/ProductRepository');
 const { AppError } = require('../middleware/errorHandler');
 
 class ServiceService {
@@ -8,29 +9,17 @@ class ServiceService {
         this.serviceRepository = new ServiceRepository();
         this.customerRepository = new CustomerRepository();
         this.petRepository = new PetRepository();
+        this.productRepository = new ProductRepository();
     }
 
-    async getBranchServices(branchId, customerId) {
+    async getBranchServices(branchId) {
         const services = await this.serviceRepository.getBranchServices(branchId);
         
-        // Lấy thông tin hạng khách hàng để tính discount  
-        const customer = await this.customerRepository.getCustomerProfile(customerId);
-        if (!customer) {
-            throw new AppError('Không tìm thấy khách hàng', 404);
-        }
-
-        // Apply tier discount from database
-        const discountData = await this.customerRepository.getMembershipDiscount(customerId);
-        const discountRate = discountData.length > 0 ? discountData[0].TiLeKM : 0;
-        
-        return services.map(service => ({
-            ...service,
-            GiaSauGiamGia: service.GiaHienTai * (1 - discountRate)
-        }));
+        return services;
     }
 
     async createMedicalExamination(examinationData, requesterId) {
-        const { MaCN, MaDV, MaTC, MaNV, NgayKham, TrieuChung, ChanDoan, NgayTaiKham } = examinationData;
+        const { MaCN, MaDV, MaTC, NgayKham } = examinationData;
 
         // Validate pet ownership
         const pet = await this.petRepository.getPetById(MaTC);
@@ -38,23 +27,12 @@ class ServiceService {
             throw new AppError('Bạn không có quyền với thú cưng này', 403);
         }
 
-        // Validate doctor assignment to branch on examination date
-        const doctors = await this.serviceRepository.getAvailableVeterinarians(MaCN, NgayKham);
-        const isValidDoctor = doctors.some(doc => doc.MaNV === MaNV);
-        if (!isValidDoctor) {
-            throw new AppError('Bác sĩ không làm việc tại chi nhánh này vào ngày đã chọn', 400);
-        }
-
         // Create examination
         const result = await this.serviceRepository.createMedicalExamination({
             MaCN,
             MaDV,
             MaTC,
-            MaNV,
             NgayKham,
-            TrieuChung,
-            ChanDoan,
-            NgayTaiKham
         });
 
         return result;
@@ -92,7 +70,7 @@ class ServiceService {
     }
 
     async createVaccination(vaccinationData, requesterId) {
-        const { MaCN, MaDV, MaTC, MaNV, NgayTiem } = vaccinationData;
+        const { MaCN, MaDV, MaTC, NgayTiem, vaccines } = vaccinationData;
 
         // Validate pet ownership
         const pet = await this.petRepository.getPetById(MaTC);
@@ -100,42 +78,44 @@ class ServiceService {
             throw new AppError('Bạn không có quyền với thú cưng này', 403);
         }
 
-        // Validate doctor assignment
-        const doctors = await this.serviceRepository.getAvailableVeterinarians(MaCN, NgayTiem);
-        const isValidDoctor = doctors.some(doc => doc.MaNV === MaNV);
-        if (!isValidDoctor) {
-            throw new AppError('Bác sĩ không làm việc tại chi nhánh này vào ngày đã chọn', 400);
-        }
 
         const result = await this.serviceRepository.createVaccination({
             MaCN,
             MaDV,
             MaTC,
-            MaNV,
             NgayTiem
         });
+
+        // If vaccines are provided, insert them into Chi_tiet_tiem_phong
+        if (vaccines && vaccines.length > 0 && result.MaTP) {
+            for (const vaccine of vaccines) {
+                if (vaccine.name && vaccine.name.trim()) {
+                    await this.serviceRepository.addVaccinationDetail(result.MaTP, {
+                        MaSP: vaccineProduct.MaSP,
+                        MaGoi: null
+                    });
+                }
+            }
+        }
 
         return result;
     }
 
-    async addVaccinationDetails(vaccinationId, details, doctorId) {
+    async updateVaccinationDetails(vaccinationId, details, doctorId) {
         // Validate vaccination ownership
         const vaccination = await this.serviceRepository.getVaccination(vaccinationId);
         if (!vaccination || vaccination.MaNV !== doctorId) {
             throw new AppError('Bạn không có quyền cập nhật thông tin tiêm phòng này', 403);
         }
 
-        const results = [];
-        for (const detail of details) {
-            const result = await this.serviceRepository.addVaccinationDetail(vaccinationId, detail);
-            results.push(result);
+        const result = await this.serviceRepository.updateVaccination(vaccinationId, details, doctorId);
+        if (!result) {
+            throw new AppError('Cập nhật thông tin tiêm phòng thất bại', 500);
         }
-
-        return { success: true, count: results.length };
     }
 
     async createVaccinationPackage(packageData, customerId) {
-        const { NgayBatDau, NgayKetThuc } = packageData;
+        const { NgayBatDau, NgayKetThuc, vaccines, MaTC, MaCN } = packageData;
 
         // Calculate discount based on package duration
         const startDate = new Date(NgayBatDau);
@@ -151,6 +131,7 @@ class ServiceService {
             discountRate = 0.05; // 5% for 6+ months
         }
 
+        // Create vaccination package
         const result = await this.serviceRepository.createVaccinationPackage({
             MaKH: customerId,
             NgayBatDau,
@@ -158,16 +139,64 @@ class ServiceService {
             UuDai: discountRate
         });
 
+        const packageId = result.MaGoi;
+
+        // Get vaccination service ID (MaDV) for the branch
+        const serviceResult = await this.serviceRepository.execute(`
+            SELECT TOP 1 MaDV 
+            FROM Dich_vu 
+            WHERE TenDV LIKE N'%Tiêm%' OR TenDV LIKE N'%Vaccine%'
+        `);
+        
+        const maDV = serviceResult.recordset[0]?.MaDV || null;
+
+        // Add vaccine details if provided
+        if (vaccines && vaccines.length > 0) {
+            for (const vaccine of vaccines) {
+                const { MaSP, NgayTiem } = vaccine;
+                
+                // Create vaccination record (Tiem_phong)
+                const vaccinationResult = await this.serviceRepository.createVaccination({
+                    MaCN,
+                    MaDV: maDV,
+                    MaTC,
+                    NgayTiem: NgayTiem || null
+                });
+
+                const maTP = vaccinationResult.MaTP;
+
+                // Add vaccination detail (Chi_tiet_tiem_phong)
+                await this.serviceRepository.addVaccinationDetail(maTP, {
+                    MaSP,
+                    MaGoi: packageId
+                });
+            }
+        }
+
         return result;
     }
 
     async getCustomerVaccinationPackages(customerId) {
         const packages = await this.serviceRepository.getVaccinationPackages(customerId);
         
-        return packages.map(pkg => ({
-            ...pkg,
-            UuDaiFormatted: `${(pkg.UuDai * 100).toFixed(0)}%`
-        }));
+        // Load vaccine details for each package
+        const packagesWithDetails = await Promise.all(
+            packages.map(async (pkg) => {
+                const vaccines = await this.serviceRepository.getVaccinationPackageDetails(pkg.MaGoi);
+                return {
+                    ...pkg,
+                    CacVacxin: vaccines.map(v => ({
+                        id: v.MaSP,
+                        TenVaccine: v.TenVaccine,
+                        LieuLuong: v.LieuLuong,
+                        TrangThai: v.TrangThai,
+                        NgayTiem: v.NgayTiem
+                    }))
+                };
+            })
+        );
+        
+        return packagesWithDetails;
     }
 
     async updateServicePrice(serviceId, price, effectiveDate, userRole) {

@@ -21,7 +21,7 @@ const FormField = ({
       {label && (
         <label htmlFor={fieldId} className="text-sm font-semibold text-gray-900">
           {label}
-          {required && <span className="text-error-600 ml-1">*</span>}
+          {required && <span className="text-red-600 ml-1">*</span>}
         </label>
       )}
       
@@ -45,14 +45,14 @@ const FormField = ({
             Icon ? 'pl-11' : ''
           } ${
             error 
-              ? 'border-error-500 focus:border-error-500 focus:ring-error-500' 
-              : 'border-gray-300 focus:border-primary-500 focus:ring-primary-500'
+              ? 'border-red-500 focus:border-red-500 focus:ring-red-200' 
+              : 'border-gray-300 focus:border-primary-500 focus:ring-primary-200'
           } ${className}`}
           {...props}
         />
       </div>
       
-      {error && <span className="text-sm text-error-600">{error}</span>}
+      {error && <span className="text-sm text-red-600">{error}</span>}
     </div>
   );
 };

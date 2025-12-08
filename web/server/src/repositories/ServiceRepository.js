@@ -46,21 +46,17 @@ class ServiceRepository extends BaseRepository {
     }
 
     async createMedicalExamination(examinationData) {
-        const { MaCN, MaDV, MaTC, MaNV, NgayKham, TrieuChung, ChanDoan, NgayTaiKham } = examinationData;
+        const { MaCN, MaDV, MaTC, NgayKham } = examinationData;
         
         const result = await this.execute(`
-            INSERT INTO Kham_benh (MaCN, MaDV, MaTC, MaNV, NgayKham, TrieuChung, ChanDoan, NgayTaiKham)
+            INSERT INTO Kham_benh (MaCN, MaDV, MaTC, NgayKham)
             OUTPUT INSERTED.MaKB
-            VALUES (@MaCN, @MaDV, @MaTC, @MaNV, @NgayKham, @TrieuChung, @ChanDoan, @NgayTaiKham)
+            VALUES (@MaCN, @MaDV, @MaTC, @NgayKham)
         `, {
             MaCN,
             MaDV,
             MaTC,
-            MaNV,
             NgayKham,
-            TrieuChung,
-            ChanDoan,
-            NgayTaiKham
         });
 
         return result.recordset[0];
@@ -103,49 +99,59 @@ class ServiceRepository extends BaseRepository {
     }
 
     async createVaccination(vaccinationData) {
-        const { MaCN, MaDV, MaTC, MaNV, NgayTiem } = vaccinationData;
+        const { MaCN, MaDV, MaTC, NgayTiem } = vaccinationData;
         
         const result = await this.execute(`
-            INSERT INTO Tiem_phong (MaCN, MaDV, MaTC, MaNV, NgayTiem)
+            INSERT INTO Tiem_phong (MaCN, MaDV, MaTC, NgayTiem)
             OUTPUT INSERTED.MaTP
-            VALUES (@MaCN, @MaDV, @MaTC, @MaNV, @NgayTiem)
+            VALUES (@MaCN, @MaDV, @MaTC, @NgayTiem)
         `, {
             MaCN,
             MaDV,
             MaTC,
-            MaNV,
             NgayTiem
         });
 
         return result.recordset[0];
     }
 
-    async updateVaccination(vaccinationId, updateData) {
-        const { MaNV } = updateData;
-        
-        const result = await this.execute(`
+    async updateVaccination(vaccinationId, updateData, doctorId) {
+        const first = await this.execute(`
             UPDATE Tiem_phong
             SET MaNV = @MaNV
             WHERE MaTP = @MaTP
         `, {
-            MaNV,
+            MaNV: doctorId,
             MaTP: vaccinationId
         });
 
-        return result.rowsAffected[0] > 0;
+        for (const detail of updateData) {
+            const { MaSP, LieuLuong, TrangThai } = detail;
+            await this.execute(`
+                UPDATE Chi_tiet_tiem_phong
+                SET LieuLuong = @LieuLuong,
+                    TrangThai = @TrangThai
+                WHERE MaTP = @MaTP AND MaSP = @MaSP
+            `, {
+                LieuLuong,
+                TrangThai,
+                MaTP: vaccinationId,
+                MaSP
+            });
+        }
+
+        return first.rowsAffected[0] > 0;
     }
 
     async addVaccinationDetail(vaccinationId, detailData) {
-        const { MaSP, LieuLuong, TrangThai, MaGoi } = detailData;
+        const { MaSP, MaGoi } = detailData;
         
         const result = await this.execute(`
-            INSERT INTO Chi_tiet_tiem_phong (MaTP, MaSP, LieuLuong, TrangThai, MaGoi)
-            VALUES (@MaTP, @MaSP, @LieuLuong, @TrangThai, @MaGoi)
+            INSERT INTO Chi_tiet_tiem_phong (MaTP, MaSP, MaGoi)
+            VALUES (@MaTP, @MaSP, @MaGoi)
         `, {
             MaTP: vaccinationId,
             MaSP,
-            LieuLuong,
-            TrangThai,
             MaGoi
         });
 
@@ -195,16 +201,58 @@ class ServiceRepository extends BaseRepository {
                 gt.NgayKetThuc,
                 gt.UuDai,
                 CASE 
-                    WHEN CAST(GETDATE() AS DATE) BETWEEN gt.NgayBatDau AND gt.NgayKetThuc 
-                    THEN N'Đang áp dụng'
                     WHEN CAST(GETDATE() AS DATE) > gt.NgayKetThuc 
-                    THEN N'Đã hết hạn'
-                    ELSE N'Chưa áp dụng'
-                END as TrangThai
+                    THEN N'Hoàn thành'
+                    WHEN CAST(GETDATE() AS DATE) >= gt.NgayBatDau 
+                    THEN N'Đang thực hiện'
+                    ELSE N'Chưa bắt đầu'
+                END as TrangThai,
+                -- Get first pet info (if multiple vaccinations, just show one pet)
+                (SELECT TOP 1 tc.Ten 
+                 FROM Chi_tiet_tiem_phong cttp
+                 INNER JOIN Tiem_phong tp ON cttp.MaTP = tp.MaTP
+                 INNER JOIN Thu_cung tc ON tp.MaTC = tc.MaTC
+                 WHERE cttp.MaGoi = gt.MaGoi
+                ) as TenThuCung,
+                (SELECT TOP 1 tc.Loai + ' ' + tc.Giong
+                 FROM Chi_tiet_tiem_phong cttp
+                 INNER JOIN Tiem_phong tp ON cttp.MaTP = tp.MaTP
+                 INNER JOIN Thu_cung tc ON tp.MaTC = tc.MaTC
+                 WHERE cttp.MaGoi = gt.MaGoi
+                ) as LoaiThuCung,
+                -- Count total vaccinations in package
+                (SELECT COUNT(*)
+                 FROM Chi_tiet_tiem_phong cttp
+                 WHERE cttp.MaGoi = gt.MaGoi
+                ) as TongSoMui,
+                -- Count completed vaccinations
+                (SELECT COUNT(*)
+                 FROM Chi_tiet_tiem_phong cttp
+                 WHERE cttp.MaGoi = gt.MaGoi AND cttp.TrangThai = N'Đã tiêm'
+                ) as SoMuiHoanThanh
             FROM Goi_tiem gt
             WHERE gt.MaKH = @MaKH
             ORDER BY gt.NgayBatDau DESC
         `, { MaKH: customerId });
+
+        return result.recordset;
+    }
+
+    async getVaccinationPackageDetails(packageId) {
+        const result = await this.execute(`
+            SELECT 
+                cttp.MaTP,
+                cttp.MaSP,
+                sp.TenSP as TenVaccine,
+                cttp.LieuLuong,
+                cttp.TrangThai,
+                tp.NgayTiem
+            FROM Chi_tiet_tiem_phong cttp
+            INNER JOIN San_pham sp ON cttp.MaSP = sp.MaSP
+            INNER JOIN Tiem_phong tp ON cttp.MaTP = tp.MaTP
+            WHERE cttp.MaGoi = @MaGoi
+            ORDER BY tp.NgayTiem DESC
+        `, { MaGoi: packageId });
 
         return result.recordset;
     }

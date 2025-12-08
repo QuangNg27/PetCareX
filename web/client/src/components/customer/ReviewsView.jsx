@@ -1,4 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useAuth } from '@context/AuthContext';
+import apiClient from '@config/apiClient';
+import { ENDPOINTS } from '@config/apiConfig';
+import reviewService from '@services/reviewService';
 import { 
   StarIcon,
   MessageIcon,
@@ -8,43 +12,8 @@ import {
   XIcon
 } from '@components/common/icons';
 
-// Mock data
-const MOCK_MY_REVIEWS = [
-  {
-    id: 1, serviceName: 'Dịch vụ tắm rửa', branch: 'Chi nhánh Quận 1', rating: 5,
-    comment: 'Dịch vụ rất tốt, nhân viên tận tâm và chuyên nghiệp. Bé cún nhà mình rất thích!',
-    date: '2025-12-01', images: ['image1.jpg', 'image2.jpg'],
-    response: { text: 'Cảm ơn bạn đã tin tưởng sử dụng dịch vụ của PetCareX!', date: '2025-12-02', staff: 'Quản lý' },
-    helpful: 12
-  },
-  {
-    id: 2, serviceName: 'Khám sức khỏe', branch: 'Chi nhánh Quận 3', rating: 4,
-    comment: 'Bác sĩ khám rất kỹ, tư vấn chi tiết. Giá cả hợp lý.', date: '2025-11-25', images: [],
-    response: null, helpful: 8
-  },
-  {
-    id: 3, serviceName: 'Cắt tỉa lông', branch: 'Chi nhánh Quận 1', rating: 5,
-    comment: 'Cắt đẹp lắm, bé nhà mình đẹp trai hơn hẳn. Sẽ quay lại!', date: '2025-11-20', images: ['image3.jpg'],
-    response: { text: 'Rất vui vì bạn hài lòng với dịch vụ. Hẹn gặp lại bạn!', date: '2025-11-21', staff: 'Nhân viên' },
-    helpful: 15
-  }
-];
-
-const MOCK_ALL_REVIEWS = [
-  { id: 101, customerName: 'Nguyễn Văn A', serviceName: 'Dịch vụ tắm rửa', branch: 'Chi nhánh Quận 1', rating: 5, comment: 'Dịch vụ tuyệt vời, nhân viên rất nhiệt tình!', date: '2025-12-03', images: ['image.jpg'], helpful: 20, verified: true },
-  { id: 102, customerName: 'Trần Thị B', serviceName: 'Khám sức khỏe', branch: 'Chi nhánh Quận 3', rating: 4, comment: 'Bác sĩ rất chuyên nghiệp, phòng khám sạch sẽ.', date: '2025-12-02', images: [], helpful: 15, verified: true },
-  { id: 103, customerName: 'Lê Văn C', serviceName: 'Tiêm phòng', branch: 'Chi nhánh Quận 2', rating: 5, comment: 'Tiêm xong bé không bị sưng hay đau. Rất hài lòng!', date: '2025-12-01', images: [], helpful: 18, verified: true },
-  { id: 104, customerName: 'Phạm Thị D', serviceName: 'Cắt tỉa lông', branch: 'Chi nhánh Quận 1', rating: 3, comment: 'Dịch vụ ổn nhưng hơi lâu, phải đợi khá nhiều.', date: '2025-11-30', images: [], helpful: 5, verified: false },
-  { id: 105, customerName: 'Hoàng Văn E', serviceName: 'Spa thú cưng', branch: 'Chi nhánh Quận 7', rating: 5, comment: 'Dịch vụ spa tuyệt vời, bé nhà mình rất thích. Sẽ quay lại!', date: '2025-11-28', images: ['spa1.jpg', 'spa2.jpg'], helpful: 25, verified: true }
-];
-
-const SERVICES_FOR_REVIEW = [
-  { id: 1, name: 'Dịch vụ tắm rửa - 15/11/2025', canReview: true },
-  { id: 2, name: 'Khám sức khỏe - 10/11/2025', canReview: true },
-  { id: 3, name: 'Cắt tỉa lông - 05/11/2025', canReview: false }
-];
-
 const ReviewsView = () => {
+  const { reviews: cachedReviews, allReviews: cachedAllReviews, fetchReviews, fetchAllReviews } = useAuth();
   const [activeTab, setActiveTab] = useState('my-reviews');
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [serviceQualityRating, setServiceQualityRating] = useState(0);
@@ -55,21 +24,112 @@ const ReviewsView = () => {
   const [hoverOverall, setHoverOverall] = useState(0);
   const [reviewText, setReviewText] = useState('');
   const [selectedService, setSelectedService] = useState('');
+  const [selectedBranch, setSelectedBranch] = useState('');
+  const [availableBranches, setAvailableBranches] = useState([]);
   const [filterRating, setFilterRating] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [displayCount, setDisplayCount] = useState(10); // Number of reviews to display
 
-  const myReviews = MOCK_MY_REVIEWS;
-  const allReviews = MOCK_ALL_REVIEWS;
+  useEffect(() => {
+    loadReviews();
+    loadBranches();
+  }, [activeTab]); // Re-fetch when tab changes
 
-  const handleSubmitReview = () => {
-    if (serviceQualityRating > 0 && staffAttitudeRating > 0 && overallRating > 0 && reviewText.trim() && selectedService) {
-      // TODO: Call API to submit review
-      setShowReviewModal(false);
-      setServiceQualityRating(0);
-      setStaffAttitudeRating(0);
-      setOverallRating(0);
-      setReviewText('');
-      setSelectedService('');
+  const loadReviews = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch both my reviews and all reviews if not cached
+      if (!cachedReviews) {
+        await fetchReviews();
+      }
+      if (!cachedAllReviews) {
+        await fetchAllReviews();
+      }
+    } catch (error) {
+      console.error('Error loading reviews:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadBranches = async () => {
+    try {
+      const response = await apiClient.get(ENDPOINTS.BRANCHES.LIST);
+      const branchesData = response.data?.data || response.data || [];
+      setAvailableBranches(branchesData);
+    } catch (error) {
+      console.error('Error loading branches:', error);
+      setAvailableBranches([]);
+    }
+  };
+
+  // Transform backend data to match component expectations
+  const transformReview = (review) => {
+    // Calculate average rating from three scores
+    const avgRating = Math.round((review.DiemChatLuong + review.ThaiDoNV + review.MucDoHaiLong) / 3);
+    
+    return {
+      id: review.MaDG,
+      serviceName: 'Dịch vụ PetCareX', // Backend doesn't return service name
+      branch: review.TenChiNhanh || 'Chi nhánh',
+      rating: avgRating,
+      comment: review.BinhLuan,
+      date: review.NgayDG,
+      customerName: review.TenKhachHang || 'Khách hàng',
+      serviceQuality: review.DiemChatLuong,
+      staffAttitude: review.ThaiDoNV,
+      satisfaction: review.MucDoHaiLong,
+      verified: true
+    };
+  };
+
+  const myReviews = useMemo(() => {
+    if (!cachedReviews) return [];
+    return cachedReviews.map(transformReview);
+  }, [cachedReviews]);
+
+  const allReviews = useMemo(() => {
+    if (!cachedAllReviews) return [];
+    return cachedAllReviews.map(transformReview);
+  }, [cachedAllReviews]);
+
+  const handleSubmitReview = async () => {
+    if (serviceQualityRating > 0 && staffAttitudeRating > 0 && overallRating > 0 && reviewText.trim() && selectedBranch) {
+      try {
+        setSubmitting(true);
+        
+        const reviewData = {
+          branchId: parseInt(selectedBranch),
+          chatLuong: serviceQualityRating,
+          thaiDo: staffAttitudeRating,
+          mucDoHaiLong: overallRating,
+          binhLuan: reviewText.trim()
+        };
+        
+        await reviewService.create(reviewData);
+        
+        // Reset form
+        setServiceQualityRating(0);
+        setStaffAttitudeRating(0);
+        setOverallRating(0);
+        setReviewText('');
+        setSelectedService('');
+        setSelectedBranch('');
+        setShowReviewModal(false);
+        
+        // Reload reviews to show the new one
+        await fetchReviews(true); // Force refresh
+        
+        alert('Đánh giá của bạn đã được gửi thành công!');
+      } catch (error) {
+        console.error('Error submitting review:', error);
+        alert('Có lỗi xảy ra khi gửi đánh giá. Vui lòng thử lại!');
+      } finally {
+        setSubmitting(false);
+      }
     }
   };
 
@@ -113,26 +173,46 @@ const ReviewsView = () => {
     );
   };
 
-  const filteredReviews = useMemo(() => 
-    allReviews.filter(review => {
+  const filteredReviews = useMemo(() => {
+    if (!allReviews || allReviews.length === 0) return [];
+    
+    return allReviews.filter(review => {
       const matchesRating = filterRating === 'all' || review.rating === parseInt(filterRating);
       const matchesSearch = review.serviceName.toLowerCase().includes(searchQuery.toLowerCase()) ||
                             review.comment.toLowerCase().includes(searchQuery.toLowerCase());
       return matchesRating && matchesSearch;
-    }),
-    [filterRating, searchQuery]
-  );
+    });
+  }, [allReviews, filterRating, searchQuery]);
+
+  // Reset displayCount when filter changes
+  useEffect(() => {
+    setDisplayCount(10);
+  }, [filterRating, searchQuery]);
+
+  // Only show first displayCount reviews
+  const displayedReviews = useMemo(() => {
+    return filteredReviews.slice(0, displayCount);
+  }, [filteredReviews, displayCount]);
+
+  const hasMoreReviews = filteredReviews.length > displayCount;
+
+  const loadMoreReviews = () => {
+    setDisplayCount(prev => prev + 10);
+  };
 
   const averageRating = useMemo(() => {
+    if (!allReviews || allReviews.length === 0) return '0.0';
     const total = allReviews.reduce((sum, review) => sum + review.rating, 0);
     return (total / allReviews.length).toFixed(1);
-  }, []);
+  }, [allReviews]);
 
   const ratingDistribution = useMemo(() => {
     const distribution = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
-    allReviews.forEach(review => distribution[review.rating]++);
+    if (allReviews && allReviews.length > 0) {
+      allReviews.forEach(review => distribution[review.rating]++);
+    }
     return distribution;
-  }, []);
+  }, [allReviews]);
 
   const ratingLabels = { 0: 'Chọn số sao', 1: 'Rất tệ', 2: 'Tệ', 3: 'Bình thường', 4: 'Tốt', 5: 'Tuyệt vời' };
 
@@ -268,27 +348,41 @@ const ReviewsView = () => {
             </div>
           )
         ) : (
-          filteredReviews.map(review => (
-            <div key={review.id} className="bg-white border border-gray-200 rounded-xl p-5 hover:shadow-md transition-shadow">
-              <div className="flex justify-between items-start mb-3">
-                <div className="flex gap-3">
-                  <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center text-primary-600 font-bold text-sm flex-shrink-0">
-                    {review.customerName.charAt(0)}
+          <>
+            {displayedReviews.map(review => (
+              <div key={review.id} className="bg-white border border-gray-200 rounded-xl p-5 hover:shadow-md transition-shadow">
+                <div className="flex justify-between items-start mb-3">
+                  <div className="flex gap-3">
+                    <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center text-primary-600 font-bold text-sm flex-shrink-0">
+                      {review.customerName.charAt(0)}
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                        {review.customerName}
+                        {review.verified && <span className="px-2 py-0.5 bg-success-100 text-success-700 text-xs font-bold rounded">✓ Đã xác thực</span>}
+                      </h4>
+                      <p className="text-xs text-gray-600">{review.serviceName} - {review.branch}</p>
+                    </div>
                   </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-gray-900 flex items-center gap-2">
-                      {review.customerName}
-                      {review.verified && <span className="px-2 py-0.5 bg-success-100 text-success-700 text-xs font-bold rounded">✓ Đã xác thực</span>}
-                    </h4>
-                    <p className="text-xs text-gray-600">{review.serviceName} - {review.branch}</p>
-                  </div>
+                  <div className="text-sm text-gray-500">{new Date(review.date).toLocaleDateString('vi-VN')}</div>
                 </div>
-                <div className="text-sm text-gray-500">{new Date(review.date).toLocaleDateString('vi-VN')}</div>
+                <div className="mb-3">{renderStars(review.rating)}</div>
+                <p className="text-sm text-gray-700 mb-3 leading-relaxed">{review.comment}</p>
               </div>
-              <div className="mb-3">{renderStars(review.rating)}</div>
-              <p className="text-sm text-gray-700 mb-3 leading-relaxed">{review.comment}</p>
-            </div>
-          ))
+            ))}
+            
+            {/* Load More Button */}
+            {hasMoreReviews && (
+              <div className="flex justify-center mt-6">
+                <button
+                  onClick={loadMoreReviews}
+                  className="px-6 py-3 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors font-medium"
+                >
+                  Xem thêm ({filteredReviews.length - displayCount} đánh giá)
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
 
@@ -307,18 +401,21 @@ const ReviewsView = () => {
             </div>
             <div className="p-6 space-y-5">
               <div>
-                <label className="block text-sm font-bold text-gray-900 mb-2">Chọn dịch vụ đã sử dụng *</label>
+                <label className="block text-sm font-bold text-gray-900 mb-2">Chọn chi nhánh đã sử dụng dịch vụ *</label>
                 <select 
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                  value={selectedService}
-                  onChange={(e) => setSelectedService(e.target.value)}
+                  value={selectedBranch}
+                  onChange={(e) => setSelectedBranch(e.target.value)}
                 >
-                  <option value="">-- Chọn dịch vụ --</option>
-                  {SERVICES_FOR_REVIEW.map(service => (
-                    <option key={service.id} value={service.id} disabled={!service.canReview}>
-                      {service.name} {!service.canReview && '(Đã đánh giá)'}
-                    </option>
-                  ))}
+                  <option value="">-- Chọn chi nhánh --</option>
+                  {availableBranches && availableBranches.map(branch => {
+                    const city = branch.DiaChi ? branch.DiaChi.split(',').pop().trim() : '';
+                    return (
+                      <option key={branch.MaChiNhanh} value={branch.MaChiNhanh}>
+                        {branch.TenChiNhanh} - {city}
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
 
@@ -378,10 +475,10 @@ const ReviewsView = () => {
               <button 
                 className="flex items-center gap-2 px-5 py-2.5 bg-primary-600 hover:bg-primary-700 text-white font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 onClick={handleSubmitReview}
-                disabled={!serviceQualityRating || !staffAttitudeRating || !overallRating || !reviewText.trim() || !selectedService}
+                disabled={submitting || !serviceQualityRating || !staffAttitudeRating || !overallRating || !reviewText.trim() || !selectedBranch}
               >
                 <SendIcon size={18} />
-                Gửi đánh giá
+                {submitting ? 'Đang gửi...' : 'Gửi đánh giá'}
               </button>
             </div>
           </div>

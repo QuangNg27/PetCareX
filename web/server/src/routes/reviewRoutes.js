@@ -9,6 +9,9 @@ const reviewController = new ReviewController();
 // Middleware xác thực cho tất cả routes
 router.use(authMiddleware);
 
+// Routes công khai cho khách hàng
+router.get('/', authorizeRoles(['Khách hàng']), reviewController.getAllReviews);
+
 // Routes cho khách hàng
 router.post('/', authorizeRoles(['Khách hàng']), reviewController.createReview);
 router.get('/my-reviews', authorizeRoles(['Khách hàng']), reviewController.getMyReviews);

@@ -1,6 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { serviceService } from '@services/serviceService';
+import apiClient from '@config/apiClient';
+import { ENDPOINTS } from '@config/apiConfig';
 import { 
   ClipboardIcon,
   CalendarIcon,
@@ -13,12 +16,48 @@ import {
 } from '@components/common/icons';
 
 const ServicesView = () => {
-  const { user } = useAuth();
+  const { user, pets: cachedPets, fetchPets, fetchAppointments } = useAuth();
   const navigate = useNavigate();
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [selectedService, setSelectedService] = useState(null);
   const [vaccines, setVaccines] = useState([{ id: 1, name: '' }]);
+  const [availableVaccines, setAvailableVaccines] = useState([]);
   const [selectedPackage, setSelectedPackage] = useState('');
+  const [branches, setBranches] = useState([]);
+  const [pets, setPets] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Form data
+  const [bookingData, setBookingData] = useState({
+    petId: '',
+    branchId: '',
+    appointmentDate: ''
+  });
+
+  useEffect(() => {
+    loadInitialData();
+  }, []);
+
+  const loadInitialData = async () => {
+    try {
+      setLoading(true);
+      const [branchesResponse, petsData, vaccinesResponse] = await Promise.all([
+        apiClient.get(ENDPOINTS.BRANCHES.LIST),
+        cachedPets ? Promise.resolve(cachedPets) : fetchPets(),
+        apiClient.get(`${ENDPOINTS.PRODUCTS.CATEGORIES}?category=Vaccine`)
+      ]);
+      
+      setBranches(branchesResponse.data?.data || branchesResponse.data || []);
+      setPets(petsData || []);
+      setAvailableVaccines(vaccinesResponse.data?.data || vaccinesResponse.data || []);
+    } catch (err) {
+      console.error('Error loading data:', err);
+      alert('Không thể tải dữ liệu. Vui lòng thử lại.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Danh sách gói tiêm đã đăng ký
   const registeredPackages = [
@@ -86,7 +125,77 @@ const ServicesView = () => {
     setSelectedService(service);
     setVaccines([{ id: 1, name: '' }]);
     setSelectedPackage('');
+    setBookingData({
+      petId: '',
+      branchId: '',
+      appointmentDate: ''
+    });
     setShowBookingModal(true);
+  };
+
+  const handleInputChange = (field, value) => {
+    setBookingData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleSubmitBooking = async () => {
+    // Validation
+    if (!bookingData.petId || !bookingData.branchId || !bookingData.appointmentDate) {
+      alert('Vui lòng điền đầy đủ thông tin');
+      return;
+    }
+
+    if (selectedService.LoaiDichVu === 'tiem-phong') {
+      const hasEmptyVaccine = vaccines.some(v => !v.name.trim());
+      if (hasEmptyVaccine) {
+        alert('Vui lòng nhập tên tất cả các mũi tiêm');
+        return;
+      }
+    }
+
+    setIsSubmitting(true);
+    try {
+      if (selectedService.LoaiDichVu === 'kham-benh') {
+        // Create examination
+        const examData = {
+          MaCN: parseInt(bookingData.branchId),
+          MaDV: selectedService.id,
+          MaTC: parseInt(bookingData.petId),
+          NgayKham: bookingData.appointmentDate
+        };
+        
+        const response = await serviceService.examinations.create(examData);
+        if (response.success) {
+          alert('Đặt lịch khám bệnh thành công!');
+          await fetchAppointments(true); // Refresh appointments
+          setShowBookingModal(false);
+        } else {
+          alert(response.message || 'Đặt lịch thất bại');
+        }
+      } else if (selectedService.LoaiDichVu === 'tiem-phong') {
+        // Create vaccination
+        const vaccData = {
+          MaCN: parseInt(bookingData.branchId),
+          MaDV: selectedService.id,
+          MaTC: parseInt(bookingData.petId),
+          NgayTiem: bookingData.appointmentDate,
+          vaccines: vaccines.map(v => ({ name: v.name }))
+        };
+        
+        const response = await serviceService.vaccinations.create(vaccData);
+        if (response.success) {
+          alert('Đặt lịch tiêm phòng thành công!');
+          await fetchAppointments(true); // Refresh appointments
+          setShowBookingModal(false);
+        } else {
+          alert(response.message || 'Đặt lịch thất bại');
+        }
+      }
+    } catch (err) {
+      console.error('Error booking service:', err);
+      alert(err.response?.data?.message || 'Có lỗi xảy ra khi đặt lịch');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handlePackageChange = (packageId) => {
@@ -154,21 +263,39 @@ const ServicesView = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Thú cưng *</label>
-                  <select className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                  <select 
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    value={bookingData.petId}
+                    onChange={(e) => handleInputChange('petId', e.target.value)}
+                    disabled={loading}
+                  >
                     <option value="">Chọn thú cưng</option>
-                    <option value="1">Max</option>
-                    <option value="2">Luna</option>
-                    <option value="3">Bunny</option>
+                    {pets.map(pet => (
+                      <option key={pet.MaTC} value={pet.MaTC}>
+                        {pet.Ten} - {pet.Loai}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Chi nhánh *</label>
-                  <select className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                  <select 
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    value={bookingData.branchId}
+                    onChange={(e) => handleInputChange('branchId', e.target.value)}
+                    disabled={loading}
+                  >
                     <option value="">Chọn chi nhánh</option>
-                    <option value="1">123 Nguyễn Huệ, Q.1</option>
-                    <option value="2">456 Lê Văn Sỹ, Q.3</option>
-                    <option value="3">789 Nguyễn Trãi, Q.5</option>
+                    {branches.map(branch => {
+                      // Extract city from address (last part after comma)
+                      const city = branch.DiaChi?.split(',').pop()?.trim() || '';
+                      return (
+                        <option key={branch.MaChiNhanh} value={branch.MaChiNhanh}>
+                          {branch.TenChiNhanh}{city ? ` - ${city}` : ''}
+                        </option>
+                      );
+                    })}
                   </select>
                 </div>
 
@@ -205,13 +332,11 @@ const ServicesView = () => {
                         </div>
                       ))}
                       <datalist id="vaccine-suggestions">
-                        <option value="Vaccine phòng dại (Rabies)" />
-                        <option value="Vaccine 5 bệnh (DHPPL)" />
-                        <option value="Vaccine 7 bệnh (DHPPI+LR)" />
-                        <option value="Vaccine Care (Canine)" />
-                        <option value="Vaccine Parvo" />
-                        <option value="Vaccine Distemper" />
-                        <option value="Vaccine Hepatitis" />
+                        {availableVaccines.map(vaccine => (
+                          <option key={vaccine.MaSP} value={vaccine.TenSP}>
+                            {vaccine.LoaiVaccine && ` - ${vaccine.LoaiVaccine}`}
+                          </option>
+                        ))}
                       </datalist>
                     </div>
                   </div>
@@ -219,17 +344,31 @@ const ServicesView = () => {
 
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-2">Ngày hẹn *</label>
-                  <input type="date" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
+                  <input 
+                    type="date" 
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    value={bookingData.appointmentDate}
+                    onChange={(e) => handleInputChange('appointmentDate', e.target.value)}
+                    min={new Date().toISOString().split('T')[0]}
+                  />
                 </div>
               </div>
             </div>
 
             <div className="flex gap-3 px-6 py-4 bg-gray-50 border-t border-gray-200">
-              <button className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors" onClick={() => setShowBookingModal(false)}>
+              <button 
+                className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors" 
+                onClick={() => setShowBookingModal(false)}
+                disabled={isSubmitting}
+              >
                 Hủy
               </button>
-              <button className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
-                <CheckIcon size={18} /> Xác nhận đặt lịch
+              <button 
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={handleSubmitBooking}
+                disabled={isSubmitting}
+              >
+                <CheckIcon size={18} /> {isSubmitting ? 'Đang xử lý...' : 'Xác nhận đặt lịch'}
               </button>
             </div>
           </div>

@@ -6,12 +6,11 @@ class ServiceController {
         this.serviceService = new ServiceService();
     }
 
-    async getBranchServices(req, res, next) {
+    getBranchServices = async (req, res, next) => {
         try {
             const { branchId } = req.params;
-            const customerId = req.user.id;
 
-            const services = await this.serviceService.getBranchServices(branchId, customerId);
+            const services = await this.serviceService.getBranchServices(branchId);
             
             res.json({
                 success: true,
@@ -23,12 +22,12 @@ class ServiceController {
         } catch (error) {
             next(error);
         }
-    }
+    };
 
-    async createMedicalExamination(req, res, next) {
+    createMedicalExamination = async (req, res, next) => {
         try {
             const { MaCN, MaDV, MaTC, MaNV, NgayKham, TrieuChung, ChanDoan, NgayTaiKham } = req.body;
-            const customerId = req.user.id;
+            const customerId = req.user.MaKH;
 
             const result = await this.serviceService.createMedicalExamination({
                 MaCN,
@@ -49,13 +48,13 @@ class ServiceController {
         } catch (error) {
             next(error);
         }
-    }
+    };
 
-    async updateMedicalExamination(req, res, next) {
+    updateMedicalExamination = async (req, res, next) => {
         try {
             const { examinationId } = req.params;
             const { TrieuChung, ChanDoan, NgayTaiKham } = req.body;
-            const doctorId = req.user.id;
+            const doctorId = req.user.MaNV;
 
             await this.serviceService.updateMedicalExamination(
                 examinationId,
@@ -70,13 +69,13 @@ class ServiceController {
         } catch (error) {
             next(error);
         }
-    }
+    };
 
-    async addPrescription(req, res, next) {
+    addPrescription = async (req, res, next) => {
         try {
             const { examinationId } = req.params;
             const { prescriptions } = req.body;
-            const doctorId = req.user.id;
+            const doctorId = req.user.MaNV;
 
             await this.serviceService.addPrescription(examinationId, prescriptions, doctorId);
 
@@ -87,19 +86,20 @@ class ServiceController {
         } catch (error) {
             next(error);
         }
-    }
+    };
 
-    async createVaccination(req, res, next) {
+    createVaccination = async (req, res, next) => {
         try {
-            const { MaCN, MaDV, MaTC, MaNV, NgayTiem } = req.body;
-            const customerId = req.user.id;
+            const { MaCN, MaDV, MaTC, MaNV, NgayTiem, vaccines } = req.body;
+            const customerId = req.user.MaKH;
 
             const result = await this.serviceService.createVaccination({
                 MaCN,
                 MaDV,
                 MaTC,
                 MaNV,
-                NgayTiem
+                NgayTiem,
+                vaccines
             }, customerId);
 
             res.status(201).json({
@@ -110,15 +110,15 @@ class ServiceController {
         } catch (error) {
             next(error);
         }
-    }
+    };
 
-    async addVaccinationDetails(req, res, next) {
+    updateVaccinationDetails = async (req, res, next) => {
         try {
             const { vaccinationId } = req.params;
             const { details } = req.body;
-            const doctorId = req.user.id;
-
-            await this.serviceService.addVaccinationDetails(vaccinationId, details, doctorId);
+            const doctorId = req.user.MaNV;
+            
+            await this.serviceService.updateVaccinationDetails(vaccinationId, details, doctorId);
 
             res.json({
                 success: true,
@@ -127,16 +127,19 @@ class ServiceController {
         } catch (error) {
             next(error);
         }
-    }
+    };
 
-    async createVaccinationPackage(req, res, next) {
+    createVaccinationPackage = async (req, res, next) => {
         try {
-            const { NgayBatDau, NgayKetThuc } = req.body;
-            const customerId = req.user.id;
+            const { NgayBatDau, NgayKetThuc, vaccines, MaTC, MaCN } = req.body;
+            const customerId = req.user.MaKH;
 
             const result = await this.serviceService.createVaccinationPackage({
                 NgayBatDau,
-                NgayKetThuc
+                NgayKetThuc,
+                vaccines,
+                MaTC,
+                MaCN
             }, customerId);
 
             res.status(201).json({
@@ -147,11 +150,11 @@ class ServiceController {
         } catch (error) {
             next(error);
         }
-    }
+    };
 
-    async getVaccinationPackages(req, res, next) {
+    getVaccinationPackages = async (req, res, next) => {
         try {
-            const customerId = req.user.id;
+            const customerId = req.user.MaKH;
 
             const packages = await this.serviceService.getCustomerVaccinationPackages(customerId);
 
@@ -164,13 +167,13 @@ class ServiceController {
         } catch (error) {
             next(error);
         }
-    }
+    };
 
-    async updateServicePrice(req, res, next) {
+    updateServicePrice = async (req, res, next) => {
         try {
             const { serviceId } = req.params;
             const { price, effectiveDate } = req.body;
-            const managerId = req.user.id;
+            const managerId = req.user.MaNV;
 
             await this.serviceService.updateServicePrice(serviceId, price, effectiveDate, managerId);
 
@@ -181,9 +184,9 @@ class ServiceController {
         } catch (error) {
             next(error);
         }
-    }
+    };
 
-    async getServicePriceHistory(req, res, next) {
+    getServicePriceHistory = async (req, res, next) => {
         try {
             const { serviceId } = req.params;
 
@@ -198,9 +201,9 @@ class ServiceController {
         } catch (error) {
             next(error);
         }
-    }
+    };
 
-    async getAvailableVeterinarians(req, res, next) {
+    getAvailableVeterinarians = async (req, res, next) => {
         try {
             const { branchId } = req.params;
             const { date } = req.query;
@@ -219,13 +222,13 @@ class ServiceController {
         } catch (error) {
             next(error);
         }
-    }
+    };
 
     // Bác sĩ tiếp nhận khám bệnh hoặc tiêm phòng
-    async updateVaccination(req, res, next) {
+    updateVaccination = async (req, res, next) => {
         try {
             const { vaccinationId } = req.params;
-            const doctorId = req.user.id;
+            const doctorId = req.user.MaNV;
 
             const result = await this.serviceService.updateVaccination(
                 vaccinationId,
@@ -237,13 +240,13 @@ class ServiceController {
         } catch (error) {
             next(error);
         }
-    }
+    };
 
-    async updateVaccinationDetail(req, res, next) {
+    updateVaccinationDetail = async (req, res, next) => {
         try {
             const { vaccinationDetailId } = req.params;
             const { LieuLuong, TrangThai } = req.body;
-            const doctorId = req.user.id;
+            const doctorId = req.user.MaNV;
 
             const result = await this.serviceService.updateVaccinationDetail(
                 vaccinationDetailId,
@@ -255,7 +258,7 @@ class ServiceController {
         } catch (error) {
             next(error);
         }
-    }
+    };
 }
 
 module.exports = ServiceController;

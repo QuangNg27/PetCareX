@@ -24,7 +24,7 @@ class ProductRepository extends BaseRepository {
                 sp.LoaiSP,
                 sp.LoaiVaccine,
                 sp.NgaySX,
-                gsp.SoTien as GiaHienTai,
+                gsp.SoTien as GiaHienTai
             FROM San_pham sp
             LEFT JOIN Gia_san_pham gsp ON sp.MaSP = gsp.MaSP 
                 AND gsp.NgayApDung = (
@@ -48,7 +48,7 @@ class ProductRepository extends BaseRepository {
                 sp.LoaiSP,
                 sp.LoaiVaccine,
                 sp.NgaySX,
-                gsp.SoTien as GiaHienTai,
+                gsp.SoTien as GiaHienTai
             FROM San_pham sp
             LEFT JOIN Gia_san_pham gsp ON sp.MaSP = gsp.MaSP 
                 AND gsp.NgayApDung = (
@@ -59,6 +59,21 @@ class ProductRepository extends BaseRepository {
                 )
             WHERE sp.MaSP = @MaSP
         `, { MaSP: productId });
+
+        return result.recordset[0];
+    }
+
+    async getProductByName(productName) {
+        const result = await this.execute(`
+            SELECT 
+                sp.MaSP,
+                sp.TenSP,
+                sp.LoaiSP,
+                sp.LoaiVaccine,
+                sp.NgaySX
+            FROM San_pham sp
+            WHERE sp.TenSP = @TenSP
+        `, { TenSP: productName });
 
         return result.recordset[0];
     }
@@ -96,7 +111,7 @@ class ProductRepository extends BaseRepository {
         return true;
     }
 
-    async getProductPriceHistory(productId) {
+    async updateProductPrice(productId, price, effectiveDate) {
         const result = await this.execute(`
             SELECT 
                 gsp.NgayApDung,
@@ -131,14 +146,27 @@ class ProductRepository extends BaseRepository {
 
 
 
-    async getProductCategories() {
+    async getProductsByCategory(category) {
         const result = await this.execute(`
-            SELECT DISTINCT LoaiSP
-            FROM San_pham
-            ORDER BY LoaiSP
-        `);
+            SELECT 
+                sp.MaSP,
+                sp.TenSP,
+                sp.LoaiSP,
+                sp.LoaiVaccine,
+                sp.NgaySX,
+                gsp.SoTien as GiaHienTai
+            FROM San_pham sp
+            LEFT JOIN Gia_san_pham gsp ON sp.MaSP = gsp.MaSP 
+                AND gsp.NgayApDung = (
+                    SELECT MAX(NgayApDung) 
+                    FROM Gia_san_pham 
+                    WHERE MaSP = sp.MaSP 
+                    AND NgayApDung <= CAST(GETDATE() AS DATE)
+                )
+            WHERE sp.LoaiSP = @LoaiSP
+        `, { LoaiSP: category });
 
-        return result.recordset.map(row => row.LoaiSP);
+        return result.recordset;
     }
 
     async getLowStockProducts(branchId = null, threshold = 10) {

@@ -41,8 +41,8 @@ class CustomerService {
         };
     }
 
-    async getLoyaltyHistory(customerId, limit = 10) {
-        const history = await this.customerRepo.getLoyaltyHistory(customerId, limit);
+    async getLoyaltyHistory(customerId) {
+        const history = await this.customerRepo.getLoyaltyHistory(customerId);
 
         return {
             success: true,
@@ -50,8 +50,8 @@ class CustomerService {
         };
     }
 
-    async searchCustomers(searchTerm, limit = 20) {
-        const customers = await this.customerRepo.searchCustomers(searchTerm, limit);
+    async searchCustomers(searchTerm) {
+        const customers = await this.customerRepo.searchCustomers(searchTerm);
 
         return {
             success: true,
@@ -115,7 +115,7 @@ class CustomerService {
         };
     }
 
-    async getPetMedicalHistory(petId, limit = 10) {
+    async getPetMedicalHistory(petId, limit = 100) {
         const history = await this.petRepo.getPetMedicalHistory(petId, limit);
         const medicines = await this.petRepo.getPetMedicineBasedOnTreatment(history.map(h => h.MaKB));
 
@@ -140,7 +140,7 @@ class CustomerService {
         };
     }
 
-    async getPetVaccinationHistory(petId, limit = 10) {
+    async getPetVaccinationHistory(petId, limit = 100) {
         const history = await this.petRepo.getPetVaccinationHistory(petId, limit);
         const vaccines = await this.petRepo.getPetVaccineBasedOnVaccination(history.map(h => h.MaTP));
 
@@ -166,7 +166,7 @@ class CustomerService {
     }
 
     async UpdatePassword(customerId, oldPassword, newPassword) {
-        const res = await this.customerRepo.updatePassword(customerId, oldPassword, newPassword);
+        const res = await this.customerRepo.UpdatePassword(customerId, oldPassword, newPassword);
         if (!res) {
             throw new AppError('Cập nhật mật khẩu thất bại. Vui lòng kiểm tra lại mật khẩu cũ.', 400);
         }

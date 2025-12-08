@@ -54,7 +54,7 @@ class AuthService {
                 employeeId: account.MaNV
             },
             process.env.JWT_SECRET,
-            { expiresIn: '1h' } // Access token: 1 hour
+            { expiresIn: '24h' } // Access token: 24 hours
         );
 
         const refreshToken = jwt.sign(
@@ -64,7 +64,7 @@ class AuthService {
                 tokenType: 'refresh'
             },
             process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET,
-            { expiresIn: '7d' } // Refresh token: 7 ngày
+            { expiresIn: '30d' } // Refresh token: 30 ngày
         );
 
         return {
@@ -152,7 +152,7 @@ class AuthService {
                     employeeId: account.MaNV
                 },
                 process.env.JWT_SECRET,
-                { expiresIn: '1h' }
+                { expiresIn: '24h' }
             );
 
             return {

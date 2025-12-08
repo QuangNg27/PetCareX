@@ -1,10 +1,14 @@
 const express = require('express');
 const CustomerController = require('../controllers/CustomerController');
 const AuthController = require('../controllers/AuthController');
+const { authMiddleware } = require('../middleware/authMiddleware');
 const { authorizeRoles } = require('../middleware/authorizeRoles');
 
 const router = express.Router();
 const customerController = new CustomerController();
+
+// Apply authMiddleware to all customer routes
+router.use(authMiddleware);
 
 // Customer profile routes
 router.get('/profile', authorizeRoles('Khách hàng'), customerController.getProfile);

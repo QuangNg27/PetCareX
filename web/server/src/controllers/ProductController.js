@@ -126,11 +126,12 @@ class ProductController {
 
     async getProductCategories(req, res, next) {
         try {
-            const categories = await this.productService.getProductCategories();
+            const { category } = req.query;
 
+            const products = await this.productService.getProductsByCategory(category);
             res.json({
                 success: true,
-                data: { categories }
+                data: products
             });
         } catch (error) {
             next(error);

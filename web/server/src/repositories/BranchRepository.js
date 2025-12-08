@@ -1,11 +1,10 @@
-const { poolRequest } = require('../config/db');
+const BaseRepository = require("./BaseRepository");
 
-class BranchRepository {
+class BranchRepository extends BaseRepository {
     // Lấy tất cả chi nhánh
     async findAll() {
         try {
-            const request = await poolRequest();
-            const result = await request.query(`
+            const result = await this.execute(`
                 SELECT 
                     MaCN as MaChiNhanh,
                     TenCN as TenChiNhanh,
@@ -25,10 +24,7 @@ class BranchRepository {
     // Lấy chi nhánh theo ID
     async findById(branchId) {
         try {
-            const request = await poolRequest();
-            request.input('MaChiNhanh', branchId);
-            
-            const result = await request.query(`
+            const result = await this.execute(`
                 SELECT 
                     MaCN as MaChiNhanh,
                     TenCN as TenChiNhanh,
@@ -39,7 +35,8 @@ class BranchRepository {
                     QuanLy
                 FROM Chi_nhanh 
                 WHERE MaCN = @MaChiNhanh
-            `);
+            `,
+            { MaChiNhanh: branchId });
             return result.recordset[0];
         } catch (error) {
             throw error;
@@ -49,10 +46,7 @@ class BranchRepository {
     // Lấy nhân viên theo chi nhánh
     async findEmployeesByBranch(branchId) {
         try {
-            const request = await poolRequest();
-            request.input('MaChiNhanh', branchId);
-            
-            const result = await request.query(`
+            const result = await this.execute(`
                 SELECT 
                     nv.MaNV as MaNhanVien,
                     nv.HoTen,
@@ -65,7 +59,7 @@ class BranchRepository {
                 INNER JOIN Lich_su_nhan_vien ls ON nv.MaNV = ls.MaNV
                 WHERE ls.MaCN = @MaChiNhanh
                     AND (ls.NgayKT IS NULL OR ls.NgayKT >= CAST(GETDATE() AS DATE))
-            `);
+            `, { MaChiNhanh: branchId });
             return result.recordset;
         } catch (error) {
             throw error;
@@ -75,10 +69,7 @@ class BranchRepository {
     // Lấy dịch vụ theo chi nhánh
     async findServicesByBranch(branchId) {
         try {
-            const request = await poolRequest();
-            request.input('MaChiNhanh', branchId);
-            
-            const result = await request.query(`
+            const result = await this.execute(`
                 SELECT 
                     dv.MaDV as MaDichVu,
                     dv.TenDV as TenDichVu,
@@ -92,33 +83,8 @@ class BranchRepository {
                 FROM Dich_vu dv
                 INNER JOIN Dich_vu_chi_nhanh dvcn ON dv.MaDV = dvcn.MaDV
                 WHERE dvcn.MaCN = @MaChiNhanh
-            `);
+            `, { MaChiNhanh: branchId });
             return result.recordset;
-        } catch (error) {
-            throw error;
-        }
-    }
-
-    // Tạo chi nhánh mới
-    async create(branchData) {
-        try {
-            const request = await poolRequest();
-            const { TenChiNhanh, DiaChi, SoDienThoai, ThoiGianMo, ThoiGianDong } = branchData;
-            
-            request.input('TenCN', TenChiNhanh);
-            request.input('DiaChi', DiaChi);
-            request.input('SoDT', SoDienThoai);
-            request.input('ThoiGianMo', ThoiGianMo);
-            request.input('ThoiGianDong', ThoiGianDong);
-            
-            const result = await request.query(`
-                INSERT INTO Chi_nhanh (TenCN, DiaChi, SoDT, ThoiGianMo, ThoiGianDong)
-                OUTPUT inserted.MaCN
-                VALUES (@TenCN, @DiaChi, @SoDT, @ThoiGianMo, @ThoiGianDong)
-            `);
-            
-            const newBranchId = result.recordset[0].MaCN;
-            return await this.findById(newBranchId);
         } catch (error) {
             throw error;
         }
@@ -127,17 +93,9 @@ class BranchRepository {
     // Cập nhật chi nhánh
     async update(branchId, updateData) {
         try {
-            const request = await poolRequest();
             const { TenChiNhanh, DiaChi, SoDienThoai, ThoiGianMo, ThoiGianDong } = updateData;
             
-            request.input('MaChiNhanh', branchId);
-            request.input('TenCN', TenChiNhanh);
-            request.input('DiaChi', DiaChi);
-            request.input('SoDT', SoDienThoai);
-            request.input('ThoiGianMo', ThoiGianMo);
-            request.input('ThoiGianDong', ThoiGianDong);
-            
-            const result = await request.query(`
+            const result = await this.execute(`
                 UPDATE Chi_nhanh 
                 SET TenCN = COALESCE(@TenCN, TenCN),
                     DiaChi = COALESCE(@DiaChi, DiaChi),
@@ -145,7 +103,15 @@ class BranchRepository {
                     ThoiGianMo = COALESCE(@ThoiGianMo, ThoiGianMo),
                     ThoiGianDong = COALESCE(@ThoiGianDong, ThoiGianDong)
                 WHERE MaCN = @MaChiNhanh
-            `);
+            `,
+            {
+                MaChiNhanh: branchId,
+                TenCN: TenChiNhanh,
+                DiaChi: DiaChi,
+                SoDT: SoDienThoai,
+                ThoiGianMo: ThoiGianMo,
+                ThoiGianDong: ThoiGianDong
+            });
             
             // Return updated record
             if (result.rowsAffected[0] > 0) {

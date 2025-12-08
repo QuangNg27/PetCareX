@@ -286,6 +286,12 @@ export const PlusIcon = (props) => (
   </BaseIcon>
 );
 
+export const MinusIcon = (props) => (
+  <BaseIcon {...props}>
+    <line x1="5" y1="12" x2="19" y2="12"/>
+  </BaseIcon>
+);
+
 export const ShieldIcon = (props) => (
   <BaseIcon {...props}>
     <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>

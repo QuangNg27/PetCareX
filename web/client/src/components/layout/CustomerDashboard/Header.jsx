@@ -9,6 +9,13 @@ const Header = ({ title }) => {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const menuRef = useRef(null);
 
+  // Get user data with fallbacks
+  const displayName = user?.TenDangNhap || 'User';
+  const fullName = user?.HoTen || user?.TenDangNhap || 'User';
+  const userEmail = user?.Email || '';
+  const membershipTier = user?.TenCapDo || 'Cơ bản';
+  const userInitial = (user?.TenDangNhap || 'U').charAt(0).toUpperCase();
+
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
@@ -37,12 +44,12 @@ const Header = ({ title }) => {
             onClick={() => setShowUserMenu(!showUserMenu)}
           >
             <div className="w-9 h-9 bg-gradient-to-br from-primary-500 to-primary-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
-              {user?.HoTen?.charAt(0) || 'U'}
+              {userInitial}
             </div>
             <div className="text-left hidden md:block">
-              <div className="text-sm font-semibold text-gray-900">{user?.TenDangNhap || 'User'}</div>
+              <div className="text-sm font-semibold text-gray-900">{displayName}</div>
               <div className="text-xs text-gray-600 flex items-center gap-1">
-                <AwardIcon size={12} /> {user?.HangThanhVien || 'Vàng'}
+                <AwardIcon size={12} /> {membershipTier}
               </div>
             </div>
             <svg className={`w-4 h-4 text-gray-500 transition-transform ${showUserMenu ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -55,11 +62,11 @@ const Header = ({ title }) => {
               <div className="p-4 bg-gradient-to-br from-primary-50 to-white border-b border-gray-200">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 bg-gradient-to-br from-primary-500 to-primary-600 rounded-full flex items-center justify-center text-white font-bold text-lg">
-                    {user?.HoTen?.charAt(0) || 'U'}
+                    {userInitial}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-gray-900 truncate">{user?.HoTen || 'User'}</p>
-                    <p className="text-xs text-gray-600 truncate">{user?.Email || 'email@example.com'}</p>
+                    <p className="text-sm font-bold text-gray-900 truncate">{fullName}</p>
+                    <p className="text-xs text-gray-600 truncate">{userEmail}</p>
                   </div>
                 </div>
               </div>
