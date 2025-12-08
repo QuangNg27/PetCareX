@@ -69,7 +69,7 @@ class ReportRepository extends BaseRepository {
     // Thống kê vaccine phổ biến
     async getPopularVaccines(limit = 10) {
         const result = await this.execute(`
-            SELECT TOP (@Limit)
+            SELECT
                 sp.MaSP as MaVaccine,
                 sp.TenSP as TenVaccine,
                 sp.LoaiSP as LoaiVaccine,
@@ -78,7 +78,7 @@ class ReportRepository extends BaseRepository {
             INNER JOIN Chi_tiet_tiem_phong cttp ON sp.MaSP = cttp.MaSP
             GROUP BY sp.MaSP, sp.TenSP, sp.LoaiSP
             ORDER BY SoLanSuDung DESC
-        `, { Limit: limit });
+        `);
         
         return result.recordset;
     }

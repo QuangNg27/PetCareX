@@ -9,7 +9,7 @@ class ReviewController {
     createReview = async (req, res, next) => {
         try {
             const { branchId, chatLuong, thaiDo, mucDoHaiLong, binhLuan } = req.body;
-            const customerId = req.user.userId; // Lấy từ middleware auth
+            const customerId = req.user.MaKH; // Lấy từ middleware auth
 
             const result = await this.reviewService.createReview({
                 customerId,
@@ -29,8 +29,9 @@ class ReviewController {
     // Lấy đánh giá của khách hàng hiện tại
     getMyReviews = async (req, res, next) => {
         try {
-            const customerId = req.user.userId;
-            const { page = 1, limit = 10 } = req.query;
+            const customerId = req.user.MaKH;
+            const page = parseInt(req.query.page) || 1;
+            const limit = parseInt(req.query.limit) || 10;
 
             const result = await this.reviewService.getCustomerReviews(customerId, page, limit);
             res.json(result);
@@ -83,6 +84,19 @@ class ReviewController {
             const { limit = 5 } = req.query;
 
             const result = await this.reviewService.getRecentReviews(limit);
+            res.json(result);
+        } catch (error) {
+            next(error);
+        }
+    };
+
+    // Lấy tất cả đánh giá
+    getAllReviews = async (req, res, next) => {
+        try {
+            const page = parseInt(req.query.page) || 1;
+            const limit = req.query.limit ? parseInt(req.query.limit) : 0; // 0 = get all
+
+            const result = await this.reviewService.getAllReviews(page, limit);
             res.json(result);
         } catch (error) {
             next(error);

@@ -6,7 +6,7 @@ const { authorizeRoles } = require('../middleware/authorizeRoles');
 const router = express.Router();
 const serviceController = new ServiceController();
 
-// Get services available at a specific branch (with customer tier pricing)
+// Get services available at a specific branch
 router.get('/branches/:branchId/services', authMiddleware, serviceController.getBranchServices);
 
 // Medical examination endpoints
@@ -35,10 +35,10 @@ router.post('/vaccinations',
     serviceController.createVaccination
 );
 
-router.post('/vaccinations/:vaccinationId/details',
+router.put('/vaccinations/:vaccinationId/details',
     authMiddleware,
     authorizeRoles(['Bác sĩ']),
-    serviceController.addVaccinationDetails
+    serviceController.updateVaccinationDetails
 );
 
 // Vaccination package endpoints

@@ -53,6 +53,7 @@ class CustomerRepository extends BaseRepository {
                 ct.Nam
             FROM Chi_tieu ct
             WHERE ct.MaKH = @MaKH
+                AND ct.Nam = YEAR(GETDATE())
         `, { 
             MaKH: customerId
         });
@@ -74,9 +75,9 @@ class CustomerRepository extends BaseRepository {
         return result.recordset;
     }
 
-    async getLoyaltyHistory(customerId, limit = 10) {
+    async getLoyaltyHistory(customerId) {
         const result = await this.execute(`
-            SELECT TOP (@Limit)
+            SELECT
                 hd.MaHD,
                 hd.NgayLap,
                 hd.TongTien,
@@ -87,16 +88,15 @@ class CustomerRepository extends BaseRepository {
             WHERE hd.MaKH = @MaKH
             ORDER BY hd.NgayLap DESC
         `, { 
-            MaKH: customerId,
-            Limit: limit
+            MaKH: customerId
         });
 
         return result.recordset;
     }
 
-    async searchCustomers(searchTerm, limit = 20) {
+    async searchCustomers(searchTerm) {
         const result = await this.execute(`
-            SELECT TOP (@Limit)
+            SELECT
                 kh.MaKH,
                 kh.HoTen,
                 kh.SoDT,
@@ -110,8 +110,7 @@ class CustomerRepository extends BaseRepository {
                 OR kh.Email LIKE @SearchTerm
                 OR kh.CCCD LIKE @SearchTerm
         `, { 
-            SearchTerm: `%${searchTerm}%`,
-            Limit: limit
+            SearchTerm: `%${searchTerm}%`
         });
 
         return result.recordset;

@@ -111,9 +111,13 @@ class ProductService {
         };
     }
 
-    async getProductCategories() {
-        const categories = await this.productRepository.getProductCategories();
-        return categories;
+    async getProductsByCategory(category) {
+        if (!category) {
+            throw new AppError('Loại sản phẩm không được để trống', 400);
+        }
+        
+        const products = await this.productRepository.getProductsByCategory(category);
+        return products;
     }
 
     async getLowStockAlert(branchId = null, threshold = 10) {

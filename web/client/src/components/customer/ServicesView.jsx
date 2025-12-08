@@ -16,11 +16,12 @@ import {
 } from '@components/common/icons';
 
 const ServicesView = () => {
-  const { user, pets: cachedPets, fetchPets } = useAuth();
+  const { user, pets: cachedPets, fetchPets, fetchAppointments } = useAuth();
   const navigate = useNavigate();
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [selectedService, setSelectedService] = useState(null);
   const [vaccines, setVaccines] = useState([{ id: 1, name: '' }]);
+  const [availableVaccines, setAvailableVaccines] = useState([]);
   const [selectedPackage, setSelectedPackage] = useState('');
   const [branches, setBranches] = useState([]);
   const [pets, setPets] = useState([]);
@@ -41,13 +42,15 @@ const ServicesView = () => {
   const loadInitialData = async () => {
     try {
       setLoading(true);
-      const [branchesResponse, petsData] = await Promise.all([
+      const [branchesResponse, petsData, vaccinesResponse] = await Promise.all([
         apiClient.get(ENDPOINTS.BRANCHES.LIST),
-        cachedPets ? Promise.resolve(cachedPets) : fetchPets()
+        cachedPets ? Promise.resolve(cachedPets) : fetchPets(),
+        apiClient.get(`${ENDPOINTS.PRODUCTS.CATEGORIES}?category=Vaccine`)
       ]);
       
       setBranches(branchesResponse.data?.data || branchesResponse.data || []);
       setPets(petsData || []);
+      setAvailableVaccines(vaccinesResponse.data?.data || vaccinesResponse.data || []);
     } catch (err) {
       console.error('Error loading data:', err);
       alert('Không thể tải dữ liệu. Vui lòng thử lại.');
@@ -163,6 +166,7 @@ const ServicesView = () => {
         const response = await serviceService.examinations.create(examData);
         if (response.success) {
           alert('Đặt lịch khám bệnh thành công!');
+          await fetchAppointments(true); // Refresh appointments
           setShowBookingModal(false);
         } else {
           alert(response.message || 'Đặt lịch thất bại');
@@ -180,6 +184,7 @@ const ServicesView = () => {
         const response = await serviceService.vaccinations.create(vaccData);
         if (response.success) {
           alert('Đặt lịch tiêm phòng thành công!');
+          await fetchAppointments(true); // Refresh appointments
           setShowBookingModal(false);
         } else {
           alert(response.message || 'Đặt lịch thất bại');
@@ -282,11 +287,15 @@ const ServicesView = () => {
                     disabled={loading}
                   >
                     <option value="">Chọn chi nhánh</option>
-                    {branches.map(branch => (
-                      <option key={branch.MaCN} value={branch.MaCN}>
-                        {branch.TenCN}
-                      </option>
-                    ))}
+                    {branches.map(branch => {
+                      // Extract city from address (last part after comma)
+                      const city = branch.DiaChi?.split(',').pop()?.trim() || '';
+                      return (
+                        <option key={branch.MaChiNhanh} value={branch.MaChiNhanh}>
+                          {branch.TenChiNhanh}{city ? ` - ${city}` : ''}
+                        </option>
+                      );
+                    })}
                   </select>
                 </div>
 
@@ -323,13 +332,11 @@ const ServicesView = () => {
                         </div>
                       ))}
                       <datalist id="vaccine-suggestions">
-                        <option value="Vaccine phòng dại (Rabies)" />
-                        <option value="Vaccine 5 bệnh (DHPPL)" />
-                        <option value="Vaccine 7 bệnh (DHPPI+LR)" />
-                        <option value="Vaccine Care (Canine)" />
-                        <option value="Vaccine Parvo" />
-                        <option value="Vaccine Distemper" />
-                        <option value="Vaccine Hepatitis" />
+                        {availableVaccines.map(vaccine => (
+                          <option key={vaccine.MaSP} value={vaccine.TenSP}>
+                            {vaccine.LoaiVaccine && ` - ${vaccine.LoaiVaccine}`}
+                          </option>
+                        ))}
                       </datalist>
                     </div>
                   </div>

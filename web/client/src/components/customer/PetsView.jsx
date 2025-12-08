@@ -6,7 +6,6 @@ import {
   PlusIcon,
   EditIcon,
   DeleteIcon,
-  CalendarIcon,
   XIcon,
   SaveIcon
 } from '@components/common/icons';
@@ -14,11 +13,22 @@ import {
 const PetsView = () => {
   const { user, pets: cachedPets, fetchPets } = useAuth();
   const [showAddForm, setShowAddForm] = useState(false);
+  const [showEditForm, setShowEditForm] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [selectedPet, setSelectedPet] = useState(null);
   const [pets, setPets] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const [newPet, setNewPet] = useState({
+    Ten: '',
+    Loai: '',
+    Giong: '',
+    GioiTinh: 'Đực',
+    NgaySinh: '',
+    TinhTrangSucKhoe: ''
+  });
+  const [editPet, setEditPet] = useState({
     Ten: '',
     Loai: '',
     Giong: '',
@@ -105,6 +115,75 @@ const PetsView = () => {
     }
   };
 
+  const handleEditClick = (pet) => {
+    setSelectedPet(pet);
+    setEditPet({
+      Ten: pet.TenThuCung,
+      Loai: pet.Loai,
+      Giong: pet.GiongLoai,
+      GioiTinh: pet.GioiTinh,
+      NgaySinh: pet.NgaySinh,
+      TinhTrangSucKhoe: pet.TinhTrang
+    });
+    setShowEditForm(true);
+  };
+
+  const handleEditPet = async () => {
+    if (!editPet.Ten || !editPet.Loai) {
+      alert('Vui lòng nhập tên và loài thú cưng');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const response = await customerService.pets.update(selectedPet.id, editPet);
+      if (response.success) {
+        alert('Cập nhật thú cưng thành công!');
+        setShowEditForm(false);
+        setSelectedPet(null);
+        // Force refresh pets from server
+        await fetchPets(true);
+      } else {
+        alert(response.message || 'Cập nhật thú cưng thất bại');
+      }
+    } catch (err) {
+      console.error('Error updating pet:', err);
+      alert(err.response?.data?.message || 'Có lỗi xảy ra khi cập nhật thú cưng');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDeleteClick = (pet) => {
+    setSelectedPet(pet);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleDeletePet = async () => {
+    setIsSaving(true);
+    try {
+      const response = await customerService.pets.delete(selectedPet.id);
+      if (response.success) {
+        alert('Xóa thú cưng thành công!');
+        setShowDeleteConfirm(false);
+        setSelectedPet(null);
+        // Force refresh pets from server
+        await fetchPets(true);
+      } else {
+        alert(response.message || 'Xóa thú cưng thất bại');
+      }
+    } catch (err) {
+      console.error('Error deleting pet:', err);
+      alert(err.response?.data?.message || 'Có lỗi xảy ra khi xóa thú cưng');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleEditInputChange = (field, value) => {
+    setEditPet(prev => ({ ...prev, [field]: value }));
+  };
+
   const calculateAge = (birthDate) => {
     const today = new Date();
     const birth = new Date(birthDate);
@@ -173,10 +252,16 @@ const PetsView = () => {
                   {getPetIcon(pet.Loai)}
                 </div>
                 <div className="flex gap-2">
-                  <button className="p-2 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors">
+                  <button 
+                    className="p-2 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+                    onClick={() => handleEditClick(pet)}
+                  >
                     <EditIcon size={16} />
                   </button>
-                  <button className="p-2 text-gray-400 hover:text-error-600 hover:bg-error-50 rounded-lg transition-colors">
+                  <button 
+                    className="p-2 text-gray-400 hover:text-error-600 hover:bg-error-50 rounded-lg transition-colors"
+                    onClick={() => handleDeleteClick(pet)}
+                  >
                     <DeleteIcon size={16} />
                   </button>
                 </div>
@@ -206,12 +291,6 @@ const PetsView = () => {
                   <span className="inline-flex items-center px-2 py-1 bg-success-100 text-success-700 rounded-full text-xs font-medium">{pet.TinhTrang}</span>
                 </div>
               </div>
-            </div>
-
-            <div className="px-6 py-3 bg-gray-50 border-t border-gray-200">
-              <button className="w-full flex items-center justify-center gap-2 py-2 text-primary-600 hover:text-primary-700 font-medium transition-colors">
-                <CalendarIcon size={16} /> Xem lịch sử
-              </button>
             </div>
           </div>
         ))}
@@ -319,6 +398,146 @@ const PetsView = () => {
               >
                 <SaveIcon size={18} /> {isSaving ? 'Đang lưu...' : 'Lưu thông tin'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Pet Modal */}
+      {showEditForm && selectedPet && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowEditForm(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <h3 className="text-xl font-bold text-gray-900">Chỉnh sửa thông tin thú cưng</h3>
+              <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors" onClick={() => setShowEditForm(false)}>
+                <XIcon size={20} />
+              </button>
+            </div>
+            
+            <div className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Tên thú cưng *</label>
+                  <input 
+                    type="text" 
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent" 
+                    placeholder="Nhập tên thú cưng"
+                    value={editPet.Ten}
+                    onChange={(e) => handleEditInputChange('Ten', e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Loài *</label>
+                  <select 
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    value={editPet.Loai}
+                    onChange={(e) => handleEditInputChange('Loai', e.target.value)}
+                  >
+                    <option value="">Chọn loài</option>
+                    <option value="Chó">Chó</option>
+                    <option value="Mèo">Mèo</option>
+                    <option value="Thỏ">Thỏ</option>
+                    <option value="Chim">Chim</option>
+                    <option value="Khác">Khác</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Giống</label>
+                  <input 
+                    type="text" 
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent" 
+                    placeholder="Nhập giống"
+                    value={editPet.Giong}
+                    onChange={(e) => handleEditInputChange('Giong', e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Giới tính</label>
+                  <select 
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    value={editPet.GioiTinh}
+                    onChange={(e) => handleEditInputChange('GioiTinh', e.target.value)}
+                  >
+                    <option value="Đực">Đực</option>
+                    <option value="Cái">Cái</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Ngày sinh</label>
+                  <input 
+                    type="date" 
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    value={editPet.NgaySinh}
+                    onChange={(e) => handleEditInputChange('NgaySinh', e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Tình trạng sức khỏe</label>
+                  <input 
+                    type="text" 
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent" 
+                    placeholder="Nhập tình trạng"
+                    value={editPet.TinhTrangSucKhoe}
+                    onChange={(e) => handleEditInputChange('TinhTrangSucKhoe', e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3 px-6 py-4 bg-gray-50 border-t border-gray-200">
+              <button 
+                className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors" 
+                onClick={() => setShowEditForm(false)}
+                disabled={isSaving}
+              >
+                Hủy
+              </button>
+              <button 
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={handleEditPet}
+                disabled={isSaving}
+              >
+                <SaveIcon size={18} /> {isSaving ? 'Đang lưu...' : 'Cập nhật'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && selectedPet && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowDeleteConfirm(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full" onClick={(e) => e.stopPropagation()}>
+            <div className="p-6">
+              <div className="flex items-center justify-center w-12 h-12 rounded-full bg-error-100 mx-auto mb-4">
+                <DeleteIcon size={24} className="text-error-600" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 text-center mb-2">Xác nhận xóa thú cưng</h3>
+              <p className="text-gray-600 text-center mb-6">
+                Bạn có chắc chắn muốn xóa <strong>{selectedPet.TenThuCung}</strong>? Hành động này không thể hoàn tác.
+              </p>
+              
+              <div className="flex gap-3">
+                <button 
+                  className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors" 
+                  onClick={() => setShowDeleteConfirm(false)}
+                  disabled={isSaving}
+                >
+                  Hủy
+                </button>
+                <button 
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-error-600 text-white rounded-lg hover:bg-error-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={handleDeletePet}
+                  disabled={isSaving}
+                >
+                  <DeleteIcon size={18} /> {isSaving ? 'Đang xóa...' : 'Xóa'}
+                </button>
+              </div>
             </div>
           </div>
         </div>

@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import { authService } from '@services/authService';
 import { customerService } from '@services/customerService';
+import { serviceService } from '@services/serviceService';
+import { reviewService } from '@services/reviewService';
 import { setAuthToken } from '@config/apiClient';
 
 const AuthContext = createContext(null);
@@ -18,6 +20,10 @@ const AUTH_ACTIONS = {
   UPDATE_USER_DATA: 'UPDATE_USER_DATA',
   UPDATE_PETS: 'UPDATE_PETS',
   UPDATE_SPENDING: 'UPDATE_SPENDING',
+  UPDATE_APPOINTMENTS: 'UPDATE_APPOINTMENTS',
+  UPDATE_VACCINATION_PACKAGES: 'UPDATE_VACCINATION_PACKAGES',
+  UPDATE_REVIEWS: 'UPDATE_REVIEWS',
+  UPDATE_ALL_REVIEWS: 'UPDATE_ALL_REVIEWS',
   CLEAR_ERROR: 'CLEAR_ERROR'
 };
 
@@ -29,6 +35,10 @@ const initialState = {
   isAuthenticated: false,
   pets: null, // Cache pets data
   spending: null, // Cache spending data
+  appointments: null, // Cache appointments data
+  vaccinationPackages: null, // Cache vaccination packages data
+  reviews: null, // Cache my reviews data
+  allReviews: null, // Cache all reviews data
   lastFetch: null // Track last fetch time
 };
 
@@ -104,6 +114,37 @@ const authReducer = (state, action) => {
       return {
         ...state,
         spending: action.payload,
+        user: {
+          ...state.user,
+          spending: action.payload // Also update in user object
+        },
+        lastFetch: Date.now()
+      };
+
+    case AUTH_ACTIONS.UPDATE_APPOINTMENTS:
+      return {
+        ...state,
+        appointments: action.payload,
+        lastFetch: Date.now()
+      };
+
+    case AUTH_ACTIONS.UPDATE_VACCINATION_PACKAGES:
+      return {
+        ...state,
+        vaccinationPackages: action.payload,
+        lastFetch: Date.now()
+      };
+
+    case AUTH_ACTIONS.UPDATE_REVIEWS:
+      return {
+        ...state,
+        reviews: action.payload,
+        lastFetch: Date.now()
+      };
+    case AUTH_ACTIONS.UPDATE_ALL_REVIEWS:
+      return {
+        ...state,
+        allReviews: action.payload,
         lastFetch: Date.now()
       };
 
@@ -221,6 +262,103 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Fetch appointments data with caching
+  const fetchAppointments = async (force = false) => {
+    try {
+      // Check if we have cached data and it's fresh
+      const isCacheValid = state.lastFetch && (Date.now() - state.lastFetch < 5 * 60 * 1000);
+      
+      if (!force && isCacheValid && state.appointments) {
+        return state.appointments; // Return cached data
+      }
+
+      // Get pets first
+      const petsData = await fetchPets();
+      if (!petsData || petsData.length === 0) {
+        dispatch({
+          type: AUTH_ACTIONS.UPDATE_APPOINTMENTS,
+          payload: []
+        });
+        return [];
+      }
+
+      // Get medical and vaccination history for all pets
+      const appointmentsPromises = petsData.map(async (pet) => {
+        try {
+          const [medicalHistory, vaccinationHistory] = await Promise.all([
+            customerService.pets.getMedicalHistory(pet.MaTC).catch(() => ({ data: [] })),
+            customerService.pets.getVaccinationHistory(pet.MaTC).catch(() => ({ data: [] }))
+          ]);
+
+          console.log(`Pet ${pet.Ten} (${pet.MaTC}) - Medical:`, medicalHistory.data?.length, medicalHistory.data);
+          console.log(`Pet ${pet.Ten} (${pet.MaTC}) - Vaccination:`, vaccinationHistory.data?.length, vaccinationHistory.data);
+
+          const medicalAppts = (medicalHistory.data || []).map(item => ({
+            id: `exam-${item.MaKB}`,
+            MaLichHen: `KB${item.MaKB}`,
+            type: 'examination',
+            NgayHen: item.NgayKham,
+            TenDichVu: 'Khám sức khỏe',
+            TenThuCung: pet.Ten,
+            LoaiThuCung: `${pet.Loai} ${pet.Giong}`,
+            TenChiNhanh: item.TenCN || 'Chưa cập nhật',
+            TenBacSi: item.TenBacSi || 'Chưa cập nhật',
+            TrieuChung: item.TrieuChung,
+            ChanDoan: item.ChanDoan,
+            NgayTaiKham: item.NgayTaiKham,
+            Thuoc: item.ChanDoan ? `Chẩn đoán: ${item.ChanDoan}` : 'Chưa cập nhật'
+          }));
+
+          const vaccinationAppts = (vaccinationHistory.data || []).map(item => ({
+            id: `vacc-${item.MaTP}`,
+            MaLichHen: `TP${item.MaTP}`,
+            type: 'vaccination',
+            NgayHen: item.NgayTiem,
+            TenDichVu: 'Tiêm phòng vắc-xin',
+            TenThuCung: pet.Ten,
+            LoaiThuCung: `${pet.Loai} ${pet.Giong}`,
+            TenChiNhanh: item.TenCN || 'Chưa cập nhật',
+            TenBacSi: item.TenBacSi || 'Chưa cập nhật',
+            GoiTiem: item.MaGoi ? {
+              MaGoi: item.MaGoi,
+              UuDai: item.UuDai || 0,
+              CacVacxin: item.Vaccines && item.Vaccines.length > 0 ? item.Vaccines.map(v => ({
+                TenVaccine: v.TenVaccine || 'Chưa cập nhật',
+                LieuLuong: v.LieuLuong || 'Chưa cập nhật'
+              })) : []
+            } : null,
+          }));
+
+          return [...medicalAppts, ...vaccinationAppts];
+        } catch (error) {
+          console.error(`Error loading appointments for pet ${pet.MaTC}:`, error);
+          return [];
+        }
+      });
+
+      const allAppointments = (await Promise.all(appointmentsPromises)).flat();
+      
+      console.log('Total appointments fetched:', allAppointments.length);
+
+      // Sort by date (most recent first)
+      const sortedAppointments = allAppointments
+        .filter(apt => apt.NgayHen)
+        .sort((a, b) => new Date(b.NgayHen) - new Date(a.NgayHen));
+
+      console.log('Sorted appointments:', sortedAppointments.length);
+
+      dispatch({
+        type: AUTH_ACTIONS.UPDATE_APPOINTMENTS,
+        payload: sortedAppointments
+      });
+
+      return sortedAppointments;
+    } catch (error) {
+      console.error('Error fetching appointments:', error);
+      return state.appointments || []; // Return cached data or empty array
+    }
+  };
+
   // Login function
   const login = async (credentials) => {
     dispatch({ type: AUTH_ACTIONS.LOGIN_START });
@@ -317,6 +455,96 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Update user profile
+  // Fetch vaccination packages data with caching
+  const fetchVaccinationPackages = async (force = false) => {
+    try {
+      // Check if we have cached data and it's fresh
+      const isCacheValid = state.lastFetch && (Date.now() - state.lastFetch < 5 * 60 * 1000);
+      
+      if (!force && isCacheValid && state.vaccinationPackages) {
+        return state.vaccinationPackages; // Return cached data
+      }
+
+      const response = await serviceService.vaccinationPackages.getAll();
+      console.log('Vaccination packages response:', response);
+      
+      // Handle different response structures
+      let packagesData;
+      if (response.success && response.data) {
+        packagesData = response.data.packages || response.data;
+      } else if (Array.isArray(response)) {
+        packagesData = response;
+      } else {
+        packagesData = response.data || response;
+      }
+
+      dispatch({
+        type: AUTH_ACTIONS.UPDATE_VACCINATION_PACKAGES,
+        payload: packagesData
+      });
+
+      return packagesData;
+    } catch (error) {
+      console.error('Error fetching vaccination packages:', error);
+      // Return empty array on error instead of cached data to show empty state
+      dispatch({
+        type: AUTH_ACTIONS.UPDATE_VACCINATION_PACKAGES,
+        payload: []
+      });
+      return [];
+    }
+  };
+
+  // Fetch reviews data with caching
+  const fetchReviews = async (force = false) => {
+    try {
+      // Check if we have cached data and it's fresh
+      const isCacheValid = state.lastFetch && (Date.now() - state.lastFetch < 5 * 60 * 1000);
+      
+      if (!force && isCacheValid && state.reviews) {
+        return state.reviews; // Return cached data
+      }
+
+      const response = await reviewService.getMyReviews();
+      const reviewsData = response.data || response;
+
+      dispatch({
+        type: AUTH_ACTIONS.UPDATE_REVIEWS,
+        payload: reviewsData
+      });
+
+      return reviewsData;
+    } catch (error) {
+      console.error('Error fetching reviews:', error);
+      return state.reviews || []; // Return cached data or empty array
+    }
+  };
+
+  // Fetch all reviews data with caching
+  const fetchAllReviews = async (force = false) => {
+    try {
+      // Check if we have cached data and it's fresh
+      const isCacheValid = state.lastFetch && (Date.now() - state.lastFetch < 5 * 60 * 1000);
+      
+      if (!force && isCacheValid && state.allReviews) {
+        return state.allReviews; // Return cached data
+      }
+
+      const response = await reviewService.getAllReviews();
+      const allReviewsData = response.data || response;
+
+      dispatch({
+        type: AUTH_ACTIONS.UPDATE_ALL_REVIEWS,
+        payload: allReviewsData
+      });
+
+      return allReviewsData;
+    } catch (error) {
+      console.error('Error fetching all reviews:', error);
+      return state.allReviews || []; // Return cached data or empty array
+    }
+  };
+
   const updateUserProfile = async (profileData) => {
     try {
       const response = await customerService.updateProfile(profileData);
@@ -342,6 +570,10 @@ export const AuthProvider = ({ children }) => {
     clearError,
     fetchUserData,
     fetchPets,
+    fetchAppointments,
+    fetchVaccinationPackages,
+    fetchReviews,
+    fetchAllReviews,
     updateUserProfile
   };
 

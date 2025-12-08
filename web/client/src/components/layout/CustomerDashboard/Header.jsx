@@ -13,7 +13,7 @@ const Header = ({ title }) => {
   const displayName = user?.TenDangNhap || 'User';
   const fullName = user?.HoTen || user?.TenDangNhap || 'User';
   const userEmail = user?.Email || '';
-  const membershipTier = user?.spending?.HangThanhVien || 'Cơ bản';
+  const membershipTier = user?.TenCapDo || 'Cơ bản';
   const userInitial = (user?.TenDangNhap || 'U').charAt(0).toUpperCase();
 
   useEffect(() => {

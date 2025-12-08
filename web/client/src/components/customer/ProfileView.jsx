@@ -417,23 +417,6 @@ const ProfileView = () => {
                 </div>
               )}
             </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Điểm tích lũy</label>
-              <p className="flex items-baseline gap-2">
-                <span className="text-2xl font-bold text-primary-600">
-                  {spending?.DiemTichLuy || profileData?.DiemTichLuy || 0}
-                </span>
-                <span className="text-sm text-gray-600">điểm</span>
-              </p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Hạng thành viên</label>
-              <span className="inline-flex items-center px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-sm font-semibold">
-                {spending?.HangThanhVien || profileData?.HangThanhVien || 'Cơ bản'}
-              </span>
-            </div>
           </div>
         </div>
       </div>

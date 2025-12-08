@@ -8,6 +8,7 @@ import {
   MinusIcon
 } from '@components/common/icons';
 import { customerService } from '@services/customerService';
+import { useAuth } from '@context/AuthContext';
 
 // Constants
 const TIERS = [
@@ -34,17 +35,8 @@ const TIERS = [
   }
 ];
 
-const MOCK_LOYALTY_DATA = {
-  totalPoints: 1250,
-  tier: 'Thân thiết',
-  tierColor: '#3B82F6',
-  nextTier: 'VIP',
-  yearlySpending: 6500000,
-  spendingToNextTier: 5500000,
-  spendingToMaintain: 3000000
-};
-
 const LoyaltyView = () => {
+  const { user } = useAuth();
   const [loyaltyData, setLoyaltyData] = useState(null);
   const [loyaltyHistory, setLoyaltyHistory] = useState([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
@@ -59,28 +51,33 @@ const LoyaltyView = () => {
       setError(null);
       
       try {
-        const [spendingData, historyData] = await Promise.all([
+        const [spendingResponse, historyResponse] = await Promise.all([
           customerService.getSpending(),
           customerService.getLoyaltyHistory()
         ]);
         
+        const spendingData = spendingResponse.data || spendingResponse;
+        const historyData = historyResponse.data || historyResponse;
+        
         // Map spending data to loyalty data format
+        const yearlySpending = Number(spendingData.ChiTieuNam) || 0;
+        const totalPoints = Number(user?.DiemLoyalty) || 0; // Get from AuthContext
+        const tier = user?.TenCapDo || 'Cơ bản'; // Get from AuthContext
+        
         setLoyaltyData({
-          totalPoints: spendingData.DiemTichLuy || 0,
-          tier: spendingData.HangThanhVien || 'Cơ bản',
-          tierColor: getTierColor(spendingData.HangThanhVien),
-          nextTier: getNextTier(spendingData.HangThanhVien),
-          yearlySpending: spendingData.ChiTieuNam || 0,
-          spendingToNextTier: calculateSpendingToNextTier(spendingData.ChiTieuNam, spendingData.HangThanhVien),
-          spendingToMaintain: getMaintainSpending(spendingData.HangThanhVien)
+          totalPoints: totalPoints,
+          tier: tier,
+          tierColor: getTierColor(tier),
+          nextTier: getNextTier(tier),
+          yearlySpending: yearlySpending,
+          spendingToNextTier: calculateSpendingToNextTier(yearlySpending, tier),
+          spendingToMaintain: getMaintainSpending(tier)
         });
         
         setLoyaltyHistory(historyData);
       } catch (err) {
         console.error('Error fetching loyalty data:', err);
         setError('Không thể tải dữ liệu tích điểm');
-        // Fallback to mock data
-        setLoyaltyData(MOCK_LOYALTY_DATA);
       } finally {
         setIsLoadingData(false);
         setIsLoadingHistory(false);
@@ -114,22 +111,30 @@ const LoyaltyView = () => {
     const nextTier = getNextTier(currentTier);
     if (!nextTier) return 0;
     
+    const spending = Number(currentSpending) || 0;
     const nextTierData = TIERS.find(t => t.name === nextTier);
-    return Math.max(0, nextTierData.minSpending - currentSpending);
+    if (!nextTierData) return 0;
+    
+    return Math.max(0, nextTierData.minSpending - spending);
   };
 
   const calculateProgress = useMemo(() => {
     if (!loyaltyData) return 0;
     
+    const yearlySpending = Number(loyaltyData.yearlySpending) || 0;
     const currentTierIndex = TIERS.findIndex(t => t.name === loyaltyData.tier);
     const currentTier = TIERS[currentTierIndex];
     const nextTier = TIERS[currentTierIndex + 1];
     
-    if (!nextTier) return 100;
+    if (!nextTier || !currentTier) return 100;
     
-    const spendingInCurrentTier = loyaltyData.yearlySpending - currentTier.minSpending;
+    const spendingInCurrentTier = yearlySpending - currentTier.minSpending;
     const spendingNeeded = nextTier.minSpending - currentTier.minSpending;
-    return (spendingInCurrentTier / spendingNeeded) * 100;
+    
+    if (spendingNeeded <= 0) return 100;
+    
+    const progress = (spendingInCurrentTier / spendingNeeded) * 100;
+    return Math.min(100, Math.max(0, progress));
   }, [loyaltyData]);
 
   const formatDate = (dateString) => {
@@ -137,9 +142,7 @@ const LoyaltyView = () => {
     return date.toLocaleDateString('vi-VN', {
       day: '2-digit',
       month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+      year: 'numeric'
     });
   };
 
@@ -199,12 +202,12 @@ const LoyaltyView = () => {
                 Tiến độ lên hạng {loyaltyData.nextTier || 'tối đa'}
               </span>
               <span className="text-xs text-gray-600">
-                Chi tiêu trong năm: <strong className="text-primary-600">{loyaltyData.yearlySpending.toLocaleString()} VNĐ</strong>
+                Chi tiêu trong năm: <strong className="text-primary-600">{(loyaltyData.yearlySpending || 0).toLocaleString()} VNĐ</strong>
               </span>
             </div>
             {loyaltyData.nextTier && (
               <span className="text-sm font-bold text-primary-600">
-                Còn {loyaltyData.spendingToNextTier.toLocaleString()} VNĐ
+                Còn {(loyaltyData.spendingToNextTier || 0).toLocaleString()} VNĐ
               </span>
             )}
           </div>
@@ -250,16 +253,6 @@ const LoyaltyView = () => {
               );
             })}
           </div>
-          
-          {/* Maintain tier info */}
-          {loyaltyData.tier !== 'Cơ bản' && (
-            <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-              <p className="text-xs text-gray-700">
-                💡 <strong>Giữ hạng {loyaltyData.tier}:</strong> Cần chi tiêu tối thiểu{' '}
-                <strong className="text-blue-600">{loyaltyData.spendingToMaintain.toLocaleString()} VNĐ/năm</strong>
-              </p>
-            </div>
-          )}
         </div>
       </div>
 
@@ -362,46 +355,31 @@ const LoyaltyView = () => {
                         <div className="flex items-center gap-2">
                           <ClockIcon size={16} className="text-gray-400" />
                           <span className="text-sm text-gray-900">
-                            {formatDate(history.NgayGiaoDich || history.createdAt)}
+                            {formatDate(history.NgayLap)}
                           </span>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
-                          history.LoaiGiaoDich === 'Tích điểm' || history.DiemThayDoi > 0
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-red-100 text-red-800'
-                        }`}>
-                          {history.LoaiGiaoDich || (history.DiemThayDoi > 0 ? 'Tích điểm' : 'Sử dụng điểm')}
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          Thanh toán hóa đơn
                         </span>
                       </td>
                       <td className="px-6 py-4">
                         <span className="text-sm text-gray-900">
-                          {history.MoTa || history.description || 'N/A'}
+                          {history.TenCN ? `Giao dịch tại ${history.TenCN}` : `Hóa đơn #${history.MaHD}`}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
                         <div className="flex items-center justify-center gap-1">
-                          {(history.DiemThayDoi || history.pointsChanged) > 0 ? (
-                            <>
-                              <PlusIcon size={16} className="text-green-600" />
-                              <span className="text-sm font-semibold text-green-600">
-                                {Math.abs(history.DiemThayDoi || history.pointsChanged)}
-                              </span>
-                            </>
-                          ) : (
-                            <>
-                              <MinusIcon size={16} className="text-red-600" />
-                              <span className="text-sm font-semibold text-red-600">
-                                {Math.abs(history.DiemThayDoi || history.pointsChanged)}
-                              </span>
-                            </>
-                          )}
+                          <PlusIcon size={16} className="text-green-600" />
+                          <span className="text-sm font-semibold text-green-600">
+                            {history.DiemTichLuy || 0}
+                          </span>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right">
                         <span className="text-sm font-medium text-gray-900">
-                          {(history.DiemConLai || history.remainingPoints || 0).toLocaleString()}
+                          {(history.TongTien || 0).toLocaleString()} VNĐ
                         </span>
                       </td>
                     </tr>

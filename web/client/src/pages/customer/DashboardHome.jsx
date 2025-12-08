@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@context/AuthContext';
 import CustomerDashboard from '@components/layout/CustomerDashboard/CustomerDashboard';
+import customerService from '@services/customerService';
 import { 
   PetIcon, 
   CalendarIcon, 
@@ -11,7 +12,7 @@ import {
 } from '@components/common/icons';
 
 const DashboardHome = () => {
-  const { user, pets: cachedPets, spending: cachedSpending, fetchPets, fetchUserData } = useAuth();
+  const { user, pets: cachedPets, spending: cachedSpending, appointments: cachedAppointments, fetchPets, fetchUserData, fetchAppointments } = useAuth();
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -19,8 +20,8 @@ const DashboardHome = () => {
   }, []);
 
   const loadDashboardData = async () => {
-    // If we have cached data, use it immediately
-    if (cachedPets && cachedSpending) {
+    // If we have all cached data, use it immediately
+    if (cachedPets && cachedSpending && cachedAppointments) {
       return;
     }
 
@@ -29,7 +30,8 @@ const DashboardHome = () => {
     try {
       await Promise.all([
         fetchPets(),
-        fetchUserData()
+        fetchUserData(),
+        fetchAppointments()
       ]);
     } catch (err) {
       console.error('Error loading dashboard data:', err);
@@ -64,12 +66,22 @@ const DashboardHome = () => {
   };
 
   const totalPets = cachedPets?.length || 0;
-  const upcomingAppointments = 0; // Sẽ update khi có API appointments
+  const appointments = cachedAppointments || [];
+  const upcomingAppointments = appointments.length;
   const loyaltyPoints = user?.DiemLoyalty || 0;
   const membershipTier = user?.TenCapDo || 'Cơ bản';
   const yearlySpending = cachedSpending?.ChiTieuNam || 0;
 
   const displayPets = cachedPets || [];
+
+  const formatDate = (dateString) => {
+    if (!dateString) return { day: '--', month: '--' };
+    const date = new Date(dateString);
+    return {
+      day: date.getDate(),
+      month: `Th${date.getMonth() + 1}`
+    };
+  };
 
   return (
     <CustomerDashboard>
@@ -97,7 +109,7 @@ const DashboardHome = () => {
               <div className="flex-1">
                 <h3 className="text-sm font-medium text-gray-600 mb-1">Lịch hẹn</h3>
                 <p className="text-3xl font-bold text-gray-900">{upcomingAppointments}</p>
-                <span className="text-xs text-gray-500">Sắp tới</span>
+                <span className="text-xs text-gray-500">Đã đặt</span>
               </div>
             </div>
           </div>
@@ -122,44 +134,47 @@ const DashboardHome = () => {
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <div className="flex items-center justify-between mb-6">
               <h2 className="flex items-center gap-2 text-lg font-bold text-gray-900">
-                <CalendarIcon size={20} /> Lịch hẹn sắp tới
+                <CalendarIcon size={20} /> Lịch hẹn gần đây
               </h2>
               <a href="/customer/appointments" className="text-sm text-primary-600 hover:text-primary-700 font-medium">
                 Xem tất cả →
               </a>
             </div>
             <div className="space-y-4">
-              <div className="flex gap-4 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                <div className="flex flex-col items-center justify-center px-4 py-2 bg-primary-100 text-primary-700 rounded-lg">
-                  <div className="text-2xl font-bold">15</div>
-                  <div className="text-xs">Th12</div>
+              {loading ? (
+                <div className="text-center py-8 text-gray-500">Đang tải...</div>
+              ) : appointments.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <CalendarIcon size={48} className="mx-auto mb-2 text-gray-300" />
+                  <p>Chưa có lịch hẹn nào</p>
                 </div>
-                <div className="flex-1">
-                  <h4 className="font-semibold text-gray-900 mb-2">Khám sức khỏe định kỳ</h4>
-                  <p className="flex items-center gap-2 text-sm text-gray-600 mb-1">
-                    <PetIcon size={14} /> Max - Chó Golden Retriever
-                  </p>
-                  <p className="flex items-center gap-2 text-sm text-gray-600">
-                    <MapPinIcon size={14} /> Chi nhánh Quận 1
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex gap-4 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                <div className="flex flex-col items-center justify-center px-4 py-2 bg-primary-100 text-primary-700 rounded-lg">
-                  <div className="text-2xl font-bold">20</div>
-                  <div className="text-xs">Th12</div>
-                </div>
-                <div className="flex-1">
-                  <h4 className="font-semibold text-gray-900 mb-2">Tiêm phòng văc-xin</h4>
-                  <p className="flex items-center gap-2 text-sm text-gray-600 mb-1">
-                    <PetIcon size={14} /> Luna - Mèo Ba Tư
-                  </p>
-                  <p className="flex items-center gap-2 text-sm text-gray-600">
-                    <MapPinIcon size={14} /> Chi nhánh Quận 3
-                  </p>
-                </div>
-              </div>
+              ) : (
+                appointments.slice(0, 2).map((apt, index) => {
+                  const { day, month } = formatDate(apt.NgayHen);
+                  return (
+                    <div key={index} className="flex gap-4 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                      <div className="flex flex-col items-center justify-center px-4 py-2 bg-primary-100 text-primary-700 rounded-lg">
+                        <div className="text-2xl font-bold">{day}</div>
+                        <div className="text-xs">{month}</div>
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-gray-900 mb-2">{apt.TenDichVu}</h4>
+                        <p className="flex items-center gap-2 text-sm text-gray-600 mb-1">
+                          <PetIcon size={14} /> {apt.TenThuCung} - {apt.LoaiThuCung}
+                        </p>
+                        {apt.TenChiNhanh && (
+                          <p className="flex items-center gap-2 text-sm text-gray-600">
+                            <MapPinIcon size={14} /> {apt.TenChiNhanh}
+                          </p>
+                        )}
+                        {apt.ChanDoan && (
+                          <p className="text-xs text-gray-500 mt-1">Chẩn đoán: {apt.ChanDoan}</p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
           </div>
 
