@@ -71,7 +71,7 @@ const LoginForm = () => {
         } else if (userRole === 'Quản lý chi nhánh') {
           redirectPath = '/branch-manager/dashboard';
         } else if (userRole === 'Quản lý công ty') {
-          redirectPath = '/admin/dashboard';
+          redirectPath = '/company-manager/dashboard';
         }
         
         navigate(redirectPath, { replace: true });
