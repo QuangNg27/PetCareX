@@ -11,6 +11,8 @@ import ServicesPage from '@pages/customer/ServicesPage';
 import VaccinationPackagesPage from '@pages/customer/VaccinationPackagesPage';
 import LoyaltyPage from '@pages/customer/LoyaltyPage';
 import ReviewsPage from '@pages/customer/ReviewsPage';
+import BranchManagerDashboard from '@pages/branch-manager/BranchManagerDashboard';
+import CompanyManagerDashboard from '@pages/company-manager/CompanyManagerDashboard';
 import './App.css';
 
 function App() {
@@ -32,6 +34,14 @@ function App() {
             <Route path="/customer/vaccination-packages" element={<VaccinationPackagesPage />} />
             <Route path="/customer/loyalty" element={<LoyaltyPage />} />
             <Route path="/customer/reviews" element={<ReviewsPage />} />
+            
+            {/* Branch Manager routes */}
+            <Route path="/branch-manager/dashboard" element={<BranchManagerDashboard />} />
+            <Route path="/preview/branch-manager" element={<BranchManagerDashboard />} />
+            
+            {/* Company Manager routes */}
+            <Route path="/company-manager/dashboard" element={<CompanyManagerDashboard />} />
+            <Route path="/preview/company-manager" element={<CompanyManagerDashboard />} />
             
             {/* Default redirect */}
             <Route path="/" element={<Navigate to="/login" replace />} />

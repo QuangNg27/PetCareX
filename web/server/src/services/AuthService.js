@@ -44,6 +44,15 @@ class AuthService {
             throw new AppError('Mật khẩu không đúng', 401);
         }
 
+        // Get employee branch info if this is an employee/manager account
+        let branchId = null;
+        if (account.MaNV) {
+            const employeeInfo = await this.authRepo.getEmployeeBranchInfo(account.MaNV);
+            if (employeeInfo) {
+                branchId = employeeInfo.MaCN;
+            }
+        }
+
         // Generate JWT tokens
         const accessToken = jwt.sign(
             { 
@@ -51,7 +60,8 @@ class AuthService {
                 username: account.TenDangNhap,
                 role: account.VaiTro,
                 customerId: account.MaKH,
-                employeeId: account.MaNV
+                employeeId: account.MaNV,
+                branchId: branchId
             },
             process.env.JWT_SECRET,
             { expiresIn: '24h' } // Access token: 24 hours
@@ -78,7 +88,8 @@ class AuthService {
                     TenDangNhap: account.TenDangNhap,
                     VaiTro: account.VaiTro,
                     MaKH: account.MaKH,
-                    MaNV: account.MaNV
+                    MaNV: account.MaNV,
+                    MaCN: branchId
                 }
             }
         };
