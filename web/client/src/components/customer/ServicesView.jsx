@@ -22,6 +22,8 @@ const ServicesView = () => {
   const [selectedService, setSelectedService] = useState(null);
   const [vaccines, setVaccines] = useState([{ id: 1, name: '' }]);
   const [availableVaccines, setAvailableVaccines] = useState([]);
+  const [branchServices, setBranchServices] = useState({}); // Store services by branch ID
+  const [filteredBranches, setFilteredBranches] = useState([]);
   const [selectedPackage, setSelectedPackage] = useState('');
   const [branches, setBranches] = useState([]);
   const [pets, setPets] = useState([]);
@@ -59,43 +61,6 @@ const ServicesView = () => {
     }
   };
 
-  // Danh sách gói tiêm đã đăng ký
-  const registeredPackages = [
-    {
-      id: 1,
-      name: 'Gói tiêm cơ bản (3 mũi) - Giảm 10%',
-      vaccines: [
-        { id: 1, name: 'Vaccine phòng dại (Rabies)', completed: true },
-        { id: 2, name: 'Vaccine 5 bệnh (DHPPL)', completed: true },
-        { id: 3, name: 'Vaccine Parvo', completed: false }
-      ]
-    },
-    {
-      id: 2,
-      name: 'Gói tiêm nâng cao (5 mũi) - Giảm 15%',
-      vaccines: [
-        { id: 1, name: 'Vaccine phòng dại (Rabies)', completed: false },
-        { id: 2, name: 'Vaccine 5 bệnh (DHPPL)', completed: false },
-        { id: 3, name: 'Vaccine 7 bệnh (DHPPI+LR)', completed: false },
-        { id: 4, name: 'Vaccine Care (Canine)', completed: false },
-        { id: 5, name: 'Vaccine Parvo', completed: false }
-      ]
-    },
-    {
-      id: 3,
-      name: 'Gói tiêm toàn diện (7 mũi) - Giảm 20%',
-      vaccines: [
-        { id: 1, name: 'Vaccine phòng dại (Rabies)', completed: false },
-        { id: 2, name: 'Vaccine 5 bệnh (DHPPL)', completed: false },
-        { id: 3, name: 'Vaccine 7 bệnh (DHPPI+LR)', completed: false },
-        { id: 4, name: 'Vaccine Care (Canine)', completed: false },
-        { id: 5, name: 'Vaccine Parvo', completed: false },
-        { id: 6, name: 'Vaccine Distemper', completed: false },
-        { id: 7, name: 'Vaccine Hepatitis', completed: false }
-      ]
-    }
-  ];
-
   const services = [
     {
       id: 1,
@@ -131,6 +96,37 @@ const ServicesView = () => {
       appointmentDate: ''
     });
     setShowBookingModal(true);
+    
+    // Filter branches that have this service
+    filterBranchesForService(service.id);
+  };
+
+  const filterBranchesForService = async (serviceId) => {
+    try {
+      // Load service availability for all branches
+      const branchPromises = branches.map(async (branch) => {
+        try {
+          const response = await serviceService.getByBranch(branch.MaChiNhanh);
+          const services = response.data?.services || response.services || [];
+          return {
+            branchId: branch.MaChiNhanh,
+            hasService: services.some(s => s.MaDV === serviceId)
+          };
+        } catch (err) {
+          return { branchId: branch.MaChiNhanh, hasService: false };
+        }
+      });
+      
+      const results = await Promise.all(branchPromises);
+      const availableBranchIds = results
+        .filter(r => r.hasService)
+        .map(r => r.branchId);
+      
+      setFilteredBranches(branches.filter(b => availableBranchIds.includes(b.MaChiNhanh)));
+    } catch (err) {
+      console.error('Error filtering branches:', err);
+      setFilteredBranches(branches); // Fallback to all branches
+    }
   };
 
   const handleInputChange = (field, value) => {
@@ -233,12 +229,14 @@ const ServicesView = () => {
             service.Color === 'green' ? 'border-green-200 bg-gradient-to-br from-green-50 to-green-100' :
             'border-gray-200 bg-white'
           }`}>
-            <div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3">{service.TenDichVu}</h3>
-              <p className="text-gray-600 mb-6">{service.MoTa}</p>
+            <div className="flex flex-col h-full">
+              <div className="flex-1">
+                <h3 className="text-xl font-bold text-gray-900 mb-3">{service.TenDichVu}</h3>
+                <p className="text-gray-600 mb-6">{service.MoTa}</p>
+              </div>
 
               <button 
-                className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                className="flex items-center justify-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors w-full"
                 onClick={() => handleBookService(service)}
               >
                 <CalendarIcon size={16} /> Đặt lịch
@@ -287,7 +285,10 @@ const ServicesView = () => {
                     disabled={loading}
                   >
                     <option value="">Chọn chi nhánh</option>
-                    {branches.map(branch => {
+                    {filteredBranches.length === 0 ? (
+                      <option value="" disabled>Không có chi nhánh cung cấp dịch vụ này</option>
+                    ) : (
+                      filteredBranches.map(branch => {
                       // Extract city from address (last part after comma)
                       const city = branch.DiaChi?.split(',').pop()?.trim() || '';
                       return (
@@ -295,7 +296,7 @@ const ServicesView = () => {
                           {branch.TenChiNhanh}{city ? ` - ${city}` : ''}
                         </option>
                       );
-                    })}
+                    }))}
                   </select>
                 </div>
 
