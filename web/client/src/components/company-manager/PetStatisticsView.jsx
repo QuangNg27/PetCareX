@@ -1,41 +1,47 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 
 const PetStatisticsView = () => {
   const [viewType, setViewType] = useState('species'); // species, breed
+  const [speciesData, setSpeciesData] = useState([]);
+  const [dogBreedsData, setDogBreedsData] = useState([]);
+  const [catBreedsData, setCatBreedsData] = useState([]);
 
-  // Mock data - Thống kê theo loài
-  const speciesData = [
-    { name: 'Chó', value: 3250, percentage: 65 },
-    { name: 'Mèo', value: 1500, percentage: 30 },
-    { name: 'Khác', value: 250, percentage: 5 },
-  ];
+  useEffect(() => {
+    const fetchSpeciesData = () => {
+      fetch("/mock_data/pet_stats/species.json")
+      .then(response => response.json())
+      .then(data => {
+        setSpeciesData(data);
+      }).catch(error => console.log(error));
+    };
 
-  // Mock data - Thống kê giống chó phổ biến
-  const dogBreedsData = [
-    { breed: 'Golden Retriever', count: 420 },
-    { breed: 'Poodle', count: 380 },
-    { breed: 'Corgi', count: 350 },
-    { breed: 'Husky', count: 310 },
-    { breed: 'Phú Quốc', count: 280 },
-    { breed: 'Bulldog', count: 250 },
-    { breed: 'Shiba Inu', count: 230 },
-    { breed: 'Beagle', count: 210 },
-    { breed: 'Chihuahua', count: 195 },
-    { breed: 'Khác', count: 625 },
-  ];
+    fetchSpeciesData();
+  }, []);
 
-  // Mock data - Thống kê giống mèo phổ biến
-  const catBreedsData = [
-    { breed: 'Mèo Ba Tư', count: 280 },
-    { breed: 'Mèo Anh lông ngắn', count: 260 },
-    { breed: 'Mèo Xiêm', count: 220 },
-    { breed: 'Mèo Munchkin', count: 180 },
-    { breed: 'Mèo Scottish Fold', count: 150 },
-    { breed: 'Mèo Bengal', count: 120 },
-    { breed: 'Mèo Maine Coon', count: 100 },
-    { breed: 'Khác', count: 190 },
-  ];
+  useEffect(() => {
+    const fetchCatBreedsData = () => {
+      fetch("/mock_data/pet_stats/cat_breeds.json")
+      .then(response => response.json())
+      .then(data => {
+        setCatBreedsData(data);
+      }).catch(error => console.log(error));
+    };
+
+    fetchCatBreedsData();
+  }, []);
+
+  useEffect(() => {
+    const fetchDogBreedsData = () => {
+      fetch("/mock_data/pet_stats/dog_breeds.json")
+      .then(response => response.json())
+      .then(data => {
+        setDogBreedsData(data);
+      }).catch(error => console.log(error));
+    };
+
+    fetchDogBreedsData();
+  }, []);
 
   const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 

@@ -1,46 +1,22 @@
-import React from 'react';
+import React, {useState, useEffect} from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 const TopServicesView = () => {
   // Mock data - Doanh thu theo loại dịch vụ (6 tháng gần nhất)
-  const monthlyServiceData = [
-    { 
-      month: '07/2024', 
-      khamBenh: 180000000,
-      tiemPhong: 120000000,
-      banHang: 80000000
-    },
-    { 
-      month: '08/2024', 
-      khamBenh: 200000000,
-      tiemPhong: 130000000,
-      banHang: 90000000
-    },
-    { 
-      month: '09/2024', 
-      khamBenh: 210000000,
-      tiemPhong: 140000000,
-      banHang: 100000000
-    },
-    { 
-      month: '10/2024', 
-      khamBenh: 230000000,
-      tiemPhong: 145000000,
-      banHang: 105000000
-    },
-    { 
-      month: '11/2024', 
-      khamBenh: 240000000,
-      tiemPhong: 155000000,
-      banHang: 115000000
-    },
-    { 
-      month: '12/2024', 
-      khamBenh: 260000000,
-      tiemPhong: 165000000,
-      banHang: 115000000
-    },
-  ];
+  const [monthlyServiceData, setMonthlyServiceData] = useState([]);
+
+  useEffect(() => {
+    const fetchMonthlyServiceData = () => {
+      fetch("/mock_data/top_service/monthly_service_data.json")
+      .then(response => response.json())
+      .then(data => {
+        console.log(data);
+        setMonthlyServiceData(data);
+      }).catch(error => console.log(error))
+    };
+
+    fetchMonthlyServiceData();
+  }, []);
 
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('vi-VN', {

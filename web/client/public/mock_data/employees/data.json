@@ -1,0 +1,96 @@
+[
+    { 
+      "id": 1, 
+      "name": "Nguyễn Văn A", 
+      "gender": "Nam", 
+      "dob": "1990-05-15",
+      "startDate": "2018-06-01",
+      "role": "Bác sĩ", 
+      "branch": "CN Quận 1", 
+      "salary": 15000000,
+      "transferHistory": [
+        { "date": "2020-01-10", "from": "CN Quận 3", "to": "CN Quận 1" },
+        { "date": "2018-06-01", "from": null, "to": "CN Quận 3" }
+      ]
+    },
+    { 
+      "id": 2, 
+      "name": "Trần Thị B", 
+      "gender": "Nữ", 
+      "dob": "1992-08-20",
+      "startDate": "2019-03-15",
+      "role": "Bác sĩ", 
+      "branch": "CN Quận 3", 
+      "salary": 14000000,
+      "transferHistory": [
+        { "date": "2019-03-15", "from": null, "to": "CN Quận 3" }
+      ]
+    },
+    { 
+      "id": 3, 
+      "name": "Lê Văn C", 
+      "gender": "Nam", 
+      "dob": "1995-12-05",
+      "startDate": "2021-02-10",
+      "role": "Nhân viên bán hàng", 
+      "branch": "CN Quận 1", 
+      "salary": 8000000,
+      "transferHistory": [
+        { "date": "2022-09-01", "from": "CN Tân Bình", "to": "CN Quận 1" },
+        { "date": "2021-02-10", "from": null, "to": "CN Tân Bình" }
+      ]
+    },
+    { 
+      "id": 4, 
+      "name": "Phạm Thị D", 
+      "gender": "Nữ", 
+      "dob": "1998-03-25",
+      "startDate": "2023-01-05",
+      "role": "Tiếp tân", 
+      "branch": "CN Tân Bình", 
+      "salary": 7000000,
+      "transferHistory": [
+        { "date": "2023-01-05", "from": null, "to": "CN Tân Bình" }
+      ]
+    },
+    { 
+      "id": 5, 
+      "name": "Hoàng Văn E", 
+      "gender": "Nam", 
+      "dob": "1988-11-30",
+      "startDate": "2017-04-10",
+      "role": "Bác sĩ", 
+      "branch": "CN Bình Thạnh", 
+      "salary": 16000000,
+      "transferHistory": [
+        { "date": "2021-07-20", "from": "CN Quận 1", "to": "CN Bình Thạnh" },
+        { "date": "2017-04-10", "from": null, "to": "CN Quận 1" }
+      ]
+    },
+    { 
+      "id": 6, 
+      "name": "Võ Thị F", 
+      "gender": "Nữ", 
+      "dob": "1996-07-18",
+      "startDate": "2022-05-15",
+      "role": "Nhân viên bán hàng", 
+      "branch": "CN Phú Nhuận", 
+      "salary": 8500000,
+      "transferHistory": [
+        { "date": "2022-05-15", "from": null, "to": "CN Phú Nhuận" }
+      ]
+    },
+    { 
+      "id": 7, 
+      "name": "Võ Thị J", 
+      "gender": "Nữ", 
+      "dob": "1996-07-18",
+      "startDate": "2022-05-15",
+      "role": "Nhân viên bán hàng", 
+      "branch": "CN Phú Nhuận", 
+      "salary": 8500000,
+      "transferHistory": [
+        { "date": "2022-05-15", "from": null, "to": "CN Phú Nhuận" }
+      ]
+    }
+]

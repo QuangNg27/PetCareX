@@ -74,6 +74,10 @@ const startServer = async () => {
     try {
         // Test database connection
         console.log('📊 Connecting to database...');
+        console.log('DB_USER:', process.env.DB_USER);
+        console.log('DB_PASSWORD:', process.env.DB_PASSWORD);
+        console.log('DB_HOST:', process.env.DB_HOST);
+        console.log('DB_NAME:', process.env.DB_NAME);
         await pool.connect();
         console.log('✅ Database connected successfully');
         

@@ -1,39 +1,33 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
 
 const SystemRevenueView = () => {
   const [selectedYear, setSelectedYear] = useState('2024');
   const [viewType, setViewType] = useState('total'); // total, branch
+  const [totalRevenueData, setTotalRevData] = useState([]);
+  const [branchRevenueData, setBranchRevData] = useState([]);
 
-  // Mock data - Doanh thu toàn hệ thống theo tháng
-  const totalRevenueData = [
-    { month: 'T1', revenue: 150000000 },
-    { month: 'T2', revenue: 180000000 },
-    { month: 'T3', revenue: 220000000 },
-    { month: 'T4', revenue: 195000000 },
-    { month: 'T5', revenue: 240000000 },
-    { month: 'T6', revenue: 280000000 },
-    { month: 'T7', revenue: 310000000 },
-    { month: 'T8', revenue: 295000000 },
-    { month: 'T9', revenue: 330000000 },
-    { month: 'T10', revenue: 350000000 },
-    { month: 'T11', revenue: 380000000 },
-    { month: 'T12', revenue: 420000000 },
-  ];
+  useEffect(() => {
+    const fetchTotalRevData = () => {
+      fetch("/mock_data/sys_rev/total_rev.json")
+        .then(response => response.json())
+        .then(data => setTotalRevData(data))
+        .catch(error => console.log(error));
+    };
 
-  // Mock data - Doanh thu theo chi nhánh
-  const branchRevenueData = [
-    { branch: 'CN Quận 1', revenue: 850000000, growth: 15.5 },
-    { branch: 'CN Quận 3', revenue: 720000000, growth: 12.3 },
-    { branch: 'CN Tân Bình', revenue: 680000000, growth: 18.7 },
-    { branch: 'CN Bình Thạnh', revenue: 620000000, growth: 10.2 },
-    { branch: 'CN Phú Nhuận', revenue: 580000000, growth: 14.8 },
-    { branch: 'CN Quận 7', revenue: 560000000, growth: 16.3 },
-    { branch: 'CN Thủ Đức', revenue: 540000000, growth: 20.5 },
-    { branch: 'CN Gò Vấp', revenue: 510000000, growth: 11.7 },
-    { branch: 'CN Quận 10', revenue: 480000000, growth: 13.2 },
-    { branch: 'CN Bình Tân', revenue: 450000000, growth: 9.8 },
-  ];
+    fetchTotalRevData(); 
+  }, []); 
+
+  useEffect(() => {
+    const fetchBranchRevData = () => {
+      fetch("/mock_data/sys_rev/branch_rev.json")
+        .then(response => response.json())
+        .then(data => setBranchRevData(data))
+        .catch(error => console.log(error));
+    };
+
+    fetchBranchRevData(); 
+  }, []); 
 
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('vi-VN', {
