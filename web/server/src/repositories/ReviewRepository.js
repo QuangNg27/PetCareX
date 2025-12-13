@@ -89,25 +89,7 @@ class ReviewRepository extends BaseRepository {
                     AVG(CAST(DiemChatLuong AS DECIMAL(3,2))) as DiemChatLuongTB,
                     AVG(CAST(ThaiDoNV AS DECIMAL(3,2))) as ThaiDoNVTB,
                     AVG(CAST(MucDoHaiLong AS DECIMAL(3,2))) as MucDoHaiLongTB,
-                    COUNT(*) as TongSoDanhGia,
-                    -- Phân bố điểm chất lượng
-                    COUNT(CASE WHEN DiemChatLuong = 5 THEN 1 END) as ChatLuong5Sao,
-                    COUNT(CASE WHEN DiemChatLuong = 4 THEN 1 END) as ChatLuong4Sao,
-                    COUNT(CASE WHEN DiemChatLuong = 3 THEN 1 END) as ChatLuong3Sao,
-                    COUNT(CASE WHEN DiemChatLuong = 2 THEN 1 END) as ChatLuong2Sao,
-                    COUNT(CASE WHEN DiemChatLuong = 1 THEN 1 END) as ChatLuong1Sao,
-                    -- Phân bố thái độ nhân viên
-                    COUNT(CASE WHEN ThaiDoNV = 5 THEN 1 END) as ThaiDo5Sao,
-                    COUNT(CASE WHEN ThaiDoNV = 4 THEN 1 END) as ThaiDo4Sao,
-                    COUNT(CASE WHEN ThaiDoNV = 3 THEN 1 END) as ThaiDo3Sao,
-                    COUNT(CASE WHEN ThaiDoNV = 2 THEN 1 END) as ThaiDo2Sao,
-                    COUNT(CASE WHEN ThaiDoNV = 1 THEN 1 END) as ThaiDo1Sao,
-                    -- Phân bố mức độ hài lòng
-                    COUNT(CASE WHEN MucDoHaiLong = 5 THEN 1 END) as HaiLong5Sao,
-                    COUNT(CASE WHEN MucDoHaiLong = 4 THEN 1 END) as HaiLong4Sao,
-                    COUNT(CASE WHEN MucDoHaiLong = 3 THEN 1 END) as HaiLong3Sao,
-                    COUNT(CASE WHEN MucDoHaiLong = 2 THEN 1 END) as HaiLong2Sao,
-                    COUNT(CASE WHEN MucDoHaiLong = 1 THEN 1 END) as HaiLong1Sao
+                    COUNT(*) as TongSoDanhGia
                 FROM Danh_gia
                 WHERE MaCN = @MaCN
             `;

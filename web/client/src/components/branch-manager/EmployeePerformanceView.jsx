@@ -4,40 +4,27 @@ import { useAuth } from '@context/AuthContext';
 
 const EmployeePerformanceView = () => {
   const { user } = useAuth();
-  const branchId = user?.MaCN || 1;
+  const branchId = user?.MaCN;
   
-  const [performanceData, setPerformanceData] = useState([
-    { MaNV: 1, HoTen: 'Trần Minh', ChucVu: 'Bác sĩ', SoLanKham: 145, SoLanTiem: 89 },
-    { MaNV: 2, HoTen: 'Lê Hương', ChucVu: 'Bác sĩ', SoLanKham: 138, SoLanTiem: 76 },
-    { MaNV: 3, HoTen: 'Nguyễn An', ChucVu: 'Bác sĩ', SoLanKham: 110, SoLanTiem: 62 },
-    { MaNV: 4, HoTen: 'Phạm Thu', ChucVu: 'Nhân viên bán hàng', SoDonHang: 125 },
-    { MaNV: 5, HoTen: 'Trương Mai', ChucVu: 'Nhân viên bán hàng', SoDonHang: 98 },
-    { MaNV: 6, HoTen: 'Hoàng Linh', ChucVu: 'Tiếp tân' },
-  ]);
+  const [performanceData, setPerformanceData] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [positionFilter, setPositionFilter] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [ratingStats, setRatingStats] = useState(null);
 
   useEffect(() => {
-    setLoading(false);
-  }, []);
+    fetchPerformance();
+    if (branchId) {
+      fetchRatingStats();
+    }
+  }, [branchId]);
 
   const fetchPerformance = async () => {
     try {
       setLoading(true);
-      // Mock data
-      const mockPerformance = [
-        { MaNV: 1, HoTen: 'Trần Minh', ChucVu: 'Bác sĩ', SoLanKham: 145, SoLanTiem: 89 },
-        { MaNV: 2, HoTen: 'Lê Hương', ChucVu: 'Bác sĩ', SoLanKham: 138, SoLanTiem: 76 },
-        { MaNV: 3, HoTen: 'Nguyễn An', ChucVu: 'Bác sĩ', SoLanKham: 110, SoLanTiem: 62 },
-        { MaNV: 4, HoTen: 'Phạm Thu', ChucVu: 'Nhân viên bán hàng', SoDonHang: 125 },
-        { MaNV: 5, HoTen: 'Trương Mai', ChucVu: 'Nhân viên bán hàng', SoDonHang: 98 },
-        { MaNV: 6, HoTen: 'Hoàng Linh', ChucVu: 'Tiếp tân' },
-      ];
-      setPerformanceData(mockPerformance);
-      // const data = await branchManagerService.getEmployeePerformance(branchId, startDate, endDate);
-      // setPerformanceData(data.data.performance || []);
+      const data = await branchManagerService.getEmployeePerformance();
+      console.log('Employee performance data:', data);
+      setPerformanceData(data.performance || []);
     } catch (error) {
       console.error('Lỗi khi tải hiệu suất nhân viên:', error);
     } finally {
@@ -45,32 +32,31 @@ const EmployeePerformanceView = () => {
     }
   };
 
+  const fetchRatingStats = async () => {
+    try {
+      const response = await branchManagerService.getBranchRatingStats(branchId);
+      console.log('Rating stats:', response);
+      setRatingStats(response.data);
+    } catch (error) {
+      console.error('Lỗi khi tải thống kê đánh giá:', error);
+    }
+  };
+
   const getFilteredData = () => {
-    return performanceData.filter(emp => 
-      emp.HoTen.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  };
-
-  const getTopDoctors = () => {
-    return [...performanceData]
-      .filter(emp => emp.ChucVu === 'Bác sĩ')
-      .sort((a, b) => ((b.SoLanKham || 0) + (b.SoLanTiem || 0)) - ((a.SoLanKham || 0) + (a.SoLanTiem || 0)))
-      .slice(0, 3);
-  };
-
-  const getTopSalesmen = () => {
-    return [...performanceData]
-      .filter(emp => emp.ChucVu === 'Nhân viên bán hàng')
-      .sort((a, b) => (b.SoDonHang || 0) - (a.SoDonHang || 0))
-      .slice(0, 3);
+    return performanceData.filter(emp => {
+      const matchesName = emp.HoTen.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesPosition = positionFilter === '' || emp.ChucVu === positionFilter;
+      return matchesName && matchesPosition;
+    });
   };
 
   const getAverageRating = () => {
-    return 4.6; // Mock: Điểm đánh giá chung cho chi nhánh
+    if (!ratingStats) return 0;
+    return parseFloat(ratingStats.DiemTongTB || 0).toFixed(1);
   };
 
   const getTotalReviews = () => {
-    return performanceData.length * 15; // Mock: giả sử mỗi nhân viên có trung bình 15 đánh giá
+    return ratingStats?.TongSoDanhGia || 0;
   };
 
   return (
@@ -83,8 +69,15 @@ const EmployeePerformanceView = () => {
       <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg shadow p-6">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-lg font-semibold text-gray-800 mb-2">Điểm đánh giá chung</h3>
-            <p className="text-sm text-gray-600">Đánh giá trung bình từ khách hàng cho toàn bộ nhân viên</p>
+            <h3 className="text-lg font-semibold text-gray-800 mb-2">Điểm đánh giá chi nhánh</h3>
+            <p className="text-sm text-gray-600">Đánh giá từ khách hàng</p>
+            {ratingStats && (
+              <div className="mt-3 space-y-1">
+                <p className="text-xs text-gray-600">Chất lượng dịch vụ: <span className="font-semibold">{ratingStats.DiemChatLuongTB?.toFixed(1) || 0}/5</span></p>
+                <p className="text-xs text-gray-600">Thái độ nhân viên: <span className="font-semibold">{ratingStats.ThaiDoNVTB?.toFixed(1) || 0}/5</span></p>
+                <p className="text-xs text-gray-600">Mức độ hài lòng: <span className="font-semibold">{ratingStats.MucDoHaiLongTB?.toFixed(1) || 0}/5</span></p>
+              </div>
+            )}
           </div>
           <div className="text-center">
             <div className="flex items-center gap-2 mb-1">
@@ -92,7 +85,7 @@ const EmployeePerformanceView = () => {
               <span className="text-5xl font-bold text-gray-900">{getAverageRating()}</span>
             </div>
             <p className="text-sm text-gray-500">
-              Dựa trên {getTotalReviews()} đánh giá
+              {getTotalReviews() > 0 ? `${getTotalReviews()} đánh giá` : 'Chưa có đánh giá'}
             </p>
           </div>
         </div>
@@ -100,8 +93,8 @@ const EmployeePerformanceView = () => {
 
       {/* Filters */}
       <div className="bg-white rounded-lg shadow p-4">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div>
+        <div className="flex items-end gap-4">
+          <div className="flex-1">
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Tìm kiếm nhân viên
             </label>
@@ -113,104 +106,29 @@ const EmployeePerformanceView = () => {
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
-
-          <div>
+          <div className="w-48">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Từ ngày
+              Chức vụ
             </label>
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
+            <select
+              value={positionFilter}
+              onChange={(e) => setPositionFilter(e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Đến ngày
-            </label>
-            <input
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
-
-          <div className="flex items-end">
-            <button
-              onClick={fetchPerformance}
-              className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
-              Xem báo cáo
-            </button>
+              <option value="">Tất cả</option>
+              <option value="Bác sĩ">Bác sĩ</option>
+              <option value="Bán hàng">Bán hàng</option>
+              <option value="Tiếp tân">Tiếp tân</option>
+            </select>
           </div>
+          <button
+            onClick={fetchPerformance}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors whitespace-nowrap"
+          >
+            Làm mới
+          </button>
         </div>
       </div>
-
-      {/* Top Performers */}
-      {performanceData.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Top Bác sĩ */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">Top 3 Bác sĩ xuất sắc</h3>
-            <div className="space-y-3">
-              {getTopDoctors().map((emp, index) => (
-                <div 
-                  key={emp.MaNV} 
-                  className={`p-4 rounded-lg flex items-center gap-4 ${
-                    index === 0 ? 'bg-yellow-50 border-2 border-yellow-400' :
-                    index === 1 ? 'bg-gray-50 border-2 border-gray-400' :
-                    'bg-orange-50 border-2 border-orange-400'
-                  }`}
-                >
-                  <p className="text-3xl">
-                    {index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉'}
-                  </p>
-                  <div className="flex-1">
-                    <p className="text-sm font-semibold text-gray-900">
-                      {emp.HoTen}
-                    </p>
-                    <p className="text-xs text-gray-600 mt-1">
-                      {emp.SoLanKham} lần khám • {emp.SoLanTiem} lần tiêm
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Top Nhân viên bán hàng */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">Top 3 Nhân viên bán hàng xuất sắc</h3>
-            <div className="space-y-3">
-              {getTopSalesmen().map((emp, index) => (
-                <div 
-                  key={emp.MaNV} 
-                  className={`p-4 rounded-lg flex items-center gap-4 ${
-                    index === 0 ? 'bg-yellow-50 border-2 border-yellow-400' :
-                    index === 1 ? 'bg-gray-50 border-2 border-gray-400' :
-                    'bg-orange-50 border-2 border-orange-400'
-                  }`}
-                >
-                  <p className="text-3xl">
-                    {index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉'}
-                  </p>
-                  <div className="flex-1">
-                    <p className="text-sm font-semibold text-gray-900">
-                      {emp.HoTen}
-                    </p>
-                    <p className="text-xs text-gray-600 mt-1">
-                      {emp.SoDonHang} đơn hàng
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Performance Table */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
@@ -226,7 +144,7 @@ const EmployeePerformanceView = () => {
         ) : (
           <div className="overflow-x-auto max-h-96 overflow-y-auto">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50 sticky top-0">
+              <thead className="bg-gray-50 sticky top-0 z-10">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Nhân viên
@@ -262,13 +180,13 @@ const EmployeePerformanceView = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
-                      {emp.ChucVu === 'Bác sĩ' ? (emp.SoLanKham || 0) : '-'}
+                      {emp.SoLuotKhamBenh || 0}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
-                      {emp.ChucVu === 'Bác sĩ' ? (emp.SoLanTiem || 0) : '-'}
+                      {emp.SoLuotTiemPhong || 0}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900 font-semibold">
-                      {emp.ChucVu === 'Nhân viên bán hàng' ? (emp.SoDonHang || 0) : '-'}
+                      {emp.SoDonHang || 0}
                     </td>
                   </tr>
                 ))}

@@ -1,12 +1,38 @@
 import React, { useState } from 'react';
 import { branchManagerService } from '@services/branchManagerService';
 import { SearchIcon, ClockIcon, FileTextIcon } from '@components/common/icons';
+import { useAuth } from '@context/AuthContext';
 
 const PetHistoryView = () => {
+  const { user } = useAuth();
+  const branchId = user?.MaCN;
   const [petId, setPetId] = useState('');
-  const [petHistory, setPetHistory] = useState(null);
+  const [medicalHistory, setMedicalHistory] = useState([]);
+  const [vaccinationHistory, setVaccinationHistory] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [expandedVaccRows, setExpandedVaccRows] = useState(new Set());
+  const [expandedMedRows, setExpandedMedRows] = useState(new Set());
+
+  const toggleVaccRow = (index) => {
+    const newExpanded = new Set(expandedVaccRows);
+    if (newExpanded.has(index)) {
+      newExpanded.delete(index);
+    } else {
+      newExpanded.add(index);
+    }
+    setExpandedVaccRows(newExpanded);
+  };
+
+  const toggleMedRow = (index) => {
+    const newExpanded = new Set(expandedMedRows);
+    if (newExpanded.has(index)) {
+      newExpanded.delete(index);
+    } else {
+      newExpanded.add(index);
+    }
+    setExpandedMedRows(newExpanded);
+  };
 
   const handleSearch = async () => {
     if (!petId) {
@@ -14,44 +40,30 @@ const PetHistoryView = () => {
       return;
     }
 
+    if (!branchId) {
+      setError('Không xác định được chi nhánh');
+      return;
+    }
+
     try {
       setLoading(true);
       setError('');
       
-      // Mock data
-      const mockHistory = {
-        pet: {
-          MaTC: petId,
-          Ten: 'Lucky',
-          Loai: 'Chó',
-          Giong: 'Golden Retriever',
-          GioiTinh: 'Đực',
-          NgaySinh: '2020-05-15',
-          TenChuNhan: 'Nguyễn Văn A',
-          SoDT: '0901234567'
-        },
-        medicalHistory: [
-          { MaKB: 1, NgayKham: '2024-12-01', TrieuChung: 'Ho, sốt nhẹ', ChanDoan: 'Viêm đường hô hấp', TenBacSi: 'BS. Trần Minh', ChiPhi: 250000 },
-          { MaKB: 2, NgayKham: '2024-11-15', TrieuChung: 'Tiêu chảy', ChanDoan: 'Rối loạn tiêu hóa', TenBacSi: 'BS. Lê Hương', ChiPhi: 180000 },
-          { MaKB: 3, NgayKham: '2024-10-20', TrieuChung: 'Khám định kỳ', ChanDoan: 'Khỏe mạnh', TenBacSi: 'BS. Trần Minh', ChiPhi: 150000 },
-          { MaKB: 4, NgayKham: '2024-09-10', TrieuChung: 'Da ngứa, rụng lông', ChanDoan: 'Viêm da dị ứng', TenBacSi: 'BS. Nguyễn An', ChiPhi: 320000 },
-          { MaKB: 5, NgayKham: '2024-08-05', TrieuChung: 'Sưng chân', ChanDoan: 'Nhiễm trùng vết thương', TenBacSi: 'BS. Lê Hương', ChiPhi: 280000 },
-        ],
-        vaccinationHistory: [
-          { MaTP: 1, NgayTiem: '2024-12-05', TenVacXin: 'Vaccine dại', LoaiVacXin: 'Phòng bệnh dại', TenBacSi: 'BS. Nguyễn An', NgayTaiKham: '2025-12-05', TrangThai: 'Đã tiêm' },
-          { MaTP: 2, NgayTiem: '2024-11-10', TenVacXin: 'Vaccine 7 bệnh', LoaiVacXin: 'Phòng bệnh tổng hợp', TenBacSi: 'BS. Trần Minh', NgayTaiKham: '2025-11-10', TrangThai: 'Đã tiêm' },
-          { MaTP: 3, NgayTiem: '2024-06-15', TenVacXin: 'Vaccine dại', LoaiVacXin: 'Phòng bệnh dại', TenBacSi: 'BS. Lê Hương', NgayTaiKham: '2025-06-15', TrangThai: 'Đã tiêm' },
-          { MaTP: 4, NgayTiem: '2024-05-20', TenVacXin: 'Vaccine 5 bệnh', LoaiVacXin: 'Phòng bệnh tổng hợp', TenBacSi: 'BS. Nguyễn An', NgayTaiKham: null, TrangThai: 'Đã tiêm' },
-        ]
-      };
+      const [medicalData, vaccinationData] = await Promise.all([
+        branchManagerService.getPetMedicalHistory(petId, branchId),
+        branchManagerService.getPetVaccinationHistory(petId, branchId)
+      ]);
       
-      setPetHistory(mockHistory);
+      setMedicalHistory(medicalData.data || []);
+      setVaccinationHistory(vaccinationData.data || []);
       
-      // const data = await branchManagerService.getPetHistory(petId);
-      // setPetHistory(data.data);
+      if (medicalData.data.length === 0 && vaccinationData.data.length === 0) {
+        setError('Không tìm thấy lịch sử khám hoặc tiêm phòng tại chi nhánh này');
+      }
     } catch (err) {
-      setError('Không tìm thấy thông tin thú cưng');
-      setPetHistory(null);
+      setError('Không tìm thấy thông tin thú cưng tại chi nhánh này');
+      setMedicalHistory([]);
+      setVaccinationHistory([]);
     } finally {
       setLoading(false);
     }
@@ -90,48 +102,24 @@ const PetHistoryView = () => {
         )}
       </div>
 
-      {/* Pet Information */}
-      {petHistory && (
+      {/* Medical History */}
+      {(medicalHistory.length > 0 || vaccinationHistory.length > 0) && (
         <>
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">Thông tin thú cưng</h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div>
-                <p className="text-sm text-gray-600">Tên</p>
-                <p className="font-semibold text-gray-900">{petHistory.pet?.Ten}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Loại</p>
-                <p className="font-semibold text-gray-900">{petHistory.pet?.Loai}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Giống</p>
-                <p className="font-semibold text-gray-900">{petHistory.pet?.Giong}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Tuổi</p>
-                <p className="font-semibold text-gray-900">
-                  {petHistory.pet?.NgaySinh 
-                    ? Math.floor((new Date() - new Date(petHistory.pet.NgaySinh)) / (365.25 * 24 * 60 * 60 * 1000)) + ' tuổi'
-                    : 'N/A'}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Medical History */}
           <div className="bg-white rounded-lg shadow overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-200">
               <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
                 <FileTextIcon className="h-5 w-5" />
-                Lịch sử khám bệnh
+                Lịch sử khám bệnh tại chi nhánh
               </h3>
             </div>
-            {petHistory.medicalHistory && petHistory.medicalHistory.length > 0 ? (
+            {medicalHistory.length > 0 ? (
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12">
+                        
+                      </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Ngày khám
                       </th>
@@ -144,31 +132,76 @@ const PetHistoryView = () => {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Bác sĩ
                       </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Số thuốc
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {petHistory.medicalHistory.map((record, index) => (
-                      <tr key={index} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {new Date(record.NgayKham).toLocaleDateString('vi-VN')}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-500">
-                          {record.TrieuChung || 'N/A'}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-900">
-                          {record.ChanDoan || 'N/A'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {record.TenBacSi || 'N/A'}
-                        </td>
-                      </tr>
+                    {medicalHistory.map((record, index) => (
+                      <React.Fragment key={index}>
+                        <tr 
+                          className="hover:bg-gray-50 cursor-pointer transition-colors"
+                          onClick={() => toggleMedRow(index)}
+                        >
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            <svg 
+                              className={`h-5 w-5 transform transition-transform ${expandedMedRows.has(index) ? 'rotate-90' : ''}`}
+                              fill="none" 
+                              viewBox="0 0 24 24" 
+                              stroke="currentColor"
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {new Date(record.NgayKham).toLocaleDateString('vi-VN')}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-500">
+                            {record.TrieuChung || 'N/A'}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-900">
+                            {record.ChanDoan || 'N/A'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {record.TenBacSi || 'N/A'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                              {record.ThuocDaDung?.length || 0} loại
+                            </span>
+                          </td>
+                        </tr>
+                        {expandedMedRows.has(index) && (
+                          <tr>
+                            <td colSpan="6" className="px-6 py-4 bg-green-50">
+                              <div className="pl-12">
+                                <h4 className="text-sm font-semibold text-gray-700 mb-2">Danh sách thuốc đã dùng:</h4>
+                                <div className="flex flex-wrap gap-2">
+                                  {record.ThuocDaDung && record.ThuocDaDung.length > 0 ? 
+                                    record.ThuocDaDung.map((thuoc, tIdx) => (
+                                      <span 
+                                        key={tIdx}
+                                        className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800"
+                                      >
+                                        {thuoc.TenThuoc}
+                                      </span>
+                                    )) : 
+                                    <span className="text-sm text-gray-500">Không có thuốc</span>
+                                  }
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
                     ))}
                   </tbody>
                 </table>
               </div>
             ) : (
               <div className="p-8 text-center text-gray-500">
-                <p>Chưa có lịch sử khám bệnh</p>
+                <p>Chưa có lịch sử khám bệnh tại chi nhánh này</p>
               </div>
             )}
           </div>
@@ -178,113 +211,96 @@ const PetHistoryView = () => {
             <div className="px-6 py-4 border-b border-gray-200">
               <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
                 <ClockIcon className="h-5 w-5" />
-                Lịch sử tiêm chủng
+                Lịch sử tiêm chủng tại chi nhánh
               </h3>
             </div>
-            {petHistory.vaccinationHistory && petHistory.vaccinationHistory.length > 0 ? (
+            {vaccinationHistory.length > 0 ? (
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12">
+                        
+                      </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Ngày tiêm
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Vắc-xin
+                        Số vắc-xin
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Loại
+                        Bác sĩ
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Bác sĩ thực hiện
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Trạng thái
+                        Chi nhánh
                       </th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {petHistory.vaccinationHistory.map((record, index) => (
-                      <tr key={index} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {new Date(record.NgayTiem).toLocaleDateString('vi-VN')}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {record.TenVacXin}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {record.LoaiVacXin}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {record.TenBacSi || 'N/A'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {record.TrangThai || 'N/A'}
-                        </td>
-                      </tr>
+                    {vaccinationHistory.map((record, index) => (
+                      <React.Fragment key={index}>
+                        <tr 
+                          className="hover:bg-gray-50 cursor-pointer transition-colors"
+                          onClick={() => toggleVaccRow(index)}
+                        >
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            <svg 
+                              className={`h-5 w-5 transform transition-transform ${expandedVaccRows.has(index) ? 'rotate-90' : ''}`}
+                              fill="none" 
+                              viewBox="0 0 24 24" 
+                              stroke="currentColor"
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {new Date(record.NgayTiem).toLocaleDateString('vi-VN')}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                              {record.Vaccines?.length || 0} loại
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {record.TenBacSi || 'N/A'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {record.TenCN || 'N/A'}
+                          </td>
+                        </tr>
+                        {expandedVaccRows.has(index) && (
+                          <tr>
+                            <td colSpan="5" className="px-6 py-4 bg-blue-50">
+                              <div className="pl-12">
+                                <h4 className="text-sm font-semibold text-gray-700 mb-2">Danh sách vắc-xin đã tiêm:</h4>
+                                <div className="flex flex-wrap gap-2">
+                                  {record.Vaccines && record.Vaccines.length > 0 ? 
+                                    record.Vaccines.map((vac, vIdx) => (
+                                      <span 
+                                        key={vIdx}
+                                        className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800"
+                                      >
+                                        {vac.TenVaccine}
+                                      </span>
+                                    )) : 
+                                    <span className="text-sm text-gray-500">Không có thông tin</span>
+                                  }
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
                     ))}
                   </tbody>
                 </table>
               </div>
             ) : (
               <div className="p-8 text-center text-gray-500">
-                <p>Chưa có lịch sử tiêm chủng</p>
+                <p>Chưa có lịch sử tiêm chủng tại chi nhánh này</p>
               </div>
             )}
           </div>
-
-          {/* Vaccination Packages */}
-          {petHistory.vaccinationPackages && petHistory.vaccinationPackages.length > 0 && (
-            <div className="bg-white rounded-lg shadow overflow-hidden">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <h3 className="text-lg font-semibold text-gray-800">Gói tiêm chủng</h3>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Tên gói
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Ngày đăng ký
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Số mũi
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Đã tiêm
-                      </th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Giá gói
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {petHistory.vaccinationPackages.map((pkg, index) => (
-                      <tr key={index} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          {pkg.TenGoi}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {new Date(pkg.NgayDangKy).toLocaleDateString('vi-VN')}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {pkg.SoMui}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {pkg.DaTiem || 0}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
-                          {pkg.GiaGoi?.toLocaleString('vi-VN')} VNĐ
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
         </>
       )}
     </div>

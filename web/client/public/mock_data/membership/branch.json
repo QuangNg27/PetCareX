@@ -1,0 +1,7 @@
+[
+    { "branch": "CN Quận 1", "coban": 520, "thanthiet": 380, "vip": 180 },
+    { "branch": "CN Quận 3", "coban": 480, "thanthiet": 360, "vip": 140 },
+    { "branch": "CN Tân Bình", "coban": 450, "thanthiet": 340, "vip": 130 },
+    { "branch": "CN Bình Thạnh", "coban": 510, "thanthiet": 370, "vip": 150 },
+    { "branch": "CN Phú Nhuận", "coban": 490, "thanthiet": 350, "vip": 150 }
+]

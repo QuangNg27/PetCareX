@@ -1,22 +1,33 @@
-import React from 'react';
+import React, {useState, useEffect} from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 
 const MembershipStatusView = () => {
-  // Mock data - Tình hình hội viên
-  const membershipData = [
-    { type: 'Cơ bản', count: 2450, percentage: 49, color: '#94a3b8' },
-    { type: 'Thân thiết', count: 1800, percentage: 36, color: '#3b82f6' },
-    { type: 'VIP', count: 750, percentage: 15, color: '#f59e0b' },
-  ];
+  const [membershipData, setMembershipData] = useState([]);
+  const [branchMembershipData, setBranchMembershipData] = useState([]);
 
-  // Mock data - Thống kê theo chi nhánh
-  const branchMembershipData = [
-    { branch: 'CN Quận 1', coban: 520, thanthiet: 380, vip: 180 },
-    { branch: 'CN Quận 3', coban: 480, thanthiet: 360, vip: 140 },
-    { branch: 'CN Tân Bình', coban: 450, thanthiet: 340, vip: 130 },
-    { branch: 'CN Bình Thạnh', coban: 510, thanthiet: 370, vip: 150 },
-    { branch: 'CN Phú Nhuận', coban: 490, thanthiet: 350, vip: 150 },
-  ];
+  useEffect(() => {
+      const fetchMembershipData = () => {
+        fetch("/mock_data/membership/base.json")
+        .then(response => response.json())
+        .then(data => {
+          setMembershipData(data);
+        }).catch(error => console.log(error));
+      };
+  
+      fetchMembershipData();
+  }, []);
+
+  useEffect(() => {
+    const fetchBranchMembershipData = () => {
+      fetch("/mock_data/membership/branch.json")
+      .then(response => response.json())
+      .then(data => {
+        setBranchMembershipData(data);
+      }).catch(error => console.log(error));
+    };
+
+    fetchBranchMembershipData();
+  }, []);
 
   const totalMembers = membershipData.reduce((sum, item) => sum + item.count, 0);
 

@@ -5,38 +5,26 @@ import { EditIcon, SaveIcon, XIcon } from '@components/common/icons';
 
 const ServiceManagementView = () => {
   const { user } = useAuth();
-  const branchId = user?.MaCN || 1;
+  const branchId = user?.MaCN;
   
-  const [services, setServices] = useState([
-    { MaDV: 1, TenDV: 'Khám tổng quát', LoaiDV: 'Khám bệnh', MoTa: 'Khám sức khỏe tổng quát cho thú cưng', GiaDichVu: 200000, GiaApDung: 180000, TrangThai: 'Hoạt động' },
-    { MaDV: 2, TenDV: 'Tiêm phòng cơ bản', LoaiDV: 'Tiêm phòng', MoTa: 'Tiêm các loại vắc-xin cơ bản', GiaDichVu: 150000, GiaApDung: 150000, TrangThai: 'Hoạt động' },
-    { MaDV: 3, TenDV: 'Spa thú cưng', LoaiDV: 'Spa', MoTa: 'Tắm, cắt tỉa lông, vệ sinh', GiaDichVu: 300000, GiaApDung: 250000, TrangThai: 'Hoạt động' },
-    { MaDV: 4, TenDV: 'Phẫu thuật nhỏ', LoaiDV: 'Phẫu thuật', MoTa: 'Các ca phẫu thuật nhỏ', GiaDichVu: 2000000, GiaApDung: 2000000, TrangThai: 'Hoạt động' },
-    { MaDV: 5, TenDV: 'Nha khoa', LoaiDV: 'Khám bệnh', MoTa: 'Làm sạch răng, nhổ răng', GiaDichVu: 500000, GiaApDung: 450000, TrangThai: 'Tạm dừng' },
-  ]);
-  const [loading, setLoading] = useState(false);
+  const [services, setServices] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [editingService, setEditingService] = useState(null);
   const [editForm, setEditForm] = useState({});
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    setLoading(false);
-  }, []);
+    if (branchId) {
+      fetchServices();
+    }
+  }, [branchId]);
 
   const fetchServices = async () => {
     try {
       setLoading(true);
-      // Mock data
-      const mockServices = [
-        { MaDV: 1, TenDV: 'Khám tổng quát', LoaiDV: 'Khám bệnh', MoTa: 'Khám sức khỏe tổng quát cho thú cưng', GiaDichVu: 200000, GiaApDung: 180000, TrangThai: 'Hoạt động' },
-        { MaDV: 2, TenDV: 'Tiêm phòng cơ bản', LoaiDV: 'Tiêm phòng', MoTa: 'Tiêm các loại vắc-xin cơ bản', GiaDichVu: 150000, GiaApDung: 150000, TrangThai: 'Hoạt động' },
-        { MaDV: 3, TenDV: 'Spa thú cưng', LoaiDV: 'Spa', MoTa: 'Tắm, cắt tỉa lông, vệ sinh', GiaDichVu: 300000, GiaApDung: 250000, TrangThai: 'Hoạt động' },
-        { MaDV: 4, TenDV: 'Phẫu thuật nhỏ', LoaiDV: 'Phẫu thuật', MoTa: 'Các ca phẫu thuật nhỏ', GiaDichVu: 2000000, GiaApDung: 2000000, TrangThai: 'Hoạt động' },
-        { MaDV: 5, TenDV: 'Nha khoa', LoaiDV: 'Khám bệnh', MoTa: 'Làm sạch răng, nhổ răng', GiaDichVu: 500000, GiaApDung: 450000, TrangThai: 'Tạm dừng' },
-      ];
-      setServices(mockServices);
-      // const data = await branchManagerService.getBranchServices(branchId);
-      // setServices(data.data.services || []);
+      const data = await branchManagerService.getBranchServices(branchId);
+      console.log('Services data:', data);
+      setServices(data.services || []);
     } catch (error) {
       console.error('Lỗi khi tải danh sách dịch vụ:', error);
     } finally {
@@ -44,37 +32,30 @@ const ServiceManagementView = () => {
     }
   };
 
-  const handleEdit = (service) => {
-    setEditingService(service.MaDV);
-    setEditForm({
-      TrangThai: service.TrangThai || 'Hoạt động'
-    });
-  };
+  const handleToggleStatus = async (service) => {
+    const newStatus = service.TrangThai === 'Hoạt động' ? 'Tạm dừng' : 'Hoạt động';
+    
+    const confirmed = window.confirm(
+      `Bạn có chắc muốn ${newStatus === 'Hoạt động' ? 'kích hoạt' : 'tạm dừng'} dịch vụ "${service.TenDV}"?`
+    );
 
-  const handleCancel = () => {
-    setEditingService(null);
-    setEditForm({});
-  };
+    if (!confirmed) return;
 
-  const handleSave = async (serviceId) => {
     try {
       setSaving(true);
-      await branchManagerService.updateBranchService(branchId, serviceId, editForm);
+      await branchManagerService.updateServiceStatus(branchId, service.MaDV, newStatus);
       
       // Update local state
       setServices(services.map(s => 
-        s.MaDV === serviceId 
-          ? { ...s, ...editForm }
+        s.MaDV === service.MaDV 
+          ? { ...s, TrangThai: newStatus }
           : s
       ));
       
-      setEditingService(null);
-      setEditForm({});
-      
-      alert('Cập nhật dịch vụ thành công!');
+      alert(`Cập nhật trạng thái dịch vụ thành công!`);
     } catch (error) {
-      console.error('Lỗi khi cập nhật dịch vụ:', error);
-      alert('Có lỗi xảy ra khi cập nhật dịch vụ');
+      console.error('Lỗi khi cập nhật trạng thái dịch vụ:', error);
+      alert('Có lỗi xảy ra khi cập nhật trạng thái dịch vụ');
     } finally {
       setSaving(false);
     }
@@ -100,7 +81,7 @@ const ServiceManagementView = () => {
       {/* Info Card */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <p className="text-sm text-blue-800">
-          💡 Bạn có thể chỉnh sửa trạng thái của dịch vụ tại chi nhánh này.
+          💡 Danh sách các dịch vụ hiện có tại chi nhánh này và giá áp dụng hiện tại.
         </p>
       </div>
 
@@ -118,13 +99,16 @@ const ServiceManagementView = () => {
         ) : (
           <div className="overflow-x-auto max-h-96 overflow-y-auto">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+              <thead className="bg-gray-50 sticky top-0 z-10">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Mã DV
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Tên dịch vụ
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Giá
                   </th>
                   <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Trạng thái
@@ -135,70 +119,41 @@ const ServiceManagementView = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {services.map((service) => {
-                  const isEditing = editingService === service.MaDV;
-                  
-                  return (
-                    <tr key={service.MaDV} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {service.MaDV}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {service.TenDV}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        {isEditing ? (
-                          <select
-                            value={editForm.TrangThai}
-                            onChange={(e) => setEditForm({ ...editForm, TrangThai: e.target.value })}
-                            className="px-3 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                          >
-                            <option value="Hoạt động">Hoạt động</option>
-                            <option value="Tạm dừng">Tạm dừng</option>
-                          </select>
-                        ) : (
-                          <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            service.TrangThai === 'Hoạt động' 
-                              ? 'bg-green-100 text-green-800' 
-                              : 'bg-gray-100 text-gray-800'
-                          }`}>
-                            {service.TrangThai || 'Hoạt động'}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
-                        {isEditing ? (
-                          <div className="flex items-center justify-center gap-2">
-                            <button
-                              onClick={() => handleSave(service.MaDV)}
-                              disabled={saving}
-                              className="text-green-600 hover:text-green-900 disabled:text-gray-400"
-                              title="Lưu"
-                            >
-                              <SaveIcon className="h-5 w-5" />
-                            </button>
-                            <button
-                              onClick={handleCancel}
-                              disabled={saving}
-                              className="text-red-600 hover:text-red-900 disabled:text-gray-400"
-                              title="Hủy"
-                            >
-                              <XIcon className="h-5 w-5" />
-                            </button>
-                          </div>
-                        ) : (
-                          <button
-                            onClick={() => handleEdit(service)}
-                            className="text-blue-600 hover:text-blue-900"
-                            title="Chỉnh sửa"
-                          >
-                            <EditIcon className="h-5 w-5" />
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
+                {services.map((service) => (
+                  <tr key={service.MaDV} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {service.MaDV}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {service.TenDV}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
+                      {service.Gia ? service.Gia.toLocaleString('vi-VN') + ' ₫' : 'N/A'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                      <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                        service.TrangThai === 'Hoạt động' 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-gray-100 text-gray-800'
+                      }`}>
+                        {service.TrangThai}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                      <button
+                        onClick={() => handleToggleStatus(service)}
+                        disabled={saving}
+                        className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+                          service.TrangThai === 'Hoạt động'
+                            ? 'bg-red-100 text-red-700 hover:bg-red-200'
+                            : 'bg-green-100 text-green-700 hover:bg-green-200'
+                        } disabled:opacity-50 disabled:cursor-not-allowed`}
+                      >
+                        {service.TrangThai === 'Hoạt động' ? 'Tạm dừng' : 'Kích hoạt'}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
@@ -206,13 +161,13 @@ const ServiceManagementView = () => {
       </div>
 
       {/* Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-3 gap-4">
         <div className="bg-white rounded-lg shadow p-6">
           <p className="text-sm text-gray-600">Tổng số dịch vụ</p>
           <p className="text-3xl font-bold text-blue-600 mt-2">{services.length}</p>
         </div>
         <div className="bg-white rounded-lg shadow p-6">
-          <p className="text-sm text-gray-600">Dịch vụ hoạt động</p>
+          <p className="text-sm text-gray-600">Dịch vứ hoạt động</p>
           <p className="text-3xl font-bold text-green-600 mt-2">
             {services.filter(s => s.TrangThai === 'Hoạt động').length}
           </p>

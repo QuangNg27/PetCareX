@@ -290,9 +290,6 @@ export const AuthProvider = ({ children }) => {
             customerService.pets.getVaccinationHistory(pet.MaTC).catch(() => ({ data: [] }))
           ]);
 
-          console.log(`Pet ${pet.Ten} (${pet.MaTC}) - Medical:`, medicalHistory.data?.length, medicalHistory.data);
-          console.log(`Pet ${pet.Ten} (${pet.MaTC}) - Vaccination:`, vaccinationHistory.data?.length, vaccinationHistory.data);
-
           const medicalAppts = (medicalHistory.data || []).map(item => ({
             id: `exam-${item.MaKB}`,
             MaLichHen: `KB${item.MaKB}`,
@@ -338,14 +335,10 @@ export const AuthProvider = ({ children }) => {
 
       const allAppointments = (await Promise.all(appointmentsPromises)).flat();
       
-      console.log('Total appointments fetched:', allAppointments.length);
-
       // Sort by date (most recent first)
       const sortedAppointments = allAppointments
         .filter(apt => apt.NgayHen)
         .sort((a, b) => new Date(b.NgayHen) - new Date(a.NgayHen));
-
-      console.log('Sorted appointments:', sortedAppointments.length);
 
       dispatch({
         type: AUTH_ACTIONS.UPDATE_APPOINTMENTS,
@@ -466,7 +459,6 @@ export const AuthProvider = ({ children }) => {
       }
 
       const response = await serviceService.vaccinationPackages.getAll();
-      console.log('Vaccination packages response:', response);
       
       // Handle different response structures
       let packagesData;

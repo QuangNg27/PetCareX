@@ -2,10 +2,10 @@ const BaseRepository = require('./BaseRepository');
 
 class ProductRepository extends BaseRepository {
     async getAllProducts(filters = {}) {
-        const { category, search, limit = 50, offset = 0 } = filters;
+        const { category, search, offset = 0 } = filters;
         
         let whereClause = 'WHERE 1=1';
-        const params = { Offset: offset, Limit: limit };
+        const params = { Offset: offset };
 
         if (category) {
             whereClause += ' AND sp.LoaiSP = @LoaiSP';
@@ -34,7 +34,6 @@ class ProductRepository extends BaseRepository {
                     AND NgayApDung <= CAST(GETDATE() AS DATE)
                 )
             ${whereClause}
-            OFFSET @Offset ROWS FETCH NEXT @Limit ROWS ONLY
         `, params);
 
         return result.recordset;
@@ -91,7 +90,7 @@ class ProductRepository extends BaseRepository {
             SELECT 
                 spcn.MaCN,
                 cn.TenCN,
-                spcn.SLTonKho,
+                spcn.SLTonKho
             FROM San_pham_chi_nhanh spcn
             JOIN Chi_nhanh cn ON spcn.MaCN = cn.MaCN
             ${whereClause}
@@ -99,6 +98,47 @@ class ProductRepository extends BaseRepository {
         `, params);
 
         return branchId ? result.recordset[0] : result.recordset;
+    }
+
+    // Lấy sản phẩm theo chi nhánh kèm tồn kho
+    async getProductsByBranch(branchId, filters = {}) {
+        const { category, search } = filters;
+        
+        let whereClause = 'WHERE spcn.MaCN = @MaCN';
+        const params = { MaCN: branchId };
+
+        if (category) {
+            whereClause += ' AND sp.LoaiSP = @LoaiSP';
+            params.LoaiSP = category;
+        }
+
+        if (search) {
+            whereClause += ' AND (sp.TenSP LIKE @Search OR sp.MaSP LIKE @Search)';
+            params.Search = `%${search}%`;
+        }
+
+        const result = await this.execute(`
+            SELECT 
+                sp.MaSP,
+                sp.TenSP,
+                sp.LoaiSP,
+                sp.LoaiVaccine,
+                sp.NgaySX,
+                spcn.SLTonKho,
+                spcn.MaCN,
+                (
+                    SELECT TOP 1 gsp.SoTien
+                    FROM Gia_san_pham gsp
+                    WHERE gsp.MaSP = sp.MaSP
+                    AND gsp.NgayApDung <= CAST(GETDATE() AS DATE)
+                    ORDER BY gsp.NgayApDung DESC
+                ) as GiaHienTai
+            FROM San_pham_chi_nhanh spcn
+            JOIN San_pham sp ON spcn.MaSP = sp.MaSP
+            ${whereClause}
+        `, params);
+
+        return result.recordset;
     }
 
     async updateProductPrice(productId, price, effectiveDate) {
@@ -109,19 +149,6 @@ class ProductRepository extends BaseRepository {
         });
         
         return true;
-    }
-
-    async updateProductPrice(productId, price, effectiveDate) {
-        const result = await this.execute(`
-            SELECT 
-                gsp.NgayApDung,
-                gsp.SoTien
-            FROM Gia_san_pham gsp
-            WHERE gsp.MaSP = @MaSP
-            ORDER BY gsp.NgayApDung DESC
-        `, { MaSP: productId });
-
-        return result.recordset;
     }
 
     async updateInventory(productId, branchId, newQuantity) {

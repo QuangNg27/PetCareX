@@ -5,23 +5,17 @@ import { SearchIcon, UserIcon } from '@components/common/icons';
 
 const EmployeesView = () => {
   const { user } = useAuth();
-  const branchId = user?.MaCN || 1; // Default to 1 for preview
+  const branchId = user?.MaCN;
   
-  // Mock data - set immediately
-  const [employees, setEmployees] = useState([
-    { MaNhanVien: 1, HoTen: 'Nguyễn Văn A', NgaySinh: '1990-05-15', GioiTinh: 'Nam', ChucVu: 'Bác sĩ', Luong: 15000000, NgayVaoLam: '2020-01-10' },
-    { MaNhanVien: 2, HoTen: 'Trần Thị B', NgaySinh: '1992-08-20', GioiTinh: 'Nữ', ChucVu: 'Y tá', Luong: 8000000, NgayVaoLam: '2021-03-15' },
-    { MaNhanVien: 3, HoTen: 'Lê Văn C', NgaySinh: '1988-12-03', GioiTinh: 'Nam', ChucVu: 'Bác sĩ', Luong: 18000000, NgayVaoLam: '2019-07-01' },
-    { MaNhanVien: 4, HoTen: 'Phạm Thị D', NgaySinh: '1995-03-25', GioiTinh: 'Nữ', ChucVu: 'Nhân viên bán hàng', Luong: 7000000, NgayVaoLam: '2022-05-20' },
-    { MaNhanVien: 5, HoTen: 'Hoàng Văn E', NgaySinh: '1985-11-10', GioiTinh: 'Nam', ChucVu: 'Quản lý chi nhánh', Luong: 25000000, NgayVaoLam: '2018-02-01' },
-  ]);
-  const [loading, setLoading] = useState(false);
+  const [employees, setEmployees] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
 
   useEffect(() => {
-    // Mock data already loaded, no need to fetch
-    setLoading(false);
+    if (branchId) {
+      fetchEmployees();
+    }
   }, [branchId, roleFilter]);
 
   const fetchEmployees = async () => {
@@ -30,19 +24,11 @@ const EmployeesView = () => {
       const filters = {};
       if (roleFilter) filters.role = roleFilter;
       
-      // Mock data
-      const mockData = [
-        { MaNhanVien: 1, HoTen: 'Nguyễn Văn A', NgaySinh: '1990-05-15', GioiTinh: 'Nam', ChucVu: 'Bác sĩ', Luong: 15000000, NgayVaoLam: '2020-01-10' },
-        { MaNhanVien: 2, HoTen: 'Trần Thị B', NgaySinh: '1992-08-20', GioiTinh: 'Nữ', ChucVu: 'Y tá', Luong: 8000000, NgayVaoLam: '2021-03-15' },
-        { MaNhanVien: 3, HoTen: 'Lê Văn C', NgaySinh: '1988-12-03', GioiTinh: 'Nam', ChucVu: 'Bác sĩ', Luong: 18000000, NgayVaoLam: '2019-07-01' },
-        { MaNhanVien: 4, HoTen: 'Phạm Thị D', NgaySinh: '1995-03-25', GioiTinh: 'Nữ', ChucVu: 'Nhân viên bán hàng', Luong: 7000000, NgayVaoLam: '2022-05-20' },
-        { MaNhanVien: 5, HoTen: 'Hoàng Văn E', NgaySinh: '1985-11-10', GioiTinh: 'Nam', ChucVu: 'Quản lý chi nhánh', Luong: 25000000, NgayVaoLam: '2018-02-01' },
-      ];
-      setEmployees(roleFilter ? mockData.filter(e => e.ChucVu === roleFilter) : mockData);
-      // const data = await branchManagerService.getEmployees(branchId, filters);
-      // setEmployees(data.data.employees || []);
+      const data = await branchManagerService.getEmployees(branchId, filters);
+      setEmployees(data.data.employees || []);
     } catch (error) {
       console.error('Lỗi khi tải danh sách nhân viên:', error);
+      setEmployees([]);
     } finally {
       setLoading(false);
     }
@@ -103,7 +89,7 @@ const EmployeesView = () => {
         ) : (
           <div className="overflow-x-auto max-h-96 overflow-y-auto">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+              <thead className="bg-gray-50 sticky top-0 z-10">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Mã NV

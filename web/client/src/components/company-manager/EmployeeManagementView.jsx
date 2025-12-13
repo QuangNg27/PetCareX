@@ -1,6 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import ConfirmDialog from '../layout/ConfirmOverlay/confirmationBox';
+import { employeeSchema } from './employeeSchema';
 
 const EmployeeManagementView = () => {
+  const baseUrl = import.meta.env.VITE_API_BASE_URL;
+
   const [searchTerm, setSearchTerm] = useState('');
   const [filterBranch, setFilterBranch] = useState('all');
   const [filterRole, setFilterRole] = useState('all');
@@ -8,91 +14,43 @@ const EmployeeManagementView = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
+  const [employees, setEmployeeData] = useState([]);
 
-  // Mock data
-  const employees = [
-    { 
-      id: 1, 
-      name: 'Nguyễn Văn A', 
-      gender: 'Nam', 
-      dob: '1990-05-15',
-      startDate: '2018-06-01',
-      role: 'Bác sĩ', 
-      branch: 'CN Quận 1', 
-      salary: 15000000,
-      transferHistory: [
-        { date: '2020-01-10', from: 'CN Quận 3', to: 'CN Quận 1' },
-        { date: '2018-06-01', from: null, to: 'CN Quận 3' },
-      ]
-    },
-    { 
-      id: 2, 
-      name: 'Trần Thị B', 
-      gender: 'Nữ', 
-      dob: '1992-08-20',
-      startDate: '2019-03-15',
-      role: 'Bác sĩ', 
-      branch: 'CN Quận 3', 
-      salary: 14000000,
-      transferHistory: [
-        { date: '2019-03-15', from: null, to: 'CN Quận 3' },
-      ]
-    },
-    { 
-      id: 3, 
-      name: 'Lê Văn C', 
-      gender: 'Nam', 
-      dob: '1995-12-05',
-      startDate: '2021-02-10',
-      role: 'Nhân viên bán hàng', 
-      branch: 'CN Quận 1', 
-      salary: 8000000,
-      transferHistory: [
-        { date: '2022-09-01', from: 'CN Tân Bình', to: 'CN Quận 1' },
-        { date: '2021-02-10', from: null, to: 'CN Tân Bình' },
-      ]
-    },
-    { 
-      id: 4, 
-      name: 'Phạm Thị D', 
-      gender: 'Nữ', 
-      dob: '1998-03-25',
-      startDate: '2023-01-05',
-      role: 'Tiếp tân', 
-      branch: 'CN Tân Bình', 
-      salary: 7000000,
-      transferHistory: [
-        { date: '2023-01-05', from: null, to: 'CN Tân Bình' },
-      ]
-    },
-    { 
-      id: 5, 
-      name: 'Hoàng Văn E', 
-      gender: 'Nam', 
-      dob: '1988-11-30',
-      startDate: '2017-04-10',
-      role: 'Bác sĩ', 
-      branch: 'CN Bình Thạnh', 
-      salary: 16000000,
-      transferHistory: [
-        { date: '2021-07-20', from: 'CN Quận 1', to: 'CN Bình Thạnh' },
-        { date: '2017-04-10', from: null, to: 'CN Quận 1' },
-      ]
-    },
-    { 
-      id: 6, 
-      name: 'Võ Thị F', 
-      gender: 'Nữ', 
-      dob: '1996-07-18',
-      startDate: '2022-05-15',
-      role: 'Nhân viên bán hàng', 
-      branch: 'CN Phú Nhuận', 
-      salary: 8500000,
-      transferHistory: [
-        { date: '2022-05-15', from: null, to: 'CN Phú Nhuận' },
-      ]
-    },
-  ];
+  const [showDialog, setShowDialog] = useState(false);
+  const [confirmed, setConfirmed] = useState(false);
+  const [deleteId, setDeleteId] = useState(null);
+
+  useEffect(() => {
+    const fetchEmployeesData = () => {
+      fetch("/mock_data/employees/data.json")
+      .then(response => response.json())
+      .then(data => {
+        setEmployeeData(data);
+      }).catch(error => console.log(error));
+    };
+
+    fetchEmployeesData();
+  }, []);
+
+  const removeEmployees = (id) => {
+  fetch(`${baseUrl}/company-manager/employees/delete/${id}`, {
+    method: "DELETE", 
+  })
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error(`Failed to delete employee: ${response.status}`);
+      }
+
+      setEmployeeData((prevData) =>
+        prevData.filter((employee) => employee.id !== id)
+      );
+
+      console.log(`Deleted employee ${id} successfully.`);
+    })
+    .catch((error) => {
+      console.error("Delete failed:", error);
+    });
+  };
 
   const branches = ['CN Quận 1', 'CN Quận 3', 'CN Tân Bình', 'CN Bình Thạnh', 'CN Phú Nhuận'];
   const roles = ['Bác sĩ', 'Nhân viên bán hàng', 'Tiếp tân', 'Quản lý chi nhánh'];
@@ -104,24 +62,110 @@ const EmployeeManagementView = () => {
     return matchSearch && matchBranch && matchRole;
   });
 
-  const formatCurrency = (value) => {
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND',
-      minimumFractionDigits: 0,
-    }).format(value);
-  };
+  //////////////////////// EDIT and ADD
+
+  const { register, handleSubmit, formState: { errors }, reset } = useForm({
+    resolver: zodResolver(employeeSchema),
+    mode: "onSubmit",
+  });
+
+  useEffect(() => {
+  if (showEditModal && selectedEmployee) {
+    // Populate for editing
+    reset({
+      fullName: selectedEmployee.name,
+      gender: selectedEmployee.gender,
+      dob: selectedEmployee.dob,
+      entryDate: selectedEmployee.startDate,
+      role: selectedEmployee.role,
+      branch: selectedEmployee.branch,
+      salary: selectedEmployee.salary,
+    });
+  } else if (showAddModal) {
+    // Clear form for adding
+    reset({
+      fullName: "",
+      gender: "",
+      dob: "",
+      entryDate: "",
+      role: "",
+      branch: "",
+      salary: 0,
+    })
+  }
+}, [showAddModal, showEditModal, selectedEmployee, reset]);
+
+  const editFormRef = useRef();
 
   const handleEdit = (employee) => {
     setSelectedEmployee(employee);
     setShowEditModal(true);
   };
 
-  const handleDelete = (id) => {
-    if (window.confirm('Bạn có chắc chắn muốn xóa nhân viên này?')) {
-      console.log('Delete employee:', id);
+  const onSubmit = async (data) => {
+  try {
+    if (selectedEmployee) {
+      // Edit 
+      const response = await fetch(`${baseUrl}/company-manager/employees/update/${selectedEmployee.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) throw new Error("Cập nhật thất bại");
+
+      setEmployeeData(prev =>
+        prev.map(emp => emp.id === selectedEmployee.id ? { ...emp, ...data } : emp)
+      );
+    } else {
+      // Add 
+      const response = await fetch(`${baseUrl}/company-manager/employees/add`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) throw new Error("Thêm nhân viên thất bại");
+
+      const newEmployee = await response.json();
+      setEmployeeData(prev => [...prev, newEmployee]);
     }
+
+    setShowAddModal(false);
+    setShowEditModal(false);
+    setSelectedEmployee(null);
+    reset();
+  } catch (err) {
+    console.error(err);
+  }
+};
+  //////////////////////// DELETE
+
+  const handleConfirm = () => {
+    setConfirmed(true);
+    setShowDialog(false);
   };
+
+  const handleCancel = () => {
+    setShowDialog(false);
+  };
+
+  const handleDelete = (id, employeeObject) => {
+    setDeleteId(id);     
+    setSelectedEmployee(employeeObject);
+    setShowDialog(true); 
+  };
+
+  useEffect(() => {
+  if (!confirmed || deleteId === null) return;
+
+  removeEmployees(deleteId);
+
+  setConfirmed(false);
+  setDeleteId(null);
+  }, [confirmed]);
+
+  //////////////////////// 
 
   const handleViewHistory = (employee) => {
     setSelectedEmployee(employee);
@@ -130,6 +174,14 @@ const EmployeeManagementView = () => {
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('vi-VN');
+  };
+
+  const formatCurrency = (value) => {
+    return new Intl.NumberFormat('vi-VN', {
+      style: 'currency',
+      currency: 'VND',
+      minimumFractionDigits: 0,
+    }).format(value);
   };
 
   return (
@@ -276,11 +328,19 @@ const EmployeeManagementView = () => {
                         Sửa
                       </button>
                       <button
-                        onClick={() => handleDelete(employee.id)}
+                        onClick={() => handleDelete(employee.id, employee)}
                         className="text-red-600 hover:text-red-800 font-medium"
                       >
                         Xóa
                       </button>
+
+                      {showDialog && (
+                        <ConfirmDialog
+                          message={`Bạn có chắc chắn muốn xóa nhân viên: ${selectedEmployee?.name || selectedEmployee?.id}?`}
+                          onConfirm={handleConfirm}
+                          onCancel={handleCancel}
+                        />
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -293,7 +353,12 @@ const EmployeeManagementView = () => {
       {/* Add/Edit Modal */}
       {(showAddModal || showEditModal) && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-2xl">
+          <form 
+            className="bg-white rounded-lg p-6 w-full max-w-2xl"
+            ref={editFormRef}
+            key={showEditModal ? selectedEmployee?.id : "add"} 
+            onSubmit={handleSubmit(onSubmit)}
+          >
             <h3 className="text-lg font-semibold text-gray-900 mb-4">
               {showAddModal ? 'Thêm nhân viên mới' : 'Cập nhật thông tin nhân viên'}
             </h3>
@@ -304,10 +369,12 @@ const EmployeeManagementView = () => {
                   Họ tên
                 </label>
                 <input
+                  {...register("fullName")}
                   type="text"
-                  defaultValue={selectedEmployee?.name || ''}
+                  name='fullName'
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
+                {errors.fullName && <p className="text-red-500 text-sm">{errors.fullName.message}</p>}
               </div>
 
               <div>
@@ -315,13 +382,15 @@ const EmployeeManagementView = () => {
                   Giới tính
                 </label>
                 <select
-                  defaultValue={selectedEmployee?.gender || ''}
+                  {...register("gender")}
+                  name='gender'
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">Chọn giới tính</option>
                   <option value="Nam">Nam</option>
                   <option value="Nữ">Nữ</option>
                 </select>
+                {errors.gender && <p className="text-red-500 text-sm">{errors.gender.message}</p>}
               </div>
 
               <div>
@@ -329,10 +398,12 @@ const EmployeeManagementView = () => {
                   Ngày sinh
                 </label>
                 <input
+                  {...register("dob")}
+                  name="dob"
                   type="date"
-                  defaultValue={selectedEmployee?.dob || ''}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
+                {errors.dob && <p className="text-red-500 text-sm">{errors.dob.message}</p>}
               </div>
 
               <div>
@@ -340,10 +411,12 @@ const EmployeeManagementView = () => {
                   Ngày vào làm
                 </label>
                 <input
+                  {...register("entryDate")}
+                  name='entryDate'
                   type="date"
-                  defaultValue={selectedEmployee?.startDate || ''}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
+                {errors.entryDate && <p className="text-red-500 text-sm">{errors.entryDate.message}</p>}
               </div>
 
               <div>
@@ -351,7 +424,8 @@ const EmployeeManagementView = () => {
                   Chức vụ
                 </label>
                 <select
-                  defaultValue={selectedEmployee?.role || ''}
+                  {...register("role")}
+                  name='role'
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">Chọn chức vụ</option>
@@ -359,6 +433,7 @@ const EmployeeManagementView = () => {
                     <option key={role} value={role}>{role}</option>
                   ))}
                 </select>
+                {errors.role && <p className="text-red-500 text-sm">{errors.role.message}</p>}
               </div>
 
               <div>
@@ -366,7 +441,8 @@ const EmployeeManagementView = () => {
                   Chi nhánh
                 </label>
                 <select
-                  defaultValue={selectedEmployee?.branch || ''}
+                  {...register("branch")}
+                  name='branch'
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">Chọn chi nhánh</option>
@@ -374,6 +450,7 @@ const EmployeeManagementView = () => {
                     <option key={branch} value={branch}>{branch}</option>
                   ))}
                 </select>
+                {errors.branch && <p className="text-red-500 text-sm">{errors.branch.message}</p>}
               </div>
 
               <div>
@@ -381,37 +458,58 @@ const EmployeeManagementView = () => {
                   Lương
                 </label>
                 <input
+                  {...register("salary", { valueAsNumber: true })}
+                  name='salary'
                   type="number"
-                  defaultValue={selectedEmployee?.salary || ''}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
+                {errors.salary && <p className="text-red-500 text-sm">{errors.salary.message}</p>}
               </div>
             </div>
 
             <div className="flex justify-end gap-3 mt-6">
+              <button 
+                type="button"
+                onClick={() => reset({
+                  fullName: "",
+                  gender: "",
+                  dob: "",
+                  entryDate: "",
+                  role: "",
+                  branch: "",
+                  salary: 0,
+                })} 
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                Xóa
+              </button>
               <button
+                type="button"
                 onClick={() => {
                   setShowAddModal(false);
                   setShowEditModal(false);
                   setSelectedEmployee(null);
+                  reset({
+                    fullName: "",
+                    gender: "",
+                    dob: "",
+                    entryDate: "",
+                    role: "",
+                    branch: "",
+                    salary: 0,
+                  })
                 }}
                 className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
               >
                 Hủy
               </button>
-              <button
-                onClick={() => {
-                  console.log('Save employee');
-                  setShowAddModal(false);
-                  setShowEditModal(false);
-                  setSelectedEmployee(null);
-                }}
+              <button 
                 className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700"
               >
                 {showAddModal ? 'Thêm' : 'Cập nhật'}
               </button>
             </div>
-          </div>
+          </form>
         </div>
       )}
 

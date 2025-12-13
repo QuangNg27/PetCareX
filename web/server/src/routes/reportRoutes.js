@@ -48,6 +48,24 @@ router.get('/employee-performance/:employeeId',
     reportController.getEmployeePerformanceDetailed
 );
 
+// Báo cáo hiệu suất nhân viên (tổng hợp)
+router.get('/employee-performance',
+    authorizeRoles(managerRoles),
+    reportController.getEmployeePerformance
+);
+
+// Danh sách thú cưng được tiêm phòng
+router.get('/vaccinated-pets',
+    authorizeRoles(managerRoles),
+    reportController.getVaccinatedPets
+);
+
+// Thống kê khách hàng
+router.get('/customer-stats',
+    authorizeRoles(managerRoles),
+    reportController.getCustomerStats
+);
+
 // Thống kê doanh thu theo ngày
 router.get('/revenue/daily',
     authorizeRoles(managerRoles),
@@ -70,6 +88,17 @@ router.get('/revenue/quarterly',
 router.get('/revenue/yearly',
     authorizeRoles(managerRoles),
     reportController.getRevenueByYear
+);
+
+// Lịch sử thú cưng theo chi nhánh
+router.get('/pets/:petId/medical-history',
+    authorizeRoles(managerRoles),
+    reportController.getPetMedicalHistoryByBranch
+);
+
+router.get('/pets/:petId/vaccination-history',
+    authorizeRoles(managerRoles),
+    reportController.getPetVaccinationHistoryByBranch
 );
 
 module.exports = router;

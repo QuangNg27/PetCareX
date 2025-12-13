@@ -34,7 +34,7 @@ class BranchController {
             const { branchId } = req.params;
             
             // Kiểm tra quyền: Quản lý chi nhánh chỉ được xem nhân viên chi nhánh của mình
-            if (req.user.role === 'Quản lý chi nhánh' && req.user.branchId !== branchId) {
+            if (req.user.role === 'Quản lý chi nhánh' && req.user.MaCN !== parseInt(branchId)) {
                 return res.status(403).json({
                     success: false,
                     message: 'Bạn chỉ có thể xem nhân viên của chi nhánh được phân công'
@@ -66,7 +66,7 @@ class BranchController {
             const updateData = req.body;
             
             // Kiểm tra quyền: Quản lý chi nhánh chỉ được cập nhật chi nhánh của mình
-            if (req.user.role === 'Quản lý chi nhánh' && req.user.branchId !== branchId) {
+            if (req.user.role === 'Quản lý chi nhánh' && req.user.MaCN !== parseInt(branchId)) {
                 return res.status(403).json({
                     success: false,
                     message: 'Bạn chỉ có thể cập nhật thông tin chi nhánh được phân công'

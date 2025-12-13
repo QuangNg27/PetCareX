@@ -47,6 +47,12 @@ class ProductService {
         };
     }
 
+    async getProductsByBranch(branchId, filters = {}) {
+        const products = await this.productRepository.getProductsByBranch(branchId, filters);
+        
+        return products;
+    }
+
     async updateProductPrice(productId, priceData, userRole) {
         // Only company managers can update prices
         if (userRole !== 'Quản lý công ty') {

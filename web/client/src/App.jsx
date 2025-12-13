@@ -55,10 +55,6 @@ function App() {
               path="/branch-manager/dashboard"
               element={<BranchManagerDashboard />}
             />
-            <Route
-              path="/preview/branch-manager"
-              element={<BranchManagerDashboard />}
-            />
 
             {/* Company Manager routes */}
             <Route

@@ -138,6 +138,30 @@ class ProductController {
         }
     }
 
+    async getProductsByBranch(req, res, next) {
+        try {
+            const { branchId, category, search } = req.query;
+
+            if (!branchId) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Vui lòng cung cấp mã chi nhánh'
+                });
+            }
+
+            const products = await this.productService.getProductsByBranch(branchId, { category, search });
+
+            res.json({
+                success: true,
+                data: {
+                    products
+                }
+            });
+        } catch (error) {
+            next(error);
+        }
+    }
+
     async getLowStockAlert(req, res, next) {
         try {
             const { branchId, threshold } = req.query;

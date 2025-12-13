@@ -5,35 +5,41 @@ import { CalendarIcon, PetIcon } from '@components/common/icons';
 
 const VaccinationListView = () => {
   const { user } = useAuth();
-  const branchId = user?.MaCN || 1;
+  const branchId = user?.MaCN;
   
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [vaccinatedPets, setVaccinatedPets] = useState([
-    { MaTC: 1, TenTC: 'Lucky', Loai: 'Chó', Giong: 'Golden Retriever', TenChuNhan: 'Nguyễn Văn A', TenVacXin: 'Rabies', NgayTiem: '2024-12-05', TenBacSi: 'BS. Trần Minh' },
-    { MaTC: 2, TenTC: 'Mimi', Loai: 'Mèo', Giong: 'Ba Tư', TenChuNhan: 'Trần Thị B', TenVacXin: 'FVRCP', NgayTiem: '2024-12-06', TenBacSi: 'BS. Lê Hương' },
-    { MaTC: 3, TenTC: 'Max', Loai: 'Chó', Giong: 'Husky', TenChuNhan: 'Lê Văn C', TenVacXin: 'DHPP', NgayTiem: '2024-12-07', TenBacSi: 'BS. Trần Minh' },
-    { MaTC: 4, TenTC: 'Bella', Loai: 'Chó', Giong: 'Poodle', TenChuNhan: 'Phạm Thị D', TenVacXin: 'Rabies', NgayTiem: '2024-12-08', TenBacSi: 'BS. Nguyễn An' },
-  ]);
+  // Set default dates - last 30 days
+  const getDefaultEndDate = () => {
+    const today = new Date();
+    return today.toISOString().split('T')[0];
+  };
+  
+  const getDefaultStartDate = () => {
+    const date = new Date();
+    date.setDate(date.getDate() - 30);
+    return date.toISOString().split('T')[0];
+  };
+  
+  const [startDate, setStartDate] = useState(getDefaultStartDate());
+  const [endDate, setEndDate] = useState(getDefaultEndDate());
+  const [vaccinatedPets, setVaccinatedPets] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [expandedRows, setExpandedRows] = useState(new Set());
 
-  useEffect(() => {
-    setLoading(false);
-  }, []);
+  const toggleRow = (index) => {
+    const newExpanded = new Set(expandedRows);
+    if (newExpanded.has(index)) {
+      newExpanded.delete(index);
+    } else {
+      newExpanded.add(index);
+    }
+    setExpandedRows(newExpanded);
+  };
 
   const fetchVaccinatedPets = async () => {
     try {
       setLoading(true);
-      // Mock data
-      const mockPets = [
-        { MaTC: 1, TenTC: 'Lucky', Loai: 'Chó', Giong: 'Golden Retriever', TenChuNhan: 'Nguyễn Văn A', TenVacXin: 'Rabies', NgayTiem: '2024-12-05', TenBacSi: 'BS. Trần Minh' },
-        { MaTC: 2, TenTC: 'Mimi', Loai: 'Mèo', Giong: 'Ba Tư', TenChuNhan: 'Trần Thị B', TenVacXin: 'FVRCP', NgayTiem: '2024-12-06', TenBacSi: 'BS. Lê Hương' },
-        { MaTC: 3, TenTC: 'Max', Loai: 'Chó', Giong: 'Husky', TenChuNhan: 'Lê Văn C', TenVacXin: 'DHPP', NgayTiem: '2024-12-07', TenBacSi: 'BS. Trần Minh' },
-        { MaTC: 4, TenTC: 'Bella', Loai: 'Chó', Giong: 'Poodle', TenChuNhan: 'Phạm Thị D', TenVacXin: 'Rabies', NgayTiem: '2024-12-08', TenBacSi: 'BS. Nguyễn An' },
-      ];
-      setVaccinatedPets(mockPets);
-      // const data = await branchManagerService.getVaccinatedPets(branchId, startDate, endDate);
-      // setVaccinatedPets(data.data.pets || []);
+      const data = await branchManagerService.getVaccinatedPets(branchId, startDate, endDate);
+      setVaccinatedPets(data.data.pets || []);
     } catch (error) {
       console.error('Lỗi khi tải danh sách thú cưng tiêm phòng:', error);
     } finally {
@@ -114,8 +120,11 @@ const VaccinationListView = () => {
         ) : (
           <div className="overflow-x-auto max-h-96 overflow-y-auto">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+              <thead className="bg-gray-50 sticky top-0">
                 <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12">
+                    
+                  </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Mã TC
                   </th>
@@ -123,16 +132,13 @@ const VaccinationListView = () => {
                     Tên thú cưng
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Loại
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Giống
+                    Loài/Giống
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Chủ nhân
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Vắc-xin
+                    Số vắc-xin
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Ngày tiêm
@@ -144,32 +150,68 @@ const VaccinationListView = () => {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {vaccinatedPets.map((pet, index) => (
-                  <tr key={index} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {pet.MaTC}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {pet.TenTC}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {pet.Loai}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {pet.Giong}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {pet.TenChuNhan}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {pet.TenVacXin}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {pet.NgayTiem ? new Date(pet.NgayTiem).toLocaleDateString('vi-VN') : 'N/A'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {pet.TenBacSi || 'N/A'}
-                    </td>
-                  </tr>
+                  <React.Fragment key={index}>
+                    <tr 
+                      className="hover:bg-gray-50 cursor-pointer transition-colors"
+                      onClick={() => toggleRow(index)}
+                    >
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <svg 
+                          className={`h-5 w-5 transform transition-transform ${expandedRows.has(index) ? 'rotate-90' : ''}`}
+                          fill="none" 
+                          viewBox="0 0 24 24" 
+                          stroke="currentColor"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {pet.MaTC}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {pet.TenTC}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {pet.Loai} - {pet.Giong}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-500">
+                        {pet.TenChuSoHuu || 'N/A'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                          {pet.SoLuongVaccine || 1} loại
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {pet.NgayTiem ? new Date(pet.NgayTiem).toLocaleDateString('vi-VN') : 'N/A'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {pet.NhanVienThucHien || 'N/A'}
+                      </td>
+                    </tr>
+                    {expandedRows.has(index) && (
+                      <tr>
+                        <td colSpan="8" className="px-6 py-4 bg-blue-50">
+                          <div className="pl-12">
+                            <h4 className="text-sm font-semibold text-gray-700 mb-2">Danh sách vắc-xin đã tiêm:</h4>
+                            <div className="flex flex-wrap gap-2">
+                              {pet.vaccines && pet.vaccines.length > 0 ? 
+                                pet.vaccines.map((vaccine, vIndex) => (
+                                  <span 
+                                    key={vIndex}
+                                    className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800"
+                                  >
+                                    {vaccine.TenVaccine}
+                                  </span>
+                                )) : 
+                                <span className="text-sm text-gray-500">Không có thông tin</span>
+                              }
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
                 ))}
               </tbody>
             </table>
