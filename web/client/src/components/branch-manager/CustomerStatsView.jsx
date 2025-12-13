@@ -5,55 +5,28 @@ import { UsersIcon, AlertCircleIcon } from '@components/common/icons';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 
 const CustomerStatsView = () => {
-  const { user } = useAuth();
-  const branchId = user?.MaCN || 1;
-  
   const [customerStats, setCustomerStats] = useState({
-    totalCustomers: 450,
-    activeCustomers: 385,
-    inactiveCustomers: 65,
-    customersByLevel: [
-      { TenCapDo: 'Cơ bản', SoLuong: 280 },
-      { TenCapDo: 'Thân thiết', SoLuong: 125 },
-      { TenCapDo: 'VIP', SoLuong: 45 },
-    ],
-    inactiveCustomersList: [
-      { MaKH: 101, HoTen: 'Nguyễn Văn X', SoDT: '0901234567', Email: 'nguyenx@email.com', TenCapDo: 'Cơ bản', LanCuoi: '2024-06-15', SoNgay: 177 },
-      { MaKH: 102, HoTen: 'Trần Thị Y', SoDT: '0912345678', Email: 'trany@email.com', TenCapDo: 'Thân thiết', LanCuoi: '2024-07-20', SoNgay: 142 },
-      { MaKH: 103, HoTen: 'Lê Văn Z', SoDT: '0923456789', Email: 'levanz@email.com', TenCapDo: 'Cơ bản', LanCuoi: '2024-08-10', SoNgay: 121 },
-    ],
+    totalCustomers: 0,
+    activeCustomers: 0,
+    inactiveCustomers: 0,
+    customersByLevel: [],
+    inactiveCustomersList: [],
   });
   const [inactiveDays, setInactiveDays] = useState(90);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444'];
 
   useEffect(() => {
-    setLoading(false);
-  }, []);
+    fetchCustomerStats();
+  }, [inactiveDays]);
 
   const fetchCustomerStats = async () => {
     try {
       setLoading(true);
-      // Mock data
-      const mockStats = {
-        totalCustomers: 450,
-        activeCustomers: 385,
-        inactiveCustomers: 65,
-        customersByLevel: [
-          { TenCapDo: 'Cơ bản', SoLuong: 280 },
-          { TenCapDo: 'Thân thiết', SoLuong: 125 },
-          { TenCapDo: 'VIP', SoLuong: 45 },
-        ],
-        inactiveCustomersList: [
-          { MaKH: 101, HoTen: 'Nguyễn Văn X', SoDT: '0901234567', Email: 'nguyenx@email.com', TenCapDo: 'Cơ bản', LanCuoi: '2024-06-15', SoNgay: 177 },
-          { MaKH: 102, HoTen: 'Trần Thị Y', SoDT: '0912345678', Email: 'trany@email.com', TenCapDo: 'Thân thiết', LanCuoi: '2024-07-20', SoNgay: 142 },
-          { MaKH: 103, HoTen: 'Lê Văn Z', SoDT: '0923456789', Email: 'levanz@email.com', TenCapDo: 'Cơ bản', LanCuoi: '2024-08-10', SoNgay: 121 },
-        ],
-      };
-      setCustomerStats(mockStats);
-      // const data = await branchManagerService.getCustomerStats(branchId, inactiveDays);
-      // setCustomerStats(data.data);
+      const data = await branchManagerService.getCustomerStats(inactiveDays);
+      console.log('Customer stats:', data);
+      setCustomerStats(data.data);
     } catch (error) {
       console.error('Lỗi khi tải thống kê khách hàng:', error);
     } finally {
@@ -234,7 +207,7 @@ const CustomerStatsView = () => {
               </div>
               <div className="overflow-x-auto max-h-96 overflow-y-auto">
                 <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
+                  <thead className="bg-gray-50 sticky top-0 z-10">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Mã KH

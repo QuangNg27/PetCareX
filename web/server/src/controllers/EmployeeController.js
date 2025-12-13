@@ -4,6 +4,14 @@ const { AppError } = require('../middleware/errorHandler');
 class EmployeeController {
     constructor() {
         this.employeeService = new EmployeeService();
+        // Bind methods to preserve 'this' context
+        this.getAllEmployees = this.getAllEmployees.bind(this);
+        this.getEmployee = this.getEmployee.bind(this);
+        this.createEmployee = this.createEmployee.bind(this);
+        this.updateEmployee = this.updateEmployee.bind(this);
+        this.updateMyProfile = this.updateMyProfile.bind(this);
+        this.getEmployeeRoles = this.getEmployeeRoles.bind(this);
+        this.getDoctorSchedule = this.getDoctorSchedule.bind(this);
     }
 
     async getAllEmployees(req, res, next) {
@@ -30,7 +38,7 @@ class EmployeeController {
             const { employeeId } = req.params;
             const requesterId = req.user.id;
             const userRole = req.user.role;
-            const requesterBranchId = req.user.branchId; // Assuming branch info is in JWT
+            const requesterBranchId = req.user.MaCN; // Branch ID from JWT
 
             const result = await this.employeeService.getEmployee(
                 employeeId, 
@@ -93,7 +101,7 @@ class EmployeeController {
             const { HoTen, NgaySinh, GioiTinh, SoDT, Email, DiaChi, ChucVu } = req.body;
             const requesterId = req.user.id;
             const userRole = req.user.role;
-            const requesterBranchId = req.user.branchId;
+            const requesterBranchId = req.user.MaCN;
 
             const result = await this.employeeService.updateEmployee(
                 employeeId,
@@ -117,10 +125,6 @@ class EmployeeController {
             const { MaNV, MaCN, NgayBD, Luong } = req.body;
             const userRole = req.user.role;
 
-            // Field validation handled by Joi schema
-
-            // Salary validation handled by database CHECK constraint
-
             const result = await this.employeeService.assignEmployeeToBranch({
                 MaNV,
                 MaCN,
@@ -143,8 +147,6 @@ class EmployeeController {
             const { endDate } = req.body;
             const userRole = req.user.role;
 
-            // Field validation handled by Joi schema
-
             const result = await this.employeeService.terminateEmployeeAssignment(
                 employeeId,
                 branchId,
@@ -166,10 +168,6 @@ class EmployeeController {
             const { employeeId, branchId } = req.params;
             const { newSalary } = req.body;
             const userRole = req.user.role;
-
-            // Field validation handled by Joi schema
-
-            // Salary validation handled by database CHECK constraint
 
             const result = await this.employeeService.updateEmployeeSalary(
                 employeeId,
@@ -239,7 +237,7 @@ class EmployeeController {
                 { HoTen, NgaySinh, GioiTinh },
                 employeeId,
                 userRole,
-                req.user.branchId
+                req.user.MaCN
             );
 
             res.json({

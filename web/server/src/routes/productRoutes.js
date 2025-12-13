@@ -9,6 +9,8 @@ const productController = new ProductController();
 // Product catalog endpoints (all authenticated users can view)
 router.get('/', authMiddleware, productController.getAllProducts.bind(productController));
 
+router.get('/by-branch', authMiddleware, productController.getProductsByBranch.bind(productController));
+
 router.get('/categories', authMiddleware, productController.getProductCategories.bind(productController));
 
 router.get('/:productId', authMiddleware, productController.getProduct.bind(productController));

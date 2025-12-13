@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -19,15 +19,23 @@ import ProductInventoryView from '@components/branch-manager/ProductInventoryVie
 import PetHistoryView from '@components/branch-manager/PetHistoryView';
 import EmployeePerformanceView from '@components/branch-manager/EmployeePerformanceView';
 import CustomerStatsView from '@components/branch-manager/CustomerStatsView';
-import ServiceManagementView from '@components/branch-manager/ServiceManagementView';
 
 const BranchManagerDashboard = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('employees');
+  const [activeTab, setActiveTab] = useState(() => {
+    return localStorage.getItem('branchManagerActiveTab') || 'employees';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('branchManagerActiveTab', activeTab);
+  }, [activeTab]);
   
-  // Mock user for preview
-  const currentUser = user || { TenDangNhap: 'Manager Demo', MaCN: 1 };
+  // Require authentication
+  if (!user) {
+    navigate('/login');
+    return null;
+  }
 
   const handleLogout = () => {
     logout();
@@ -42,7 +50,6 @@ const BranchManagerDashboard = () => {
     { id: 'petHistory', label: 'Lịch sử thú cưng', icon: FileTextIcon },
     { id: 'performance', label: 'Hiệu suất NV', icon: TrendingUpIcon },
     { id: 'customers', label: 'Khách hàng', icon: UsersIcon },
-    { id: 'services', label: 'Quản lý dịch vụ', icon: ToolIcon },
   ];
 
   const renderContent = () => {
@@ -61,8 +68,6 @@ const BranchManagerDashboard = () => {
         return <EmployeePerformanceView />;
       case 'customers':
         return <CustomerStatsView />;
-      case 'services':
-        return <ServiceManagementView />;
       default:
         return <EmployeesView />;
     }
@@ -79,7 +84,7 @@ const BranchManagerDashboard = () => {
                 Quản lý chi nhánh
               </h1>
               <p className="mt-1 text-sm text-gray-600">
-                Chào mừng, {currentUser?.TenDangNhap} - Chi nhánh #{currentUser?.MaCN}
+                Chào mừng, {user?.TenDangNhap} - Chi nhánh #{user?.MaCN}
               </p>
             </div>
             <button

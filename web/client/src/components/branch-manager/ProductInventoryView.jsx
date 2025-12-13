@@ -6,24 +6,11 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recha
 
 const ProductInventoryView = () => {
   const { user } = useAuth();
-  const branchId = user?.MaCN || 1;
+  const branchId = user?.MaCN;
   
-  const [products, setProducts] = useState([
-    { MaSP: 1, TenSP: 'Vắc-xin Rabies', LoaiSP: 'Vaccine', LoaiVaccine: 'Phòng bệnh dại', NgaySX: '2024-06-01', DonGia: 150000, SoLuongTon: 45 },
-    { MaSP: 2, TenSP: 'Vắc-xin DHPP', LoaiSP: 'Vaccine', LoaiVaccine: '5 trong 1 cho chó', NgaySX: '2024-07-15', DonGia: 200000, SoLuongTon: 32 },
-    { MaSP: 3, TenSP: 'Thức ăn Royal Canin', LoaiSP: 'Thức ăn', NgaySX: '2024-11-01', DonGia: 350000, SoLuongTon: 8 },
-    { MaSP: 4, TenSP: 'Vắc-xin FVRCP', LoaiSP: 'Vaccine', LoaiVaccine: '3 trong 1 cho mèo', NgaySX: '2024-08-20', DonGia: 180000, SoLuongTon: 28 },
-    { MaSP: 5, TenSP: 'Dầu tắm Bio-Groom', LoaiSP: 'Phụ kiện', NgaySX: '2024-10-10', DonGia: 120000, SoLuongTon: 5 },
-  ]);
-  const [popularVaccines, setPopularVaccines] = useState([
-    { TenVacXin: 'Rabies', SoLuongDat: 85 },
-    { TenVacXin: 'DHPP', SoLuongDat: 72 },
-    { TenVacXin: 'FVRCP', SoLuongDat: 65 },
-    { TenVacXin: 'Bordetella', SoLuongDat: 45 },
-    { TenVacXin: 'Lyme', SoLuongDat: 38 },
-    { TenVacXin: 'Influenza', SoLuongDat: 30 },
-  ]);
-  const [loading, setLoading] = useState(false);
+  const [products, setProducts] = useState([]);
+  const [popularVaccines, setPopularVaccines] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [productType, setProductType] = useState('');
   const [dateFrom, setDateFrom] = useState('');
@@ -32,25 +19,25 @@ const ProductInventoryView = () => {
   const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
 
   useEffect(() => {
-    setLoading(false);
-  }, []);
+    if (branchId) {
+      fetchProducts();
+      fetchPopularVaccines();
+    }
+  }, [branchId, productType]);
 
   const fetchProducts = async () => {
     try {
       setLoading(true);
       const filters = {};
-      if (productType) filters.type = productType;
-      // Mock data
-      const mockProducts = [
-        { MaSP: 1, TenSP: 'Vắc-xin Rabies', LoaiSP: 'Vaccine', LoaiVaccine: 'Phòng bệnh dại', NgaySX: '2024-06-01', DonGia: 150000, SoLuongTon: 45 },
-        { MaSP: 2, TenSP: 'Vắc-xin DHPP', LoaiSP: 'Vaccine', LoaiVaccine: '5 trong 1 cho chó', NgaySX: '2024-07-15', DonGia: 200000, SoLuongTon: 32 },
-        { MaSP: 3, TenSP: 'Thức ăn Royal Canin', LoaiSP: 'Thức ăn', NgaySX: '2024-11-01', DonGia: 350000, SoLuongTon: 8 },
-        { MaSP: 4, TenSP: 'Vắc-xin FVRCP', LoaiSP: 'Vaccine', LoaiVaccine: '3 trong 1 cho mèo', NgaySX: '2024-08-20', DonGia: 180000, SoLuongTon: 28 },
-        { MaSP: 5, TenSP: 'Dầu tắm Bio-Groom', LoaiSP: 'Phụ kiện', NgaySX: '2024-10-10', DonGia: 120000, SoLuongTon: 5 },
-      ];
-      setProducts(productType ? mockProducts.filter(p => p.LoaiSP === productType) : mockProducts);
-      // const data = await branchManagerService.searchProducts(branchId, filters);
-      // setProducts(data.data.products || []);
+      if (productType) filters.category = productType;
+      const data = await branchManagerService.searchProducts(branchId, filters);
+      // Map server field names to client field names
+      const mappedProducts = (data.data.products || []).map(product => ({
+        ...product,
+        DonGia: product.GiaHienTai,
+        SoLuongTon: product.SLTonKho
+      }));
+      setProducts(mappedProducts);
     } catch (error) {
       console.error('Lỗi khi tải danh sách sản phẩm:', error);
     } finally {
@@ -60,20 +47,11 @@ const ProductInventoryView = () => {
 
   const fetchPopularVaccines = async () => {
     try {
-      // Mock data
-      const mockVaccines = [
-        { TenVacXin: 'Rabies', SoLuongDat: 85 },
-        { TenVacXin: 'DHPP', SoLuongDat: 72 },
-        { TenVacXin: 'FVRCP', SoLuongDat: 65 },
-        { TenVacXin: 'Bordetella', SoLuongDat: 45 },
-        { TenVacXin: 'Lyme', SoLuongDat: 38 },
-        { TenVacXin: 'Influenza', SoLuongDat: 30 },
-      ];
-      setPopularVaccines(mockVaccines);
-      // const data = await branchManagerService.getPopularVaccines(branchId, 6);
-      // setPopularVaccines(data.data.vaccines || []);
+      const data = await branchManagerService.getPopularVaccines(branchId, 6);
+      setPopularVaccines(data.data || []);
     } catch (error) {
       console.error('Lỗi khi tải thống kê vắc-xin:', error);
+      setPopularVaccines([]);
     }
   };
 
@@ -81,14 +59,18 @@ const ProductInventoryView = () => {
     try {
       setLoading(true);
       const searchParams = {
-        name: searchTerm,
-        type: productType,
-        dateFrom,
-        dateTo
+        search: searchTerm,
+        category: productType
       };
       
       const data = await branchManagerService.searchProducts(branchId, searchParams);
-      setProducts(data.data.products || []);
+      // Map server field names to client field names
+      const mappedProducts = (data.data.products || []).map(product => ({
+        ...product,
+        DonGia: product.GiaHienTai,
+        SoLuongTon: product.SLTonKho
+      }));
+      setProducts(mappedProducts);
     } catch (error) {
       console.error('Lỗi khi tìm kiếm:', error);
     } finally {
@@ -139,9 +121,9 @@ const ProductInventoryView = () => {
       </div>
 
       {/* Popular Vaccines List */}
-      {popularVaccines.length > 0 && (
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">Vắc-xin được đặt nhiều nhất</h3>
+      <div className="bg-white rounded-lg shadow p-6">
+        <h3 className="text-lg font-semibold text-gray-800 mb-4">Vắc-xin được sử dụng nhiều nhất</h3>
+        {popularVaccines.length > 0 ? (
           <div className="max-h-96 overflow-y-auto pr-2">
             <div className="space-y-2">
               {popularVaccines.map((vaccine, index) => (
@@ -166,14 +148,19 @@ const ProductInventoryView = () => {
                   </div>
                   <div className="text-right">
                     <p className="text-lg font-bold text-blue-600">{vaccine.SoLuongDat}</p>
-                    <p className="text-xs text-gray-500">lượt đặt</p>
+                    <p className="text-xs text-gray-500">lượt sử dụng</p>
                   </div>
                 </div>
               ))}
             </div>
           </div>
-        </div>
-      )}
+        ) : (
+          <div className="text-center py-8 text-gray-500">
+            <p>Chưa có dữ liệu thống kê vắc-xin</p>
+            <p className="text-sm mt-1">Dữ liệu sẽ hiển thị khi có hoạt động tiêm phòng tại chi nhánh</p>
+          </div>
+        )}
+      </div>
 
       {/* Search and Filter */}
       <div className="bg-white rounded-lg shadow p-4">
@@ -243,7 +230,7 @@ const ProductInventoryView = () => {
         ) : (
           <div className="overflow-x-auto max-h-96 overflow-y-auto">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+              <thead className="bg-gray-50 sticky top-0 z-10">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Mã SP

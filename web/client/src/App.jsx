@@ -37,11 +37,9 @@ function App() {
             
             {/* Branch Manager routes */}
             <Route path="/branch-manager/dashboard" element={<BranchManagerDashboard />} />
-            <Route path="/preview/branch-manager" element={<BranchManagerDashboard />} />
             
             {/* Company Manager routes */}
             <Route path="/company-manager/dashboard" element={<CompanyManagerDashboard />} />
-            <Route path="/preview/company-manager" element={<CompanyManagerDashboard />} />
             
             {/* Default redirect */}
             <Route path="/" element={<Navigate to="/login" replace />} />

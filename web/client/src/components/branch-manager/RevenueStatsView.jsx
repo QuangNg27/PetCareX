@@ -1,53 +1,211 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { branchManagerService } from '@services/branchManagerService';
 import { useAuth } from '@context/AuthContext';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 const RevenueStatsView = () => {
   const { user } = useAuth();
-  const branchId = user?.MaCN || 1;
+  const branchId = user?.MaCN;
   
-  const [period, setPeriod] = useState('month');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [revenueData, setRevenueData] = useState([
-    { ThoiGian: 'T7/2024', DoanhThu: 45000000, SoDonHang: 85 },
-    { ThoiGian: 'T8/2024', DoanhThu: 52000000, SoDonHang: 95 },
-    { ThoiGian: 'T9/2024', DoanhThu: 48000000, SoDonHang: 88 },
-    { ThoiGian: 'T10/2024', DoanhThu: 61000000, SoDonHang: 110 },
-    { ThoiGian: 'T11/2024', DoanhThu: 58000000, SoDonHang: 102 },
-    { ThoiGian: 'T12/2024', DoanhThu: 65000000, SoDonHang: 118 },
-  ]);
-  const [totalRevenue, setTotalRevenue] = useState(329000000);
+  // Set default dates - last 30 days
+  const getDefaultEndDate = () => {
+    const today = new Date();
+    return today.toISOString().split('T')[0];
+  };
+  
+  const getDefaultStartDate = () => {
+    const date = new Date();
+    date.setDate(date.getDate() - 30);
+    return date.toISOString().split('T')[0];
+  };
+  
+  const currentYear = new Date().getFullYear();
+  
+  const [period, setPeriod] = useState('day');
+  const [startDate, setStartDate] = useState(getDefaultStartDate());
+  const [endDate, setEndDate] = useState(getDefaultEndDate());
+  const [selectedYear, setSelectedYear] = useState(currentYear);
+  const [startYear, setStartYear] = useState(currentYear - 5);
+  const [endYear, setEndYear] = useState(currentYear);
+  const [revenueData, setRevenueData] = useState([]);
+  const [totalRevenue, setTotalRevenue] = useState(0);
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    setLoading(false);
-  }, []);
+  const [hasFetched, setHasFetched] = useState(false);
 
   const fetchRevenueStats = async () => {
+    if (!branchId) {
+      return;
+    }
+    
     try {
       setLoading(true);
-      // Mock data
-      const mockRevenue = [
-        { ThoiGian: 'T7/2024', DoanhThu: 45000000, SoDonHang: 85 },
-        { ThoiGian: 'T8/2024', DoanhThu: 52000000, SoDonHang: 95 },
-        { ThoiGian: 'T9/2024', DoanhThu: 48000000, SoDonHang: 88 },
-        { ThoiGian: 'T10/2024', DoanhThu: 61000000, SoDonHang: 110 },
-        { ThoiGian: 'T11/2024', DoanhThu: 58000000, SoDonHang: 102 },
-        { ThoiGian: 'T12/2024', DoanhThu: 65000000, SoDonHang: 118 },
-      ];
-      setRevenueData(mockRevenue);
-      const total = mockRevenue.reduce((sum, item) => sum + (item.DoanhThu || 0), 0);
+      
+      // Prepare params based on period
+      let param1, param2;
+      
+      switch (period) {
+        case 'day':
+          param1 = startDate;
+          param2 = endDate;
+          break;
+        case 'month':
+          param1 = selectedYear.toString();
+          param2 = null;
+          break;
+        case 'quarter':
+          param1 = selectedYear.toString();
+          param2 = null;
+          break;
+        case 'year':
+          param1 = startYear.toString();
+          param2 = endYear.toString();
+          break;
+        default:
+          param1 = startDate;
+          param2 = endDate;
+      }
+      
+
+      const data = await branchManagerService.getRevenueStats(
+        branchId, 
+        period, 
+        param1, 
+        param2
+      );
+      
+      const rawRevenue = data.data.revenue || [];
+      
+      // Map field names based on period type
+      const mappedRevenue = rawRevenue.map(item => {
+        let label = '';
+        let revenue = item.DoanhThu || item.TongDoanhThu || 0;
+        
+        if (item.Ngay) {
+          label = new Date(item.Ngay).toLocaleDateString('vi-VN');
+        } else if (item.Thang && item.Nam) {
+          label = `Tháng ${item.Thang}/${item.Nam}`;
+        } else if (item.Quy && item.Nam) {
+          label = `${item.TenQuy || 'Q' + item.Quy} ${item.Nam}`;
+        } else if (item.Nam) {
+          label = `Năm ${item.Nam}`;
+        }
+        
+        return {
+          ThoiGian: label,
+          DoanhThu: revenue
+        };
+      });
+      
+      setRevenueData(mappedRevenue);
+      const total = mappedRevenue.reduce((sum, item) => sum + (item.DoanhThu || 0), 0);
       setTotalRevenue(total);
-      // const data = await branchManagerService.getRevenueStats(branchId, period, startDate, endDate);
-      // setRevenueData(data.data.revenue || []);
-      // const total = (data.data.revenue || []).reduce((sum, item) => sum + (item.DoanhThu || 0), 0);
-      // setTotalRevenue(total);
+      setHasFetched(true);
     } catch (error) {
       console.error('Lỗi khi tải thống kê doanh thu:', error);
+      setHasFetched(true);
     } finally {
       setLoading(false);
+    }
+  };
+  
+  const renderDateInputs = () => {
+    switch (period) {
+      case 'day':
+        return (
+          <>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Từ ngày
+              </label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Đến ngày
+              </label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+          </>
+        );
+      
+      case 'month':
+        return (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Chọn năm
+            </label>
+            <input
+              type="number"
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+              min="2000"
+              max={currentYear + 10}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+        );
+      
+      case 'quarter':
+        return (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Chọn năm
+            </label>
+            <input
+              type="number"
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+              min="2000"
+              max={currentYear + 10}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+        );
+      
+      case 'year':
+        return (
+          <>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Từ năm
+              </label>
+              <input
+                type="number"
+                value={startYear}
+                onChange={(e) => setStartYear(parseInt(e.target.value))}
+                min="2000"
+                max={currentYear + 10}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Đến năm
+              </label>
+              <input
+                type="number"
+                value={endYear}
+                onChange={(e) => setEndYear(parseInt(e.target.value))}
+                min="2000"
+                max={currentYear + 10}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+          </>
+        );
+      
+      default:
+        return null;
     }
   };
 
@@ -83,29 +241,7 @@ const RevenueStatsView = () => {
             </select>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Từ ngày
-            </label>
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Đến ngày
-            </label>
-            <input
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
+          {renderDateInputs()}
 
           <div className="flex items-end">
             <button
@@ -119,13 +255,18 @@ const RevenueStatsView = () => {
       </div>
 
       {/* Total Revenue Card */}
-      <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg shadow-lg p-6 text-white">
-        <h3 className="text-lg font-medium opacity-90">Tổng doanh thu ({periodLabels[period]})</h3>
-        <p className="text-4xl font-bold mt-2">{totalRevenue.toLocaleString('vi-VN')} VNĐ</p>
-        <p className="text-sm opacity-75 mt-2">
-          Từ {new Date(startDate).toLocaleDateString('vi-VN')} đến {new Date(endDate).toLocaleDateString('vi-VN')}
-        </p>
-      </div>
+      {revenueData.length > 0 && (
+        <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg shadow-lg p-6 text-white">
+          <h3 className="text-lg font-medium opacity-90">Tổng doanh thu ({periodLabels[period]})</h3>
+          <p className="text-4xl font-bold mt-2">{totalRevenue.toLocaleString('vi-VN')} VNĐ</p>
+          <p className="text-sm opacity-75 mt-2">
+            {period === 'day' && `Từ ${new Date(startDate).toLocaleDateString('vi-VN')} đến ${new Date(endDate).toLocaleDateString('vi-VN')}`}
+            {period === 'month' && `Năm ${selectedYear}`}
+            {period === 'quarter' && `Năm ${selectedYear}`}
+            {period === 'year' && `Từ năm ${startYear} đến năm ${endYear}`}
+          </p>
+        </div>
+      )}
 
       {/* Chart */}
       <div className="bg-white rounded-lg shadow p-6">
@@ -135,9 +276,30 @@ const RevenueStatsView = () => {
           <div className="h-96 flex items-center justify-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
           </div>
+        ) : !hasFetched ? (
+          <div className="h-96 flex items-center justify-center text-gray-500">
+            <div className="text-center">
+              <svg className="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+              <p className="text-lg font-medium">Chọn kỳ thống kê và bấm "Xem thống kê"</p>
+              <p className="text-sm mt-2">Dữ liệu doanh thu sẽ được hiển thị tại đây</p>
+            </div>
+          </div>
         ) : revenueData.length === 0 ? (
           <div className="h-96 flex items-center justify-center text-gray-500">
-            <p>Không có dữ liệu trong khoảng thời gian này</p>
+            <div className="text-center">
+              <svg className="mx-auto h-12 w-12 text-yellow-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <p className="text-lg font-medium">Không có dữ liệu doanh thu</p>
+              <p className="text-sm mt-2">
+                {period === 'day' && `Không có hóa đơn nào từ ${new Date(startDate).toLocaleDateString('vi-VN')} đến ${new Date(endDate).toLocaleDateString('vi-VN')}`}
+                {period === 'month' && `Không có hóa đơn nào trong năm ${selectedYear}`}
+                {period === 'quarter' && `Không có hóa đơn nào trong năm ${selectedYear}`}
+                {period === 'year' && `Không có hóa đơn nào từ năm ${startYear} đến năm ${endYear}`}
+              </p>
+            </div>
           </div>
         ) : (
           <ResponsiveContainer width="100%" height={400}>

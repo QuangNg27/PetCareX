@@ -174,6 +174,61 @@ class PetRepository extends BaseRepository {
         return result.recordset;
     }
 
+    // Branch-specific pet medical history
+    async getPetMedicalHistoryByBranch(petId, branchId, limit = 100) {
+        const result = await this.execute(`
+            SELECT
+                kb.MaKB,
+                kb.NgayKham,
+                kb.TrieuChung,
+                kb.ChanDoan,
+                kb.NgayTaiKham,
+                nv.HoTen as TenBacSi,
+                dv.TenDV,
+                cn.TenCN
+            FROM Kham_benh kb
+            LEFT JOIN Nhan_vien nv ON kb.MaNV = nv.MaNV
+            LEFT JOIN Dich_vu dv ON kb.MaDV = dv.MaDV
+            LEFT JOIN Chi_nhanh cn ON kb.MaCN = cn.MaCN
+            WHERE kb.MaTC = @MaTC
+            AND kb.MaCN = @MaCN
+            ORDER BY kb.NgayKham DESC
+        `, { 
+            MaTC: petId,
+            MaCN: branchId
+        });
+
+        return result.recordset;
+    }
+
+    // Branch-specific pet vaccination history
+    async getPetVaccinationHistoryByBranch(petId, branchId, limit = 100) {
+        const result = await this.execute(`
+            SELECT
+                tp.MaTP,
+                tp.NgayTiem,
+                ISNULL(nv.HoTen, N'Chưa có bác sĩ') as TenBacSi,
+                ISNULL(dv.TenDV, N'Chưa xác định') as TenDV,
+                ISNULL(cn.TenCN, N'Chưa xác định') as TenCN,
+                cttp.MaGoi,
+                gt.UuDai
+            FROM Tiem_phong tp
+            LEFT JOIN Nhan_vien nv ON tp.MaNV = nv.MaNV
+            LEFT JOIN Dich_vu dv ON tp.MaDV = dv.MaDV
+            LEFT JOIN Chi_nhanh cn ON tp.MaCN = cn.MaCN
+            LEFT JOIN Chi_tiet_tiem_phong cttp ON tp.MaTP = cttp.MaTP
+            LEFT JOIN Goi_tiem gt ON cttp.MaGoi = gt.MaGoi
+            WHERE tp.MaTC = @MaTC
+            AND tp.MaCN = @MaCN
+            ORDER BY tp.NgayTiem DESC
+        `, { 
+            MaTC: petId,
+            MaCN: branchId
+        });
+
+        return result.recordset;
+    }
+
     async getPetVaccineBasedOnVaccination(vaccinationIds) {
         if (!vaccinationIds || vaccinationIds.length === 0) {
             return [];
