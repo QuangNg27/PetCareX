@@ -64,6 +64,36 @@ export const customerService = {
     }
   },
 
+  // Create new customer (for staff)
+  async createCustomer(customerData) {
+    try {
+      const response = await apiClient.post(ENDPOINTS.CUSTOMERS.BASE, customerData);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Create pet for customer (for staff)
+  async createPetForCustomer(customerId, petData) {
+    try {
+      const response = await apiClient.post(ENDPOINTS.CUSTOMERS.CREATE_PET_FOR_CUSTOMER(customerId), petData);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Get customer pets (for staff)
+  async getCustomerPets(customerId) {
+    try {
+      const response = await apiClient.get(ENDPOINTS.CUSTOMERS.GET_CUSTOMER_PETS(customerId));
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
   // Pets management
   pets: {
     // Get all pets
@@ -130,6 +160,26 @@ export const customerService = {
     async getVaccinationHistory(petId) {
       try {
         const response = await apiClient.get(ENDPOINTS.CUSTOMERS.PETS.VACCINATION_HISTORY(petId));
+        return response.data;
+      } catch (error) {
+        throw error;
+      }
+    },
+
+    // Staff-only: Get any pet's medical history (no ownership check)
+    async getStaffMedicalHistory(petId) {
+      try {
+        const response = await apiClient.get(ENDPOINTS.CUSTOMERS.PETS.STAFF_MEDICAL_HISTORY(petId));
+        return response.data;
+      } catch (error) {
+        throw error;
+      }
+    },
+
+    // Staff-only: Get any pet's vaccination history (no ownership check)
+    async getStaffVaccinationHistory(petId) {
+      try {
+        const response = await apiClient.get(ENDPOINTS.CUSTOMERS.PETS.STAFF_VACCINATION_HISTORY(petId));
         return response.data;
       } catch (error) {
         throw error;
