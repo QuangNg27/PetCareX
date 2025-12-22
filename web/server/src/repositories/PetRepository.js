@@ -210,14 +210,10 @@ class PetRepository extends BaseRepository {
                 ISNULL(nv.HoTen, N'Chưa có bác sĩ') as TenBacSi,
                 ISNULL(dv.TenDV, N'Chưa xác định') as TenDV,
                 ISNULL(cn.TenCN, N'Chưa xác định') as TenCN,
-                cttp.MaGoi,
-                gt.UuDai
             FROM Tiem_phong tp
             LEFT JOIN Nhan_vien nv ON tp.MaNV = nv.MaNV
             LEFT JOIN Dich_vu dv ON tp.MaDV = dv.MaDV
             LEFT JOIN Chi_nhanh cn ON tp.MaCN = cn.MaCN
-            LEFT JOIN Chi_tiet_tiem_phong cttp ON tp.MaTP = cttp.MaTP
-            LEFT JOIN Goi_tiem gt ON cttp.MaGoi = gt.MaGoi
             WHERE tp.MaTC = @MaTC
             AND tp.MaCN = @MaCN
             ORDER BY tp.NgayTiem DESC

@@ -14,7 +14,7 @@ export const validatePassword = (password) => {
   return passwordRegex.test(password) && !vietnameseAccentRegex.test(password);
 };
 
-// Phone validation (Vietnamese format - synchronized with server: 10-11 digits)
+// Phone validation (Vietnamese format - synchronized with server: 10 digits)
 export const validatePhone = (phone) => {
   const phoneRegex = /^0[3-9]\d{8}$/;
   return phoneRegex.test(phone);

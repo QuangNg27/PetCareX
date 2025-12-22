@@ -83,6 +83,35 @@ class CustomerController {
         }
     };
 
+    createCustomer = async (req, res, next) => {
+        try {
+            const result = await this.customerService.createCustomer(req.body);
+            res.status(201).json(result);
+        } catch (error) {
+            next(error);
+        }
+    };
+
+    createPetForCustomer = async (req, res, next) => {
+        try {
+            const customerId = parseInt(req.params.customerId);
+            const result = await this.customerService.createPetForCustomer(customerId, req.body);
+            res.status(201).json(result);
+        } catch (error) {
+            next(error);
+        }
+    };
+
+    getCustomerPets = async (req, res, next) => {
+        try {
+            const customerId = parseInt(req.params.customerId);
+            const result = await this.customerService.getCustomerPets(customerId);
+            res.json(result);
+        } catch (error) {
+            next(error);
+        }
+    };
+
     // Pet endpoints
     getPets = async (req, res, next) => {
         try {
@@ -182,6 +211,31 @@ class CustomerController {
             }
 
             const result = await this.customerService.UpdatePassword(customerId, oldPassword, newPassword);
+            res.json(result);
+        } catch (error) {
+            next(error);
+        }
+    };
+
+    // Staff-only endpoints
+    getAnyPetMedicalHistory = async (req, res, next) => {
+        try {
+            const petId = parseInt(req.params.petId);
+            const limit = parseInt(req.query.limit) || 100;
+
+            const result = await this.customerService.getAnyPetMedicalHistory(petId, limit);
+            res.json(result);
+        } catch (error) {
+            next(error);
+        }
+    };
+
+    getAnyPetVaccinationHistory = async (req, res, next) => {
+        try {
+            const petId = parseInt(req.params.petId);
+            const limit = parseInt(req.query.limit) || 100;
+
+            const result = await this.customerService.getAnyPetVaccinationHistory(petId, limit);
             res.json(result);
         } catch (error) {
             next(error);

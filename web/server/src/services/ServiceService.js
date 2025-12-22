@@ -18,13 +18,15 @@ class ServiceService {
         return services;
     }
 
-    async createMedicalExamination(examinationData, requesterId) {
+    async createMedicalExamination(examinationData, requesterId, isStaff = false) {
         const { MaCN, MaDV, MaTC, NgayKham } = examinationData;
 
-        // Validate pet ownership
-        const pet = await this.petRepository.getPetById(MaTC);
-        if (!pet || pet.MaKH !== requesterId) {
-            throw new AppError('Bạn không có quyền với thú cưng này', 403);
+        // Validate pet ownership (skip if staff is creating)
+        if (!isStaff) {
+            const pet = await this.petRepository.getPetById(MaTC);
+            if (!pet || pet.MaKH !== requesterId) {
+                throw new AppError('Bạn không có quyền với thú cưng này', 403);
+            }
         }
 
         // Create examination
@@ -69,15 +71,16 @@ class ServiceService {
         return { success: true, count: results.length };
     }
 
-    async createVaccination(vaccinationData, requesterId) {
+    async createVaccination(vaccinationData, requesterId, isStaff = false) {
         const { MaCN, MaDV, MaTC, NgayTiem, vaccines } = vaccinationData;
 
-        // Validate pet ownership
-        const pet = await this.petRepository.getPetById(MaTC);
-        if (!pet || pet.MaKH !== requesterId) {
-            throw new AppError('Bạn không có quyền với thú cưng này', 403);
+        // Validate pet ownership (skip if staff is creating)
+        if (!isStaff) {
+            const pet = await this.petRepository.getPetById(MaTC);
+            if (!pet || pet.MaKH !== requesterId) {
+                throw new AppError('Bạn không có quyền với thú cưng này', 403);
+            }
         }
-
 
         const result = await this.serviceRepository.createVaccination({
             MaCN,
@@ -89,9 +92,9 @@ class ServiceService {
         // If vaccines are provided, insert them into Chi_tiet_tiem_phong
         if (vaccines && vaccines.length > 0 && result.MaTP) {
             for (const vaccine of vaccines) {
-                if (vaccine.name && vaccine.name.trim()) {
+                if (vaccine.MaSP) {
                     await this.serviceRepository.addVaccinationDetail(result.MaTP, {
-                        MaSP: vaccineProduct.MaSP,
+                        MaSP: vaccine.MaSP,
                         MaGoi: null
                     });
                 }
@@ -143,9 +146,9 @@ class ServiceService {
 
         // Get vaccination service ID (MaDV) for the branch
         const serviceResult = await this.serviceRepository.execute(`
-            SELECT TOP 1 MaDV 
+            SELECT MaDV 
             FROM Dich_vu 
-            WHERE TenDV LIKE N'%Tiêm%' OR TenDV LIKE N'%Vaccine%'
+            WHERE TenDV = 'Tiêm phòng'
         `);
         
         const maDV = serviceResult.recordset[0]?.MaDV || null;

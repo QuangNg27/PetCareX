@@ -26,19 +26,18 @@ class ServiceController {
 
     createMedicalExamination = async (req, res, next) => {
         try {
-            const { MaCN, MaDV, MaTC, MaNV, NgayKham, TrieuChung, ChanDoan, NgayTaiKham } = req.body;
-            const customerId = req.user.MaKH;
+            const { MaCN, MaDV, MaTC, NgayKham } = req.body;
+            
+            // Check if user is staff (has MaNV) or customer (has MaKH)
+            const isStaff = !!req.user.MaNV;
+            const requesterId = req.user.MaNV || req.user.MaKH;
 
             const result = await this.serviceService.createMedicalExamination({
                 MaCN,
                 MaDV,
                 MaTC,
-                MaNV,
-                NgayKham,
-                TrieuChung,
-                ChanDoan,
-                NgayTaiKham
-            }, customerId);
+                NgayKham
+            }, requesterId, isStaff);
 
             res.status(201).json({
                 success: true,
@@ -91,7 +90,10 @@ class ServiceController {
     createVaccination = async (req, res, next) => {
         try {
             const { MaCN, MaDV, MaTC, MaNV, NgayTiem, vaccines } = req.body;
-            const customerId = req.user.MaKH;
+            
+            // Check if user is staff (has MaNV) or customer (has MaKH)
+            const isStaff = !!req.user.MaNV;
+            const requesterId = req.user.MaNV || req.user.MaKH;
 
             const result = await this.serviceService.createVaccination({
                 MaCN,
@@ -100,7 +102,7 @@ class ServiceController {
                 MaNV,
                 NgayTiem,
                 vaccines
-            }, customerId);
+            }, requesterId, isStaff);
 
             res.status(201).json({
                 success: true,

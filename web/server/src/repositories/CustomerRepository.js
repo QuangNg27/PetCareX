@@ -94,6 +94,25 @@ class CustomerRepository extends BaseRepository {
         return result.recordset;
     }
 
+    async createCustomer(customerData) {
+        const { HoTen, SoDT, Email, CCCD, GioiTinh, NgaySinh } = customerData;
+
+        const result = await this.execute(`
+            INSERT INTO Khach_hang (HoTen, SoDT, Email, CCCD, GioiTinh, NgaySinh)
+            OUTPUT INSERTED.MaKH
+            VALUES (@HoTen, @SoDT, @Email, @CCCD, @GioiTinh, @NgaySinh)
+        `, {
+            HoTen,
+            SoDT,
+            Email,
+            CCCD,
+            GioiTinh,
+            NgaySinh
+        });
+
+        return result.recordset[0];
+    }
+
     async searchCustomers(searchTerm) {
         const result = await this.execute(`
             SELECT
@@ -101,6 +120,9 @@ class CustomerRepository extends BaseRepository {
                 kh.HoTen,
                 kh.SoDT,
                 kh.Email,
+                kh.CCCD,
+                kh.GioiTinh,
+                kh.NgaySinh,
                 ctv.TenCapDo,
                 kh.DiemLoyalty
             FROM Khach_hang kh

@@ -59,6 +59,40 @@ class CustomerService {
         };
     }
 
+    async createCustomer(customerData) {
+        // Validate required fields
+        const { HoTen, SoDT, Email, CCCD, GioiTinh, NgaySinh } = customerData;
+        
+        if (!HoTen || !SoDT || !CCCD || !NgaySinh || !GioiTinh || !Email) {
+            throw new AppError('Thiếu thông tin bắt buộc', 400);
+        }
+
+        const result = await this.customerRepo.createCustomer(customerData);
+
+        return {
+            success: true,
+            message: 'Tạo khách hàng thành công',
+            data: result
+        };
+    }
+    async createPetForCustomer(customerId, petData) {
+        const result = await this.petRepo.createPet(customerId, petData);
+
+        return {
+            success: true,
+            message: 'Thêm thú cưng thành công',
+            data: result
+        };
+    }
+
+    async getCustomerPets(customerId) {
+        const pets = await this.petRepo.getCustomerPets(customerId);
+
+        return {
+            success: true,
+            data: pets
+        };
+    }
     // Pet-related methods
     async getPets(customerId) {
         const pets = await this.petRepo.getCustomerPets(customerId);
@@ -115,7 +149,13 @@ class CustomerService {
         };
     }
 
-    async getPetMedicalHistory(petId, limit = 100) {
+    async getPetMedicalHistory(petId, customerId, limit = 100) {
+        // Check ownership - customer can only view their own pet's history
+        const isOwner = await this.petRepo.checkPetOwnership(petId, customerId);
+        if (!isOwner) {
+            throw new AppError('Bạn không có quyền xem lịch sử của thú cưng này', 403);
+        }
+        
         const history = await this.petRepo.getPetMedicalHistory(petId, limit);
         const medicines = await this.petRepo.getPetMedicineBasedOnTreatment(history.map(h => h.MaKB));
 
@@ -140,7 +180,13 @@ class CustomerService {
         };
     }
 
-    async getPetVaccinationHistory(petId, limit = 100) {
+    async getPetVaccinationHistory(petId, customerId, limit = 100) {
+        // Check ownership - customer can only view their own pet's history
+        const isOwner = await this.petRepo.checkPetOwnership(petId, customerId);
+        if (!isOwner) {
+            throw new AppError('Bạn không có quyền xem lịch sử của thú cưng này', 403);
+        }
+        
         const history = await this.petRepo.getPetVaccinationHistory(petId, limit);
         const vaccines = await this.petRepo.getPetVaccineBasedOnVaccination(history.map(h => h.MaTP));
 
@@ -162,6 +208,27 @@ class CustomerService {
         return {
             success: true,
             data: historyWithVaccines
+        };
+    }
+
+    // Staff-only methods - no ownership check
+    async getAnyPetMedicalHistory(petId, limit = 100) {
+        // For staff - get medical history without ownership check
+        const history = await this.petRepo.getPetMedicalHistory(petId, limit);
+        
+        return {
+            success: true,
+            data: history
+        };
+    }
+
+    async getAnyPetVaccinationHistory(petId, limit = 100) {
+        // For staff - get vaccination history without ownership check
+        const history = await this.petRepo.getPetVaccinationHistory(petId, limit);
+        
+        return {
+            success: true,
+            data: history
         };
     }
 
