@@ -1,109 +1,174 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "@context/AuthContext";
-import {
-  PlusIcon,
-  EditIcon,
-  DeleteIcon,
-  SaveIcon,
-  XIcon,
-} from "@components/common/icons";
+import doctorService from "@services/doctorService";
+import { EditIcon } from "@components/common/icons";
 
 const VaccinationRecordView = () => {
   const { user } = useAuth();
-  const [records, setRecords] = useState([
-    {
-      id: 1,
-      MaLichHen: "LH001",
-      TenThuCung: "Max",
-      TenVacXin: "DHPP (Distemper, Hepatitis, Parvovirus, Parainfluenza)",
-      LieuLuong: "1ml",
-      NgayTiem: "2024-12-01",
-      NgayTiemTiep: "2025-03-01",
-      TrangThai: "Đã tiêm",
-      GhiChu: "Tiêm lần thứ 1",
-    },
-    {
-      id: 2,
-      MaLichHen: "LH002",
-      TenThuCung: "Luna",
-      TenVacXin: "Rabies (Bệnh dại)",
-      LieuLuong: "0.5ml",
-      NgayTiem: "2024-12-02",
-      NgayTiemTiep: "2025-12-02",
-      TrangThai: "Đã tiêm",
-      GhiChu: "Tiêm lần đầu",
-    },
-  ]);
+  const [records, setRecords] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  // no product selection anymore — this page only assigns the current doctor to a session
 
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [editingId, setEditingId] = useState(null);
-  const [formData, setFormData] = useState({
-    MaLichHen: "",
-    TenThuCung: "",
-    TenVacXin: "",
-    LieuLuong: "",
-    NgayTiem: "",
-    NgayTiemTiep: "",
-    TrangThai: "Chưa tiêm",
-    GhiChu: "",
-  });
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      try {
+        // eslint-disable-next-line no-console
+        console.log("VaccinationRecordView: user object =", user);
 
-  const vaccinationOptions = [
-    "DHPP (Distemper, Hepatitis, Parvovirus, Parainfluenza)",
-    "Rabies (Bệnh dại)",
-    "Leptospirosis",
-    "Bordetella",
-    "FeLV (Feline Leukemia)",
-    "FIV (Feline Immunodeficiency Virus)",
-    "FVRCP (Feline Viral Rhinotracheitis, Calicivirus, Panleukopenia)",
-    "Khác",
-  ];
+        // Guard: only load if user is authenticated AND has MaNV (doctor ID)
+        if (!user || !user.MaTK || !user.MaNV) {
+          // eslint-disable-next-line no-console
+          console.warn(
+            "VaccinationRecordView: incomplete user data, skipping API call. User=",
+            user
+          );
+          setLoading(false);
+          return;
+        }
 
-  const handleAddClick = () => {
-    setFormData({
-      MaLichHen: "",
-      TenThuCung: "",
-      TenVacXin: "",
-      LieuLuong: "",
-      NgayTiem: "",
-      NgayTiemTiep: "",
-      TrangThai: "Chưa tiêm",
-      GhiChu: "",
-    });
-    setShowAddForm(true);
-  };
+        setLoading(true);
+        setError(null);
+        const branchId = user?.MaCN;
+        // Debug: log branchId and call result to diagnose empty responses/timeouts
+        // eslint-disable-next-line no-console
+        console.log(
+          "VaccinationRecordView: user authenticated, requesting vaccinations, branchId=",
+          branchId,
+          "user.MaNV=",
+          user?.MaNV,
+          "user.MaTK=",
+          user?.MaTK
+        );
+        const res = await doctorService.getVaccinations(branchId);
+        // eslint-disable-next-line no-console
+        console.log("VaccinationRecordView: vaccinations response:", res);
+        const items =
+          (res && (res.data || res.vaccinations)) ||
+          (Array.isArray(res) ? res : res || []);
+        if (!mounted) return;
+        // Base mapping for vaccination sessions
+        const baseRecords = items.map((r, idx) => ({
+          id: r.id || r.MaTP || idx,
+          MaTP: r.MaTP || r.id || null,
+          TenThuCung: r.TenThuCung || r.petName || r.Ten || "",
+          NgayTiem: r.NgayTiem || r.date || r.ngay || "",
+          NgayTiemTiep: r.NgayTiemTiep || r.nextDate || "",
+          TenKhachHang: r.TenKhachHang || r.customerName || "",
+          TenBacSi: r.TenBacSi || r.doctorName || "",
+          MaNV: r.MaNV || r.MaBacSi || null,
+          // vaccines will be attached below by fetching details per MaTP
+          Vaccines: [],
+          GhiChu: r.GhiChu || r.note || "",
+        }));
 
-  const handleEdit = (record) => {
-    setFormData(record);
-    setEditingId(record.id);
-    setShowAddForm(true);
-  };
+        // Try to fetch vaccine items (Chi_tiet_tiem_phong) for each session in parallel
+        try {
+          const detailsResponses = await Promise.all(
+            baseRecords.map(async (rec) => {
+              if (!rec.MaTP) return { MaTP: rec.MaTP, vaccines: [] };
+              try {
+                const dRes = await doctorService.getVaccinationDetails(
+                  rec.MaTP
+                );
+                const vaccines = (dRes && (dRes.data || dRes.vaccines)) || [];
+                return { MaTP: rec.MaTP, vaccines };
+              } catch (e) {
+                // eslint-disable-next-line no-console
+                console.warn(
+                  "Failed to load vaccination details for MaTP=",
+                  rec.MaTP,
+                  e
+                );
+                return { MaTP: rec.MaTP, vaccines: [] };
+              }
+            })
+          );
 
-  const handleDelete = (id) => {
-    setRecords(records.filter((r) => r.id !== id));
-  };
+          const detailsMap = new Map();
+          detailsResponses.forEach((d) => detailsMap.set(d.MaTP, d.vaccines));
 
-  const handleSave = () => {
-    if (editingId) {
-      setRecords(
-        records.map((r) =>
-          r.id === editingId ? { ...formData, id: editingId } : r
+          const merged = baseRecords.map((rec) => ({
+            ...rec,
+            Vaccines: detailsMap.get(rec.MaTP) || [],
+          }));
+
+          setRecords(merged);
+          setError(null); // Clear any previous errors on successful load
+        } catch (e) {
+          // If details fetching fails, still show baseRecords
+          // eslint-disable-next-line no-console
+          console.error("Error fetching vaccination details:", e);
+          setRecords(baseRecords);
+          setError(null); // Clear errors on successful base records load
+        }
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error("Lỗi tải hồ sơ tiêm chủng:", err);
+        const message =
+          err?.response?.data?.message || err?.message || "Lỗi khi gọi API";
+        const status = err?.response?.status || null;
+        setError({ message, status, raw: err });
+        // fallback: keep empty so dev knows API failed
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+
+    load();
+    return () => {
+      mounted = false;
+    };
+  }, [user]);
+
+  // Assign the current logged-in doctor (user.MaNV) to the vaccination session.
+  // The backend `updateVaccinationDetails` endpoint will accept an empty details array
+  // and should set MaNV = req.user.MaNV. We call it with [] to trigger assignment.
+  const handleAssign = async (record) => {
+    if (!record) return;
+    if (record.MaNV) {
+      setError({ message: "Phiên này đã có bác sĩ phụ trách" });
+      return;
+    }
+
+    const confirmMsg = `Bạn muốn nhận phiên tiêm cho ${
+      record.TenThuCung || "(không tên)"
+    }?`;
+    if (!window.confirm(confirmMsg)) return;
+
+    try {
+      setLoading(true);
+      const id = record.MaTP || record.id;
+      await doctorService.updateVaccinationDetails(id, []);
+      // Update local record to mark it assigned to the current user
+      setRecords((prev) =>
+        prev.map((r) =>
+          r.id === record.id || r.MaTP === record.MaTP
+            ? {
+                ...r,
+                MaNV: user?.MaNV || r.MaNV,
+                TenBacSi: user?.Ten || user?.HoTen || r.TenBacSi,
+              }
+            : r
         )
       );
-      setEditingId(null);
-    } else {
-      setRecords([...records, { ...formData, id: Date.now() }]);
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error("Failed to assign vaccination session:", err);
+      setError({ message: "Gán phiên thất bại", raw: err });
+    } finally {
+      setLoading(false);
     }
-    setShowAddForm(false);
-  };
-
-  const handleCancel = () => {
-    setShowAddForm(false);
-    setEditingId(null);
   };
 
   return (
     <div className="p-6">
+      {error && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded">
+          Lỗi khi tải dữ liệu: {error.message || JSON.stringify(error)}
+        </div>
+      )}
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Hồ sơ tiêm chủng</h2>
@@ -111,176 +176,20 @@ const VaccinationRecordView = () => {
             Tổng số: {records.length} bản ghi
           </p>
         </div>
-        {!showAddForm && (
-          <button
-            className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
-            onClick={handleAddClick}
-          >
-            <PlusIcon size={18} /> Thêm bản ghi
-          </button>
-        )}
+        {/* Create/add disabled: component is edit-only per requirements */}
       </div>
 
-      {showAddForm && (
-        <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 mb-6">
-          <h3 className="text-lg font-bold mb-4">
-            {editingId
-              ? "Chỉnh sửa hồ sơ tiêm chủng"
-              : "Thêm hồ sơ tiêm chủng mới"}
-          </h3>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Mã lịch hẹn *
-              </label>
-              <input
-                type="text"
-                value={formData.MaLichHen}
-                onChange={(e) =>
-                  setFormData({ ...formData, MaLichHen: e.target.value })
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                disabled={editingId !== null}
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Tên thú cưng *
-              </label>
-              <input
-                type="text"
-                value={formData.TenThuCung}
-                onChange={(e) =>
-                  setFormData({ ...formData, TenThuCung: e.target.value })
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Tên vắc-xin *
-              </label>
-              <select
-                value={formData.TenVacXin}
-                onChange={(e) =>
-                  setFormData({ ...formData, TenVacXin: e.target.value })
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-              >
-                <option value="">Chọn vắc-xin</option>
-                {vaccinationOptions.map((vaccine) => (
-                  <option key={vaccine} value={vaccine}>
-                    {vaccine}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Liều lượng *
-              </label>
-              <input
-                type="text"
-                value={formData.LieuLuong}
-                onChange={(e) =>
-                  setFormData({ ...formData, LieuLuong: e.target.value })
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                placeholder="vd: 1ml, 0.5ml"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Ngày tiêm *
-              </label>
-              <input
-                type="date"
-                value={formData.NgayTiem}
-                onChange={(e) =>
-                  setFormData({ ...formData, NgayTiem: e.target.value })
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Ngày tiêm tiếp theo
-              </label>
-              <input
-                type="date"
-                value={formData.NgayTiemTiep}
-                onChange={(e) =>
-                  setFormData({ ...formData, NgayTiemTiep: e.target.value })
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Trạng thái
-              </label>
-              <select
-                value={formData.TrangThai}
-                onChange={(e) =>
-                  setFormData({ ...formData, TrangThai: e.target.value })
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-              >
-                <option value="Chưa tiêm">Chưa tiêm</option>
-                <option value="Đã tiêm">Đã tiêm</option>
-                <option value="Quá hạn">Quá hạn</option>
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Ghi chú
-            </label>
-            <textarea
-              value={formData.GhiChu}
-              onChange={(e) =>
-                setFormData({ ...formData, GhiChu: e.target.value })
-              }
-              rows="2"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-              placeholder="Ghi chú thêm..."
-            />
-          </div>
-
-          <div className="flex gap-3 mt-6">
-            <button
-              onClick={handleSave}
-              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-            >
-              <SaveIcon size={18} /> Lưu
-            </button>
-            <button
-              onClick={handleCancel}
-              className="flex items-center gap-2 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
-            >
-              <XIcon size={18} /> Hủy
-            </button>
-          </div>
-        </div>
-      )}
+      {/* Form removed: this page does not create new vaccination records; doctors only assign themselves to sessions */}
 
       <div className="overflow-x-auto bg-white rounded-xl shadow-sm border border-gray-200">
         <table className="w-full">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
               <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">
-                Mã LH
+                Thú cưng
               </th>
               <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">
-                Thú cưng
+                Bác sĩ phụ trách
               </th>
               <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">
                 Tên vắc-xin
@@ -294,9 +203,7 @@ const VaccinationRecordView = () => {
               <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">
                 Ngày tiêm tiếp
               </th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">
-                Trạng thái
-              </th>
+              {/* Trạng thái column removed */}
               <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">
                 Ghi chú
               </th>
@@ -307,69 +214,158 @@ const VaccinationRecordView = () => {
           </thead>
           <tbody className="divide-y divide-gray-200">
             {records.map((record) => (
-              <tr
-                key={record.id}
-                className="hover:bg-gray-50 transition-colors"
-              >
-                <td className="px-6 py-4 text-sm text-gray-700 font-medium">
-                  {record.MaLichHen}
-                </td>
-                <td className="px-6 py-4 text-sm text-gray-700">
-                  {record.TenThuCung}
-                </td>
-                <td className="px-6 py-4 text-sm text-gray-700">
-                  <div className="max-w-xs" title={record.TenVacXin}>
-                    {record.TenVacXin}
-                  </div>
-                </td>
-                <td className="px-6 py-4 text-sm text-gray-700">
-                  {record.LieuLuong}
-                </td>
-                <td className="px-6 py-4 text-sm text-gray-700">
-                  {new Date(record.NgayTiem).toLocaleDateString("vi-VN")}
-                </td>
-                <td className="px-6 py-4 text-sm text-gray-700">
-                  {record.NgayTiemTiep
-                    ? new Date(record.NgayTiemTiep).toLocaleDateString("vi-VN")
-                    : "-"}
-                </td>
-                <td className="px-6 py-4 text-sm">
-                  <span
-                    className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                      record.TrangThai === "Đã tiêm"
-                        ? "bg-green-100 text-green-800"
-                        : record.TrangThai === "Chưa tiêm"
-                        ? "bg-yellow-100 text-yellow-800"
-                        : "bg-red-100 text-red-800"
-                    }`}
-                  >
-                    {record.TrangThai}
-                  </span>
-                </td>
-                <td className="px-6 py-4 text-sm text-gray-700">
-                  <div className="max-w-xs truncate" title={record.GhiChu}>
-                    {record.GhiChu || "-"}
-                  </div>
-                </td>
-                <td className="px-6 py-4 text-sm">
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => handleEdit(record)}
-                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                      title="Chỉnh sửa"
+              <React.Fragment key={record.id}>
+                <tr className="hover:bg-gray-50 transition-colors">
+                  <td className="px-6 py-4 text-sm text-gray-700">
+                    {record.TenThuCung}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-700">
+                    {record.MaNV ? (
+                      <span title={record.TenBacSi}>
+                        MaNV: {record.MaNV}
+                        {record.TenBacSi && (
+                          <div className="text-xs text-gray-500">
+                            {record.TenBacSi}
+                          </div>
+                        )}
+                      </span>
+                    ) : (
+                      <span className="text-gray-400">-</span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-700">
+                    {/* summary: show comma-separated vaccine names if available */}
+                    <div
+                      className="max-w-xs truncate"
+                      title={
+                        record.Vaccines && record.Vaccines.length
+                          ? record.Vaccines.map(
+                              (v) =>
+                                v.TenVaccine || v.TenSP || v.TenVacXin || v.name
+                            ).join(", ")
+                          : "-"
+                      }
                     >
-                      <EditIcon size={18} />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(record.id)}
-                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                      title="Xóa"
-                    >
-                      <DeleteIcon size={18} />
-                    </button>
-                  </div>
-                </td>
-              </tr>
+                      {record.Vaccines && record.Vaccines.length
+                        ? record.Vaccines.map(
+                            (v) =>
+                              v.TenVaccine || v.TenSP || v.TenVacXin || v.name
+                          ).join(", ")
+                        : "-"}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-700">
+                    {record.Vaccines && record.Vaccines.length
+                      ? record.Vaccines.map((v) => v.LieuLuong || "-").join(
+                          ", "
+                        )
+                      : "-"}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-700">
+                    {record.NgayTiem
+                      ? new Date(record.NgayTiem).toLocaleDateString("vi-VN")
+                      : "-"}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-700">
+                    {record.NgayTiemTiep
+                      ? new Date(record.NgayTiemTiep).toLocaleDateString(
+                          "vi-VN"
+                        )
+                      : "-"}
+                  </td>
+                  {/* Trạng thái column removed */}
+                  <td className="px-6 py-4 text-sm text-gray-700">
+                    <div className="max-w-xs truncate" title={record.GhiChu}>
+                      {record.GhiChu || "-"}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-sm">
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleAssign(record)}
+                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        title="Nhận phiên tiêm"
+                      >
+                        <EditIcon size={18} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+
+                {/* Details row: show vaccine item rows matching the SQL */}
+                <tr className="bg-gray-50">
+                  <td colSpan={7} className="px-6 py-4">
+                    {record.Vaccines && record.Vaccines.length > 0 ? (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm text-gray-700">
+                          <thead>
+                            <tr>
+                              <th className="px-3 py-2 text-left font-medium">
+                                Thú cưng
+                              </th>
+                              <th className="px-3 py-2 text-left font-medium">
+                                Tên vắc-xin
+                              </th>
+                              <th className="px-3 py-2 text-left font-medium">
+                                Liều lượng
+                              </th>
+                              <th className="px-3 py-2 text-left font-medium">
+                                Gói tiêm
+                              </th>
+                              <th className="px-3 py-2 text-left font-medium">
+                                Ngày tiêm
+                              </th>
+                              <th className="px-3 py-2 text-left font-medium">
+                                Ngày kết thúc gói
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y">
+                            {record.Vaccines.map((v, i) => (
+                              <tr key={i} className="">
+                                <td className="px-3 py-2">
+                                  {v.TenThuCung || record.TenThuCung || "-"}
+                                </td>
+                                <td className="px-3 py-2">
+                                  {v.TenVaccine ||
+                                    v.TenSP ||
+                                    v.TenVacXin ||
+                                    v.name ||
+                                    "-"}
+                                </td>
+                                <td className="px-3 py-2">
+                                  {v.LieuLuong || "-"}
+                                </td>
+                                <td className="px-3 py-2">
+                                  {v.GoiTiem || v.MaGoi || "-"}
+                                </td>
+                                <td className="px-3 py-2">
+                                  {v.NgayTiem
+                                    ? new Date(v.NgayTiem).toLocaleDateString(
+                                        "vi-VN"
+                                      )
+                                    : "-"}
+                                </td>
+                                <td className="px-3 py-2">
+                                  {v.NgayKetThuc
+                                    ? new Date(
+                                        v.NgayKetThuc
+                                      ).toLocaleDateString("vi-VN")
+                                    : "-"}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <div className="text-sm text-gray-500">
+                        Không có vắc-xin chi tiết cho phiên này.
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              </React.Fragment>
             ))}
           </tbody>
         </table>

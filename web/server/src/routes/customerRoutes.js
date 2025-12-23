@@ -1,8 +1,8 @@
-const express = require('express');
-const CustomerController = require('../controllers/CustomerController');
-const AuthController = require('../controllers/AuthController');
-const { authMiddleware } = require('../middleware/authMiddleware');
-const { authorizeRoles } = require('../middleware/authorizeRoles');
+const express = require("express");
+const CustomerController = require("../controllers/CustomerController");
+const AuthController = require("../controllers/AuthController");
+const { authMiddleware } = require("../middleware/authMiddleware");
+const { authorizeRoles } = require("../middleware/authorizeRoles");
 
 const router = express.Router();
 const customerController = new CustomerController();
@@ -11,25 +11,75 @@ const customerController = new CustomerController();
 router.use(authMiddleware);
 
 // Customer profile routes
-router.get('/profile', authorizeRoles('Khách hàng'), customerController.getProfile);
-router.put('/profile', authorizeRoles('Khách hàng'), customerController.updateProfile);
-router.get('/spending', authorizeRoles('Khách hàng'), customerController.getMembershipSpending);
-router.get('/loyalty-history', authorizeRoles('Khách hàng'), customerController.getLoyaltyHistory);
-router.post('/change-password', authorizeRoles('Khách hàng'), customerController.UpdatePassword);
+router.get(
+  "/profile",
+  authorizeRoles("Khách hàng"),
+  customerController.getProfile
+);
+router.put(
+  "/profile",
+  authorizeRoles("Khách hàng"),
+  customerController.updateProfile
+);
+router.get(
+  "/spending",
+  authorizeRoles("Khách hàng"),
+  customerController.getMembershipSpending
+);
+router.get(
+  "/loyalty-history",
+  authorizeRoles("Khách hàng"),
+  customerController.getLoyaltyHistory
+);
+router.post(
+  "/change-password",
+  authorizeRoles("Khách hàng"),
+  customerController.UpdatePassword
+);
 
 // Pet management routes
-router.get('/pets', authorizeRoles('Khách hàng'), customerController.getPets);
-router.post('/pets', authorizeRoles('Khách hàng'), customerController.createPet);
-router.put('/pets/:petId', authorizeRoles('Khách hàng'), customerController.updatePet);
-router.delete('/pets/:petId', authorizeRoles('Khách hàng'), customerController.deletePet);
+router.get(
+  "/pets",
+  authorizeRoles(["Khách hàng", "Bán hàng", "Bác sĩ"]),
+  customerController.getPets
+);
+router.get(
+  "/pets/:petId",
+  authorizeRoles(["Khách hàng", "Bán hàng", "Bác sĩ"]),
+  customerController.getPetById
+);
+router.post(
+  "/pets",
+  authorizeRoles("Khách hàng"),
+  customerController.createPet
+);
+router.put(
+  "/pets/:petId",
+  authorizeRoles("Khách hàng"),
+  customerController.updatePet
+);
+router.delete(
+  "/pets/:petId",
+  authorizeRoles("Khách hàng"),
+  customerController.deletePet
+);
 
 // Pet history routes
-router.get('/pets/:petId/medical-history', authorizeRoles('Khách hàng'), customerController.getPetMedicalHistory);
-router.get('/pets/:petId/vaccination-history', authorizeRoles('Khách hàng'), customerController.getPetVaccinationHistory);
+router.get(
+  "/pets/:petId/medical-history",
+  authorizeRoles(["Khách hàng", "Bán hàng", "Bác sĩ"]),
+  customerController.getPetMedicalHistory
+);
+router.get(
+  "/pets/:petId/vaccination-history",
+  authorizeRoles(["Khách hàng", "Bán hàng", "Bác sĩ"]),
+  customerController.getPetVaccinationHistory
+);
 // Customer search (for staff)
-router.get('/search', 
-    authorizeRoles(['Bác sĩ', 'Bán hàng', 'Tiếp tân', 'Quản lý chi nhánh']), 
-    customerController.searchCustomers
+router.get(
+  "/search",
+  authorizeRoles(["Bác sĩ", "Bán hàng", "Tiếp tân", "Quản lý chi nhánh"]),
+  customerController.searchCustomers
 );
 
 module.exports = router;

@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import toast from "react-hot-toast";
 import { useAuth } from "@context/AuthContext";
 import {
   SearchIcon,
@@ -10,10 +11,22 @@ import {
   LogOutIcon,
   AwardIcon,
 } from "@components/common/icons";
+// Services
+import { productService } from "@services/productService";
+import { invoiceService } from "@services/invoiceService";
+import doctorService from "@services/doctorService";
+import apiClient from "@config/apiClient";
 
 const InvoicePage = () => {
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user, logout, initialized } = useAuth();
+  const [activeTab, setActiveTab] = React.useState(() => {
+    return localStorage.getItem("invoiceActiveTab") || "products";
+  });
+
+  React.useEffect(() => {
+    localStorage.setItem("invoiceActiveTab", activeTab);
+  }, [activeTab]);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const menuRef = useRef(null);
 
@@ -31,49 +44,160 @@ const InvoicePage = () => {
     await logout();
     navigate("/login");
   };
-  // Danh sách sản phẩm/thuốc
-  const allProducts = [
-    {
-      id: 1,
-      tenSanPham: "Thức ăn cho chó Pedigree 2.5kg",
-      gia: 250000,
-      loai: "sản phẩm",
-    },
-    {
-      id: 2,
-      tenSanPham: "Thuốc kháng sinh Amoxicillin 250mg",
-      gia: 85000,
-      loai: "thuốc",
-    },
-    {
-      id: 3,
-      tenSanPham: "Chất diệt ký sinh trùng Ivermectin",
-      gia: 95000,
-      loai: "thuốc",
-    },
-    {
-      id: 4,
-      tenSanPham: "Vitamin tổng hợp cho chó",
-      gia: 75000,
-      loai: "sản phẩm",
-    },
-    { id: 5, tenSanPham: "Probiotics cho mèo", gia: 65000, loai: "sản phẩm" },
-    {
-      id: 6,
-      tenSanPham: "Áo quần cho chó Size M",
-      gia: 120000,
-      loai: "sản phẩm",
-    },
-  ];
-
   const [invoiceItems, setInvoiceItems] = useState([]);
+  const [customerId, setCustomerId] = useState("");
+  const [petId, setPetId] = useState("");
   const [customerName, setCustomerName] = useState("");
   const [petName, setPetName] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [allProducts, setAllProducts] = useState([]);
+  const [loadingProducts, setLoadingProducts] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState("Thức ăn"); // "Tất cả", "Thức ăn", or "Phụ kiện"
 
-  const filteredProducts = allProducts.filter((product) =>
-    product.tenSanPham.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Robust price resolver: handle many backend shapes for price (Gia_san_pham may be
+  // number, object, or array of prices per branch). Try to pick branch-specific price
+  // when branchId provided, otherwise fallback to common fields.
+  const getNumericPrice = (p, branchId) => {
+    if (p == null) return 0;
+    const tryNumber = (v) => {
+      const n = Number(v);
+      return Number.isFinite(n) ? n : null;
+    };
+
+    // If the product itself is a raw number
+    if (typeof p === "number") return p;
+
+    // Check Gia_san_pham first (common source)
+    const gsp = p.Gia_san_pham ?? p.GiaSanPham ?? p.gia_san_pham;
+    if (gsp != null) {
+      // If it's a plain number
+      if (typeof gsp === "number") return gsp;
+
+      // If it's an array (possible prices per branch)
+      if (Array.isArray(gsp) && gsp.length > 0) {
+        let entry;
+        if (branchId) {
+          entry = gsp.find(
+            (e) =>
+              e?.MaCN == branchId ||
+              e?.MaChiNhanh == branchId ||
+              e?.Ma_CN == branchId
+          );
+        }
+        entry = entry || gsp[0];
+        if (entry) {
+          const cand =
+            entry.Gia ??
+            entry.gia ??
+            entry.GiaApDung ??
+            entry.GiaBan ??
+            entry.Price;
+          const n = tryNumber(cand);
+          if (n != null) return n;
+        }
+      }
+
+      // If it's an object
+      if (typeof gsp === "object") {
+        // direct fields on object
+        const cand =
+          gsp.Gia ?? gsp.gia ?? gsp.GiaApDung ?? gsp.GiaBan ?? gsp.Price;
+        const n = tryNumber(cand);
+        if (n != null) return n;
+
+        // maybe keyed by branch id
+        if (branchId && gsp[branchId]) {
+          const v =
+            gsp[branchId].Gia ?? gsp[branchId].gia ?? gsp[branchId].GiaApDung;
+          const n2 = tryNumber(v);
+          if (n2 != null) return n2;
+        }
+      }
+    }
+
+    // Fallback common fields
+    const fallbackKeys = [
+      "GiaHienTai",
+      "SoTien",
+      "GiaBan",
+      "Price",
+      "gia",
+      "Gia",
+      "giaBan",
+    ];
+    for (const k of fallbackKeys) {
+      if (p[k] != null) {
+        const n = tryNumber(p[k]);
+        if (n != null) return n;
+      }
+    }
+
+    // As a last resort, check nested possible data structures
+    if (p.data && Array.isArray(p.data) && p.data[0]) {
+      const cand = p.data[0].Gia ?? p.data[0].gia ?? p.data[0].GiaBan;
+      const n = tryNumber(cand);
+      if (n != null) return n;
+    }
+
+    return 0;
+  };
+
+  const filteredProducts = allProducts.filter((product) => {
+    const matchesSearch = product.tenSanPham
+      .toLowerCase()
+      .includes(searchTerm.toLowerCase());
+
+    // If selectedCategory is "Tất cả", show all products
+    if (selectedCategory === "Tất cả") {
+      return matchesSearch;
+    }
+    // Otherwise, filter by selected category (exact match)
+    return (
+      matchesSearch &&
+      product.loai.toLowerCase() === selectedCategory.toLowerCase()
+    );
+  });
+
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      try {
+        setLoadingProducts(true);
+        const branchId = user?.MaCN;
+        const res = await productService.getProducts(branchId);
+        const items = res || [];
+        if (!mounted) return;
+        const resolveLoai = (p) => {
+          return (
+            p.LoaiSP ||
+            p.LoaiSanPham ||
+            p.Loai ||
+            p.Category ||
+            p.Type ||
+            "Sản phẩm"
+          );
+        };
+
+        setAllProducts(
+          items.map((p) => ({
+            id: p.id || p.MaSanPham || p.MaSP || p.ID,
+            tenSanPham: p.TenSanPham || p.tenSanPham || p.TenSP || p.Name || "",
+            gia: getNumericPrice(p, branchId) || 0,
+            loai: resolveLoai(p),
+          }))
+        );
+      } catch (err) {
+        console.error("Lỗi tải sản phẩm cho hoá đơn:", err);
+      } finally {
+        if (mounted) setLoadingProducts(false);
+      }
+    };
+
+    load();
+    return () => {
+      mounted = false;
+    };
+  }, [user?.MaCN]);
 
   const addItem = (product) => {
     const existingItem = invoiceItems.find((item) => item.id === product.id);
@@ -114,19 +238,216 @@ const InvoicePage = () => {
   };
 
   const handleCreateInvoice = () => {
-    if (!customerName || !petName || invoiceItems.length === 0) {
-      alert("Vui lòng nhập đầy đủ thông tin và chọn sản phẩm");
+    if (!customerId || !petId || invoiceItems.length === 0) {
+      toast.error(
+        "Vui lòng nhập mã khách hàng, mã thú cưng và chọn sản phẩm/dịch vụ"
+      );
       return;
     }
-    alert(
-      `Hóa đơn tạo thành công!\nKhách: ${customerName}\nThú cưng: ${petName}\nTổng tiền: ${totalAmount.toLocaleString()}đ`
-    );
-    // Reset form
-    setCustomerName("");
-    setPetName("");
-    setInvoiceItems([]);
+
+    (async () => {
+      try {
+        // Split items into products, services, and medicines
+        const products = invoiceItems.filter(
+          (i) => !i.isService && !i.isMedicine
+        );
+        const services = invoiceItems.filter((i) => i.isService);
+        const medicines = invoiceItems.filter((i) => i.isMedicine);
+
+        const payload = {
+          MaKH: parseInt(customerId),
+          MaCN: user?.MaCN,
+          NgayLap: new Date().toISOString(),
+          HinhThucTT: "Tiền mặt",
+          CT_SanPham: [
+            ...products.map((i) => ({
+              MaSP: parseInt(i.id),
+              SoLuong: parseInt(i.soLuong),
+              GiaApDung: parseFloat(i.gia),
+            })),
+            // Medicines are also products (CT_SanPham)
+            ...medicines.map((i) => ({
+              MaSP: parseInt(i.MaSP),
+              SoLuong: parseInt(i.soLuong),
+              GiaApDung: parseFloat(i.gia),
+            })),
+          ],
+          CT_DichVu: services.map((i) => ({
+            MaDV: parseInt(i.MaDV),
+            MaTC: parseInt(i.MaTC),
+            MaKB: i.MaKB ? parseInt(i.MaKB) : null,
+            GiaApDung: parseFloat(i.gia),
+          })),
+        };
+        const res = await invoiceService.createInvoice(payload);
+        // adapt message from API or fallback
+        const msg = res?.message || "Hóa đơn tạo thành công!";
+        toast.success(`${msg}\nTổng tiền: ${totalAmount.toLocaleString()}đ`);
+        setCustomerId("");
+        setPetId("");
+        setCustomerName("");
+        setPetName("");
+        setInvoiceItems([]);
+      } catch (err) {
+        console.error("Lỗi khi tạo hoá đơn:", err);
+        toast.error("Tạo hóa đơn thất bại. Vui lòng thử lại.");
+      }
+    })();
   };
 
+  // Require authentication only after auth initialization and ensure role Bán hàng
+  if (initialized && !user) {
+    navigate("/login");
+    return null;
+  }
+  if (
+    initialized &&
+    user &&
+    !(user?.VaiTro === "Bán hàng" || user?.role === "Bán hàng")
+  ) {
+    // Not authorized for this page
+    return (
+      <div className="p-6">
+        <h2 className="text-xl font-bold">Không có quyền truy cập</h2>
+        <p>Trang này chỉ dành cho nhân viên bán hàng.</p>
+      </div>
+    );
+  }
+
+  // Fetch pet info (to get customer ID) and services/medicines used today
+  const handleLoadPetInfo = async () => {
+    const trimmedPetId = petId.trim();
+    if (!trimmedPetId) {
+      toast.error("Vui lòng nhập mã thú cưng trước");
+      return;
+    }
+
+    const petIdNum = parseInt(trimmedPetId);
+    if (isNaN(petIdNum)) {
+      toast.error("Mã thú cưng phải là số");
+      return;
+    }
+
+    try {
+      // Clear existing services/medicines when loading new pet
+      setInvoiceItems([]);
+      setCustomerId("");
+      setCustomerName("");
+      setPetName("");
+
+      // Fetch pet info - try from examinations first
+      const petResponse = await doctorService.getExaminations(null, {
+        petId: petIdNum,
+      });
+
+      // Try to get pet details from examination records
+      if (petResponse && Array.isArray(petResponse) && petResponse.length > 0) {
+        const firstRecord = petResponse[0];
+        setCustomerId(firstRecord.MaKH || "");
+        setCustomerName(firstRecord.TenKhachHang || "");
+        setPetName(firstRecord.TenThuCung || "");
+      } else {
+        // If no examinations found, still try to get pet info from basic pet query
+        try {
+          const petBasicInfo = await apiClient.get(
+            `/api/customers/pets/${petIdNum}`
+          );
+          const petData = petBasicInfo.data?.data || petBasicInfo.data;
+          if (petData) {
+            setCustomerId(petData.MaKH || "");
+            setCustomerName(petData.TenChuSoHuu || "");
+            setPetName(petData.Ten || "");
+          } else {
+            toast.error("Không tìm thấy thông tin thú cưng");
+            return;
+          }
+        } catch (err) {
+          toast.error("Không tìm thấy thông tin thú cưng");
+          return;
+        }
+      }
+
+      // Fetch services and medicines used today for this pet
+      const today = new Date().toISOString().split("T")[0];
+      const examsToday = await apiClient.get(
+        "/api/services/examinations/with-medicines",
+        {
+          params: {
+            petId: petIdNum,
+            fromDate: today,
+            toDate: today,
+          },
+        }
+      );
+
+      const examData = examsToday.data?.data || [];
+      const invoiceItemsToAdd = [];
+
+      // Add services and medicines from examinations today to invoice
+      if (examData && Array.isArray(examData) && examData.length > 0) {
+        examData.forEach((exam) => {
+          // Add service
+          if (exam.MaDV) {
+            const serviceItem = {
+              id: `service_${exam.MaDV}_${exam.MaKB || Date.now()}`,
+              tenSanPham: exam.TenDV || "Dịch vụ",
+              gia: exam.GiaDichVu || 0,
+              loai: "Dịch vụ",
+              isService: true,
+              MaDV: exam.MaDV,
+              MaTC: exam.MaTC,
+              MaKB: exam.MaKB,
+            };
+            invoiceItemsToAdd.push(serviceItem);
+          }
+
+          // Add medicines prescribed in this exam
+          if (
+            exam.Medicines &&
+            Array.isArray(exam.Medicines) &&
+            exam.Medicines.length > 0
+          ) {
+            exam.Medicines.forEach((medicine) => {
+              const medicineItem = {
+                id: `medicine_${medicine.MaSP}_${exam.MaKB}`,
+                tenSanPham: medicine.TenSP || "Thuốc",
+                gia: medicine.Gia || 0,
+                soLuong: medicine.SoLuong || 1,
+                loai: "Thuốc",
+                isMedicine: true,
+                MaSP: medicine.MaSP,
+                MaKB: exam.MaKB,
+              };
+              invoiceItemsToAdd.push(medicineItem);
+            });
+          }
+        });
+      }
+
+      // Add items to invoice
+      if (invoiceItemsToAdd.length > 0) {
+        setInvoiceItems((prev) => {
+          const newItems = [...prev];
+          for (const item of invoiceItemsToAdd) {
+            const exists = newItems.find(
+              (existingItem) => existingItem.id === item.id
+            );
+            if (!exists) {
+              newItems.push({ ...item, soLuong: item.soLuong || 1 });
+            }
+          }
+          return newItems;
+        });
+      }
+    } catch (err) {
+      console.error("Lỗi khi tải thông tin thú cưng:", err);
+      toast.error("Lỗi khi tải thông tin. Vui lòng kiểm tra mã thú cưng.");
+    }
+  };
+
+  const handlePetIdChange = (value) => {
+    setPetId(value);
+  };
   return (
     <div className="min-h-screen bg-gray-100">
       {/* Header */}
@@ -214,7 +535,7 @@ const InvoicePage = () => {
             <div className="lg:col-span-2">
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                 <h2 className="text-xl font-bold text-gray-900 mb-4">
-                  Sản phẩm & Thuốc
+                  Sản phẩm
                 </h2>
 
                 {/* Search */}
@@ -232,36 +553,74 @@ const InvoicePage = () => {
                   />
                 </div>
 
+                {/* Category Tabs */}
+                <div className="mb-4 flex gap-2 overflow-x-auto pb-2">
+                  <button
+                    onClick={() => setSelectedCategory("Tất cả")}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+                      selectedCategory === "Tất cả"
+                        ? "bg-primary-600 text-white"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    }`}
+                  >
+                    Tất cả
+                  </button>
+                  <button
+                    onClick={() => setSelectedCategory("Thức ăn")}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+                      selectedCategory === "Thức ăn"
+                        ? "bg-primary-600 text-white"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    }`}
+                  >
+                    Thức ăn
+                  </button>
+                  <button
+                    onClick={() => setSelectedCategory("Phụ kiện")}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+                      selectedCategory === "Phụ kiện"
+                        ? "bg-primary-600 text-white"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    }`}
+                  >
+                    Phụ kiện
+                  </button>
+                </div>
+
                 {/* Product List */}
                 <div className="space-y-3">
-                  {filteredProducts.map((product) => (
-                    <div
-                      key={product.id}
-                      className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-primary-300 transition-colors"
-                    >
-                      <div className="flex-1">
-                        <h3 className="font-semibold text-gray-900">
-                          {product.tenSanPham}
-                        </h3>
-                        <div className="flex items-center gap-4 mt-1">
-                          <span className="text-sm text-gray-600">
-                            {product.gia.toLocaleString()}đ
-                          </span>
-                          <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium">
-                            {product.loai === "thuốc"
-                              ? "💊 Thuốc"
-                              : "📦 Sản phẩm"}
-                          </span>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => addItem(product)}
-                        className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium flex items-center gap-2"
+                  {filteredProducts.length === 0 ? (
+                    <p className="text-center text-gray-500 py-8">
+                      Không tìm thấy sản phẩm
+                    </p>
+                  ) : (
+                    filteredProducts.map((product) => (
+                      <div
+                        key={product.id}
+                        className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-primary-300 transition-colors"
                       >
-                        <PlusIcon size={18} /> Thêm
-                      </button>
-                    </div>
-                  ))}
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-gray-900">
+                            {product.tenSanPham}
+                          </h3>
+                          <div className="flex items-center gap-4 mt-1">
+                            <span className="text-sm text-gray-600">
+                              {(Number(product.gia) || 0).toLocaleString()}đ
+                            </span>
+                            <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium">
+                              📦 {product.LoaiSP}
+                            </span>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => addItem(product)}
+                          className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium flex items-center gap-2"
+                        >
+                          <PlusIcon size={18} /> Thêm
+                        </button>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
             </div>
@@ -277,27 +636,35 @@ const InvoicePage = () => {
                 <div className="mb-6 space-y-3">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Tên khách hàng
+                      Mã khách hàng (MaKH)
                     </label>
                     <input
                       type="text"
-                      value={customerName}
-                      onChange={(e) => setCustomerName(e.target.value)}
-                      placeholder="Nhập tên..."
+                      value={customerId}
+                      onChange={(e) => setCustomerId(e.target.value)}
+                      placeholder="Nhập mã khách hàng..."
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Tên thú cưng
+                      Mã thú cưng (MaTC)
                     </label>
-                    <input
-                      type="text"
-                      value={petName}
-                      onChange={(e) => setPetName(e.target.value)}
-                      placeholder="Nhập tên..."
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
-                    />
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={petId}
+                        onChange={(e) => handlePetIdChange(e.target.value)}
+                        placeholder="Nhập mã thú cưng"
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                      />
+                      <button
+                        onClick={handleLoadPetInfo}
+                        className="px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors text-sm font-medium"
+                      >
+                        Tải thông tin
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -323,7 +690,8 @@ const InvoicePage = () => {
                                 {item.tenSanPham}
                               </p>
                               <p className="text-xs text-gray-600 mt-1">
-                                {item.gia.toLocaleString()}đ x {item.soLuong} ={" "}
+                                {(Number(item.gia) || 0).toLocaleString()}đ x{" "}
+                                {item.soLuong} ={" "}
                                 <span className="font-bold text-primary-600">
                                   {(item.gia * item.soLuong).toLocaleString()}đ
                                 </span>
