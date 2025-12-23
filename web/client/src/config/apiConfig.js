@@ -20,23 +20,27 @@ export const ENDPOINTS = {
   },
 
   CUSTOMERS: {
-    PROFILE: "/api/customers/profile",
-    SPENDING: "/api/customers/spending",
-    LOYALTY_HISTORY: "/api/customers/loyalty-history",
-    SEARCH: "/api/customers/search",
-    UPDATE_PASSWORD: "/api/customers/change-password",
-
+    BASE: '/api/customers',
+    PROFILE: '/api/customers/profile',
+    SPENDING: '/api/customers/spending',
+    LOYALTY_HISTORY: '/api/customers/loyalty-history',
+    SEARCH: '/api/customers/search',
+    UPDATE_PASSWORD: '/api/customers/change-password',
+    CREATE_PET_FOR_CUSTOMER: (customerId) => `/api/customers/${customerId}/pets`,
+    GET_CUSTOMER_PETS: (customerId) => `/api/customers/${customerId}/pets`,
+    
     PETS: {
       CREATE: "/api/customers/pets",
       LIST: "/api/customers/pets",
       GET_BY_ID: (petId) => `/api/customers/pets/${petId}`,
       UPDATE: (petId) => `/api/customers/pets/${petId}`,
       DELETE: (petId) => `/api/customers/pets/${petId}`,
-      MEDICAL_HISTORY: (petId) =>
-        `/api/customers/pets/${petId}/medical-history`,
-      VACCINATION_HISTORY: (petId) =>
-        `/api/customers/pets/${petId}/vaccination-history`,
-    },
+      MEDICAL_HISTORY: (petId) => `/api/customers/pets/${petId}/medical-history`,
+      VACCINATION_HISTORY: (petId) => `/api/customers/pets/${petId}/vaccination-history`,
+      // Staff-only endpoints (no ownership check)
+      STAFF_MEDICAL_HISTORY: (petId) => `/api/customers/staff/pets/${petId}/medical-history`,
+      STAFF_VACCINATION_HISTORY: (petId) => `/api/customers/staff/pets/${petId}/vaccination-history`
+    }
   },
 
   SERVICES: {
@@ -92,9 +96,10 @@ export const ENDPOINTS = {
   },
 
   PRODUCTS: {
-    LIST: "/api/products",
-    CATEGORIES: "/api/products/categories",
-    CREATE: "/api/products",
+    LIST: '/api/products',
+    BY_BRANCH: '/api/products/by-branch',
+    CATEGORIES: '/api/products/categories',
+    CREATE: '/api/products',
     GET_BY_ID: (productId) => `/api/products/${productId}`,
     UPDATE: (productId) => `/api/products/${productId}`,
     DELETE: (productId) => `/api/products/${productId}`,

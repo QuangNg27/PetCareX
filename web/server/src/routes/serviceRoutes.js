@@ -17,7 +17,7 @@ router.get(
 router.post(
   "/examinations",
   authMiddleware,
-  authorizeRoles(["Khách hàng", "Bác sĩ"]),
+  authorizeRoles(["Khách hàng", "Bác sĩ", 'Tiếp tân']),
   serviceController.createMedicalExamination
 );
 
@@ -99,11 +99,10 @@ router.get(
 );
 
 // Vaccination endpoints
-router.post(
-  "/vaccinations",
-  authMiddleware,
-  authorizeRoles(["Khách hàng"]),
-  serviceController.createVaccination
+router.post('/vaccinations',
+    authMiddleware,
+    authorizeRoles(['Khách hàng', 'Tiếp tân']),
+    serviceController.createVaccination
 );
 
 router.put(

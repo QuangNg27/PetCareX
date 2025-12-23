@@ -63,30 +63,24 @@ class ServiceService {
       throw new AppError("Bạn không có quyền với thú cưng này", 403);
     }
 
-    // Create examination
-    const result = await this.serviceRepository.createMedicalExamination({
-      MaCN,
-      MaDV,
-      MaTC,
-      MaNV,
-      NgayKham,
-      TrieuChung,
-      ChanDoan,
-      NgayTaiKham,
-    });
+    async createMedicalExamination(examinationData, requesterId, isStaff = false) {
+        const { MaCN, MaDV, MaTC, NgayKham } = examinationData;
 
-    return result;
-  }
+        // Validate pet ownership (skip if staff is creating)
+        if (!isStaff) {
+            const pet = await this.petRepository.getPetById(MaTC);
+            if (!pet || pet.MaKH !== requesterId) {
+                throw new AppError('Bạn không có quyền với thú cưng này', 403);
+            }
+        }
 
-  async updateMedicalExamination(examinationId, updateData, doctorId) {
-    // Check if doctor owns this examination
-    const examination = await this.serviceRepository.getMedicalExamination(
-      examinationId
-    );
-
-    if (!examination) {
-      throw new AppError("Không tìm thấy hồ sơ khám", 404);
-    }
+        // Create examination
+        const result = await this.serviceRepository.createMedicalExamination({
+            MaCN,
+            MaDV,
+            MaTC,
+            NgayKham,
+        });
 
     // If exam has MaNV, validate ownership. Otherwise allow (old exams)
     if (examination.MaNV && examination.MaNV !== doctorId) {
@@ -222,13 +216,11 @@ class ServiceService {
       UuDai: discountRate,
     });
 
-    const packageId = result.MaGoi;
-
-    // Get vaccination service ID (MaDV) for the branch
-    const serviceResult = await this.serviceRepository.execute(`
-            SELECT TOP 1 MaDV 
+        // Get vaccination service ID (MaDV) for the branch
+        const serviceResult = await this.serviceRepository.execute(`
+            SELECT MaDV 
             FROM Dich_vu 
-            WHERE TenDV LIKE N'%Tiêm%' OR TenDV LIKE N'%Vaccine%'
+            WHERE TenDV = 'Tiêm phòng'
         `);
 
     const maDV = serviceResult.recordset[0]?.MaDV || null;
