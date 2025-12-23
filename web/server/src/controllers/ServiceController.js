@@ -1,9 +1,26 @@
-const ServiceService = require('../services/ServiceService');
-const { AppError } = require('../middleware/errorHandler');
+const ServiceService = require("../services/ServiceService");
+const { AppError } = require("../middleware/errorHandler");
 
 class ServiceController {
-    constructor() {
-        this.serviceService = new ServiceService();
+  constructor() {
+    this.serviceService = new ServiceService();
+  }
+
+  getBranchServices = async (req, res, next) => {
+    try {
+      const { branchId } = req.params;
+
+      const services = await this.serviceService.getBranchServices(branchId);
+
+      res.json({
+        success: true,
+        data: {
+          services,
+          branchId,
+        },
+      });
+    } catch (error) {
+      next(error);
     }
 
     getBranchServices = async (req, res, next) => {
@@ -50,42 +67,63 @@ class ServiceController {
     };
 
     updateMedicalExamination = async (req, res, next) => {
-        try {
-            const { examinationId } = req.params;
-            const { TrieuChung, ChanDoan, NgayTaiKham } = req.body;
-            const doctorId = req.user.MaNV;
+    try {
+      const { examinationId } = req.params;
+      const { TrieuChung, ChanDoan, NgayTaiKham } = req.body;
+      const doctorId = req.user.MaNV; // Use MaNV from user
 
-            await this.serviceService.updateMedicalExamination(
-                examinationId,
-                { TrieuChung, ChanDoan, NgayTaiKham },
-                doctorId
-            );
+      await this.serviceService.updateMedicalExamination(
+        examinationId,
+        { TrieuChung, ChanDoan, NgayTaiKham },
+        doctorId
+      );
 
-            res.json({
-                success: true,
-                message: 'Cập nhật hồ sơ khám thành công'
-            });
-        } catch (error) {
-            next(error);
-        }
-    };
+      res.json({
+        success: true,
+        message: "Cập nhật hồ sơ khám thành công",
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
 
-    addPrescription = async (req, res, next) => {
-        try {
-            const { examinationId } = req.params;
-            const { prescriptions } = req.body;
-            const doctorId = req.user.MaNV;
+  addPrescription = async (req, res, next) => {
+    try {
+      const { examinationId } = req.params;
+      const { prescriptions } = req.body;
+      const doctorId = req.user.MaNV; // Use MaNV from user
+      console.log(
+        `[addPrescription] ExamID: ${examinationId}, doctorId: ${doctorId}, req.user.MaNV: ${req.user.MaNV}`,
+        req.user
+      );
 
-            await this.serviceService.addPrescription(examinationId, prescriptions, doctorId);
+      await this.serviceService.addPrescription(
+        examinationId,
+        prescriptions,
+        doctorId
+      );
 
-            res.json({
-                success: true,
-                message: 'Thêm đơn thuốc thành công'
-            });
-        } catch (error) {
-            next(error);
-        }
-    };
+      res.json({
+        success: true,
+        message: "Thêm đơn thuốc thành công",
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  getPrescriptions = async (req, res, next) => {
+    try {
+      const { examinationId } = req.params;
+      const result = await this.serviceService.getPrescriptions(examinationId);
+      res.json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
 
     createVaccination = async (req, res, next) => {
         try {
@@ -114,22 +152,27 @@ class ServiceController {
         }
     };
 
-    updateVaccinationDetails = async (req, res, next) => {
-        try {
-            const { vaccinationId } = req.params;
-            const { details } = req.body;
-            const doctorId = req.user.MaNV;
-            
-            await this.serviceService.updateVaccinationDetails(vaccinationId, details, doctorId);
+  updateVaccinationDetails = async (req, res, next) => {
+    try {
+      const { vaccinationId } = req.params;
+      const { details } = req.body;
+      const doctorId = req.user.MaNV;
 
-            res.json({
-                success: true,
-                message: 'Cập nhật thông tin tiêm phòng thành công'
-            });
-        } catch (error) {
-            next(error);
-        }
-    };
+      await this.serviceService.updateVaccinationDetails(
+        vaccinationId,
+        details,
+        doctorId
+      );
+
+      res.json({
+        success: true,
+        message: "Cập nhật thông tin tiêm phòng thành công",
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
 
     createVaccinationPackage = async (req, res, next) => {
         try {

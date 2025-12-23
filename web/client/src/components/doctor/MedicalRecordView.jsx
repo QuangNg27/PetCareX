@@ -1,270 +1,573 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import toast from "react-hot-toast";
 import { useAuth } from "@context/AuthContext";
-import {
-  PlusIcon,
-  EditIcon,
-  DeleteIcon,
-  SaveIcon,
-  XIcon,
-} from "@components/common/icons";
+import doctorService from "@services/doctorService";
+import productService from "@services/productService";
+import customerService from "@services/customerService";
+import { PlusIcon, EditIcon, SaveIcon, XIcon } from "@components/common/icons"; // Bỏ DeleteIcon
 
 const MedicalRecordView = () => {
+  const [records, setRecords] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   const { user } = useAuth();
-  const [records, setRecords] = useState([
-    {
-      id: 1,
-      MaLichHen: "LH001",
-      TenKhachHang: "Nguyễn Văn A",
-      TenThuCung: "Max",
-      NgayKham: "2024-12-05",
-      TrieuChung: "Ho, sốt",
-      ChanDoan: "Viêm đường hô hấp",
-      ToaThuoc: "Paracetamol 500mg x2/ngày, Amoxicillin 250mg x3/ngày",
-      NgayTaiKham: "2024-12-12",
-      TrangThai: "Đã khám",
-    },
-    {
-      id: 2,
-      MaLichHen: "LH002",
-      TenKhachHang: "Trần Thị B",
-      TenThuCung: "Luna",
-      NgayKham: "2024-12-06",
-      TrieuChung: "Tiêu chảy, không ăn",
-      ChanDoan: "Viêm dạ dày",
-      ToaThuoc: "Probiotics, Omeprazole 10mg x2/ngày",
-      NgayTaiKham: "2024-12-13",
-      TrangThai: "Đã khám",
-    },
-  ]);
 
+  // State quản lý hiển thị form
   const [showAddForm, setShowAddForm] = useState(false);
-  const [editingId, setEditingId] = useState(null);
+  const [editingId, setEditingId] = useState(null); // null = mode tạo mới, có id = mode sửa
+
+  // State form dữ liệu
   const [formData, setFormData] = useState({
-    MaLichHen: "",
-    TenKhachHang: "",
-    TenThuCung: "",
+    MaTC: "", // Dùng khi tạo mới
+    MaDV: "", // Dùng khi tạo mới
+    MaCN: "", // Mã chi nhánh
+    MaNV: "", // Mã nhân viên (bác sĩ)
+    TenKhachHang: "", // Display only
+    TenThuCung: "", // Display only
     NgayKham: "",
     TrieuChung: "",
     ChanDoan: "",
     ToaThuoc: "",
     NgayTaiKham: "",
-    TrangThai: "Chưa khám",
   });
 
-  const handleAddClick = () => {
+  const [prescriptions, setPrescriptions] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [pets, setPets] = useState([]);
+
+  // Load danh sách (Giữ nguyên logic cũ của bạn)
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      try {
+        setLoading(true);
+        const branchId = user?.MaCN;
+        const res = await doctorService.getExaminations(branchId);
+        const items =
+          (res && (res.data || res.examinations)) ||
+          (Array.isArray(res) ? res : []);
+
+        if (!mounted) return;
+        setRecords(
+          items.map((r) => ({
+            ...r,
+            id: r.MaKB, // Đảm bảo có field id
+          }))
+        );
+      } catch (err) {
+        console.error("Lỗi tải hồ sơ:", err);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+    load();
+    return () => {
+      mounted = false;
+    };
+  }, [user?.MaCN]);
+
+  // Load thuốc để kê đơn (chỉ lấy sản phẩm có LoaiSP = "Thuốc") và danh sách thú cưng
+  useEffect(() => {
+    const loadDataForForm = async () => {
+      try {
+        // Load medicines
+        const medicinesRes = await productService.getMedicines(
+          user?.MaCN || null
+        );
+        setProducts(
+          (medicinesRes && (medicinesRes.data || medicinesRes.products)) ||
+            medicinesRes ||
+            []
+        );
+
+        // Load pets for selection
+        const petsRes = await customerService.pets.getAll();
+        const petsList =
+          (petsRes && (petsRes.data || petsRes.pets)) ||
+          (Array.isArray(petsRes) ? petsRes : []);
+        setPets(petsList);
+      } catch (e) {
+        console.warn("Lỗi tải dữ liệu form:", e);
+      }
+    };
+    if (showAddForm) loadDataForForm();
+  }, [showAddForm, user?.MaCN]);
+
+  // --- XỬ LÝ SỰ KIỆN ---
+
+  const handleCreateNew = () => {
+    setEditingId(null); // Mode tạo mới
     setFormData({
-      MaLichHen: "",
-      TenKhachHang: "",
-      TenThuCung: "",
-      NgayKham: "",
+      MaCN: user?.MaCN || "", // Người dùng tự nhập
+      MaNV: user?.MaNV || "", // Tự động điền bác sĩ đang khám
+      MaTC: "",
+      MaDV: "2", // Mặc định khám bệnh
+      NgayKham: new Date().toISOString().split("T")[0],
       TrieuChung: "",
       ChanDoan: "",
-      ToaThuoc: "",
       NgayTaiKham: "",
-      TrangThai: "Chưa khám",
+      TenKhachHang: "",
+      TenThuCung: "",
     });
+    setPrescriptions([]);
     setShowAddForm(true);
   };
 
-  const handleEdit = (record) => {
-    setFormData(record);
-    setEditingId(record.id);
-    setShowAddForm(true);
-  };
+  const handleEdit = async (record) => {
+    setEditingId(record.MaKB); // Mode sửa
+    setFormData({
+      ...record,
+      NgayKham: record.NgayKham
+        ? new Date(record.NgayKham).toISOString().split("T")[0]
+        : "",
+    });
 
-  const handleDelete = (id) => {
-    setRecords(records.filter((r) => r.id !== id));
-  };
-
-  const handleSave = () => {
-    if (editingId) {
-      setRecords(
-        records.map((r) =>
-          r.id === editingId ? { ...formData, id: editingId } : r
-        )
+    // Load prescriptions đã lưu
+    try {
+      const prescriptionsData = await doctorService.getPrescriptions(
+        record.MaKB
       );
-      setEditingId(null);
-    } else {
-      setRecords([...records, { ...formData, id: Date.now() }]);
+      const presc = prescriptionsData.data || prescriptionsData || [];
+      setPrescriptions(
+        presc.map((p) => ({
+          MaSP: p.MaSP,
+          SoLuong: p.SoLuong,
+          TenSP: p.TenSP,
+          Gia: p.Gia,
+        }))
+      );
+    } catch (err) {
+      console.error("Lỗi load thuốc:", err);
+      setPrescriptions([]);
     }
-    setShowAddForm(false);
+
+    setShowAddForm(true);
   };
 
   const handleCancel = () => {
     setShowAddForm(false);
     setEditingId(null);
+    setError(null); // Clear error message khi tắt form
   };
 
+  // Logic lưu: Phân biệt Tạo mới vs Cập nhật
+  const handleSave = async () => {
+    try {
+      setLoading(true);
+      setError(null); // Clear previous errors
+
+      // 1. TRƯỜNG HỢP TẠO MỚI (POST)
+      if (!editingId) {
+        // Validate required fields
+        if (!formData.MaCN) {
+          setError({
+            message: "Vui lòng nhập Mã Chi Nhánh",
+          });
+          setLoading(false);
+          return;
+        }
+        if (!formData.MaNV) {
+          setError({
+            message: "Vui lòng nhập Mã Nhân Viên",
+          });
+          setLoading(false);
+          return;
+        }
+        if (!formData.MaTC) {
+          setError({
+            message: "Vui lòng nhập hoặc chọn Mã Thú Cưng",
+          });
+          setLoading(false);
+          return;
+        }
+        if (!formData.NgayKham) {
+          setError({
+            message: "Vui lòng nhập Ngày khám",
+          });
+          setLoading(false);
+          return;
+        }
+
+        const createPayload = {
+          MaCN: parseInt(formData.MaCN),
+          MaNV: user?.MaNV, // Lấy trực tiếp từ user, đảm bảo là đúng bác sĩ đang login
+          MaTC: parseInt(formData.MaTC),
+          MaDV: 2, // Mặc định khám bệnh
+          NgayKham: formData.NgayKham, // Format: YYYY-MM-DD từ input type="date"
+          TrieuChung: formData.TrieuChung || null,
+          ChanDoan: formData.ChanDoan || null,
+          NgayTaiKham: formData.NgayTaiKham || null,
+        };
+
+        console.log("Payload gửi đi:", createPayload);
+        console.log("User MaNV:", user?.MaNV, "Type:", typeof user?.MaNV);
+        console.log("FormData MaNV:", formData.MaNV);
+
+        const result = await doctorService.createMedicalExamination(
+          createPayload
+        );
+
+        // Lưu đơn thuốc nếu có
+        if (prescriptions.length > 0 && result.MaKB) {
+          const validPrescriptions = prescriptions.filter(
+            (p) => p.MaSP && p.SoLuong > 0
+          );
+          console.log("Valid prescriptions:", validPrescriptions);
+          if (validPrescriptions.length > 0) {
+            try {
+              await doctorService.addPrescriptions(
+                result.MaKB,
+                validPrescriptions
+              );
+              console.log("Lưu thuốc thành công!");
+            } catch (err) {
+              console.error("Lỗi lưu thuốc:", err);
+              toast.error("Lỗi khi lưu đơn thuốc: " + err.message);
+            }
+          }
+        }
+
+        toast.success("Tạo hồ sơ thành công!");
+        window.location.reload(); // Reload để lấy dữ liệu mới nhất
+        return;
+      }
+
+      // 2. TRƯỜNG HỢP CẬP NHẬT (PUT)
+      const updatePayload = {
+        TrieuChung: formData.TrieuChung,
+        ChanDoan: formData.ChanDoan,
+        NgayTaiKham: formData.NgayTaiKham || null,
+      };
+
+      await doctorService.updateExamination(
+        editingId,
+        updatePayload,
+        user?.MaNV
+      ); // Gọi PUT
+
+      // Lưu đơn thuốc nếu có
+      if (prescriptions.length > 0) {
+        const validPrescriptions = prescriptions.filter(
+          (p) => p.MaSP && p.SoLuong > 0
+        );
+        console.log("Valid prescriptions (update):", validPrescriptions);
+        if (validPrescriptions.length > 0) {
+          try {
+            await doctorService.addPrescriptions(
+              editingId,
+              validPrescriptions,
+              user?.MaNV
+            );
+            console.log("Cập nhật thuốc thành công!");
+          } catch (err) {
+            console.error("Lỗi cập nhật thuốc:", err);
+            toast.error("Lỗi khi cập nhật đơn thuốc: " + err.message);
+          }
+        }
+      }
+
+      // Update UI local
+      setRecords(
+        records.map((r) =>
+          r.MaKB === editingId ? { ...r, ...updatePayload } : r
+        )
+      );
+      toast.success("Cập nhật thành công!");
+      setShowAddForm(false);
+    } catch (err) {
+      console.error("Lỗi chi tiết:", err);
+      const errorMessage =
+        err.response?.data?.message ||
+        err.response?.data?.error ||
+        err.message ||
+        "Lỗi khi lưu dữ liệu";
+      setError({
+        message: errorMessage,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Helper cho đơn thuốc (giữ nguyên logic cũ)
+  const addPrescriptionRow = () =>
+    setPrescriptions([...prescriptions, { MaSP: "", SoLuong: 1 }]);
+  const removePrescriptionRow = (idx) =>
+    setPrescriptions(prescriptions.filter((_, i) => i !== idx));
+  const updatePrescriptionRow = (idx, field, value) => {
+    setPrescriptions(
+      prescriptions.map((p, i) => (i === idx ? { ...p, [field]: value } : p))
+    );
+  };
+
+  // --- RENDER ---
   return (
     <div className="p-6">
+      {error && (
+        <div className="text-red-600 mb-4 bg-red-50 p-2 rounded">
+          {error.message}
+        </div>
+      )}
+
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Hồ sơ y tế</h2>
-          <p className="text-sm text-gray-600 mt-1">
+          <p className="text-sm text-gray-600">
             Tổng số: {records.length} hồ sơ
           </p>
         </div>
-        {!showAddForm && (
-          <button
-            className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
-            onClick={handleAddClick}
-          >
-            <PlusIcon size={18} /> Thêm hồ sơ
-          </button>
-        )}
+
+        {/* Nút thêm mới */}
+        <button
+          onClick={handleCreateNew}
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+        >
+          <PlusIcon size={20} /> Tạo hồ sơ khám
+        </button>
       </div>
 
       {showAddForm && (
         <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 mb-6">
           <h3 className="text-lg font-bold mb-4">
-            {editingId ? "Chỉnh sửa hồ sơ" : "Thêm hồ sơ mới"}
+            {editingId ? `Chỉnh sửa hồ sơ #${editingId}` : "Tạo hồ sơ khám mới"}
           </h3>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Mã lịch hẹn *
-              </label>
-              <input
-                type="text"
-                value={formData.MaLichHen}
-                onChange={(e) =>
-                  setFormData({ ...formData, MaLichHen: e.target.value })
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                disabled={editingId !== null}
-              />
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Chỉ hiện dropdown chọn khi tạo mới */}
+            {!editingId ? (
+              <>
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Mã Chi Nhánh *
+                  </label>
+                  <input
+                    type="number"
+                    placeholder="Nhập mã chi nhánh"
+                    className="w-full px-3 py-2 border rounded"
+                    value={formData.MaCN}
+                    onChange={(e) =>
+                      setFormData({ ...formData, MaCN: e.target.value })
+                    }
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Mã Nhân Viên *
+                  </label>
+                  <input
+                    type="number"
+                    className="w-full px-3 py-2 border rounded bg-gray-100"
+                    value={formData.MaNV}
+                    readOnly
+                    disabled
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Tự động từ bác sĩ đang đăng nhập
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Mã Thú Cưng *
+                  </label>
+                  <input
+                    type="number"
+                    placeholder="Nhập mã hoặc chọn từ dropdown"
+                    className="w-full px-3 py-2 border rounded"
+                    value={formData.MaTC}
+                    onChange={(e) => {
+                      setFormData({ ...formData, MaTC: e.target.value });
+                      // Nếu có pet khớp với mã, cập nhật tên
+                      const pet = pets.find(
+                        (p) => p.MaTC === parseInt(e.target.value)
+                      );
+                      if (pet) {
+                        setFormData((prev) => ({
+                          ...prev,
+                          TenThuCung: pet.Ten,
+                          TenKhachHang: pet.TenKhachHang || "",
+                        }));
+                      }
+                    }}
+                    list="pets-list"
+                  />
+                  <datalist id="pets-list">
+                    {pets.map((pet) => (
+                      <option
+                        key={pet.MaTC}
+                        value={pet.MaTC}
+                        label={`${pet.Ten} (${pet.Loai}) - ${pet.TenKhachHang}`}
+                      />
+                    ))}
+                  </datalist>
+                </div>
+              </>
+            ) : (
+              <>
+                <div>
+                  <label className="text-sm font-medium">Khách hàng</label>
+                  <div className="p-2 bg-gray-100 rounded">
+                    {formData.TenKhachHang}
+                  </div>
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Thú cưng</label>
+                  <div className="p-2 bg-gray-100 rounded">
+                    {formData.TenThuCung}
+                  </div>
+                </div>
+              </>
+            )}
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Tên khách hàng *
-              </label>
-              <input
-                type="text"
-                value={formData.TenKhachHang}
-                onChange={(e) =>
-                  setFormData({ ...formData, TenKhachHang: e.target.value })
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Tên thú cưng *
-              </label>
-              <input
-                type="text"
-                value={formData.TenThuCung}
-                onChange={(e) =>
-                  setFormData({ ...formData, TenThuCung: e.target.value })
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Ngày khám *
+              <label className="block text-sm font-medium mb-1">
+                Ngày khám
               </label>
               <input
                 type="date"
+                className="w-full px-3 py-2 border rounded"
                 value={formData.NgayKham}
                 onChange={(e) =>
                   setFormData({ ...formData, NgayKham: e.target.value })
                 }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
               />
             </div>
-
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Trạng thái
+              <label className="block text-sm font-medium mb-1">
+                Ngày tái khám
               </label>
-              <select
-                value={formData.TrangThai}
+              <input
+                type="date"
+                className="w-full px-3 py-2 border rounded"
+                value={formData.NgayTaiKham}
                 onChange={(e) =>
-                  setFormData({ ...formData, TrangThai: e.target.value })
+                  setFormData({ ...formData, NgayTaiKham: e.target.value })
                 }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-              >
-                <option value="Chưa khám">Chưa khám</option>
-                <option value="Đã khám">Đã khám</option>
-                <option value="Đã hủy">Đã hủy</option>
-              </select>
+              />
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Triệu chứng *
+          <div className="mt-4">
+            <label className="block text-sm font-medium mb-1">
+              Triệu chứng
             </label>
             <textarea
+              rows="2"
+              className="w-full px-3 py-2 border rounded"
               value={formData.TrieuChung}
               onChange={(e) =>
                 setFormData({ ...formData, TrieuChung: e.target.value })
               }
-              rows="3"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-              placeholder="Mô tả triệu chứng..."
             />
           </div>
 
           <div className="mt-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Chẩn đoán *
-            </label>
+            <label className="block text-sm font-medium mb-1">Chẩn đoán</label>
             <textarea
+              rows="2"
+              className="w-full px-3 py-2 border rounded"
               value={formData.ChanDoan}
               onChange={(e) =>
                 setFormData({ ...formData, ChanDoan: e.target.value })
               }
-              rows="3"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-              placeholder="Kết quả chẩn đoán..."
             />
           </div>
 
-          <div className="mt-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Toa thuốc *
+          {/* Phần kê đơn thuốc */}
+          <div className="mt-4 border-t pt-4">
+            <label className="block text-sm font-medium mb-2">
+              Kê đơn thuốc
             </label>
-            <textarea
-              value={formData.ToaThuoc}
-              onChange={(e) =>
-                setFormData({ ...formData, ToaThuoc: e.target.value })
-              }
-              rows="3"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-              placeholder="Danh sách thuốc và liều lượng..."
-            />
-          </div>
-
-          <div className="mt-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Ngày tái khám
-            </label>
-            <input
-              type="date"
-              value={formData.NgayTaiKham}
-              onChange={(e) =>
-                setFormData({ ...formData, NgayTaiKham: e.target.value })
-              }
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-            />
+            {prescriptions.map((p, idx) => (
+              <div key={idx} className="flex gap-2 mb-2 items-center">
+                {editingId && p.TenSP ? (
+                  // Hiển thị khi load từ database (edit mode)
+                  <>
+                    <div className="flex-1 px-3 py-2 bg-gray-50 rounded border">
+                      {p.TenSP} {p.Gia && `(${p.Gia}đ)`}
+                    </div>
+                    <input
+                      type="number"
+                      className="border rounded w-20 px-2 py-1"
+                      min="1"
+                      value={p.SoLuong}
+                      onChange={(e) =>
+                        updatePrescriptionRow(
+                          idx,
+                          "SoLuong",
+                          parseInt(e.target.value) || 1
+                        )
+                      }
+                    />
+                    <button
+                      onClick={() => removePrescriptionRow(idx)}
+                      className="text-red-500 font-bold px-2"
+                    >
+                      X
+                    </button>
+                  </>
+                ) : (
+                  // Chọn từ dropdown (create mode)
+                  <>
+                    <select
+                      className="border rounded px-2 py-1 flex-1"
+                      value={p.MaSP || ""}
+                      onChange={(e) =>
+                        updatePrescriptionRow(
+                          idx,
+                          "MaSP",
+                          parseInt(e.target.value)
+                        )
+                      }
+                    >
+                      <option value="">Chọn thuốc...</option>
+                      {products.map((prod) => (
+                        <option key={prod.MaSP} value={prod.MaSP}>
+                          {prod.TenSP} (Ton: {prod.SLTonKho})
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      type="number"
+                      className="border rounded w-20 px-2 py-1"
+                      min="1"
+                      value={p.SoLuong}
+                      onChange={(e) =>
+                        updatePrescriptionRow(
+                          idx,
+                          "SoLuong",
+                          parseInt(e.target.value) || 1
+                        )
+                      }
+                    />
+                    <button
+                      onClick={() => removePrescriptionRow(idx)}
+                      className="text-red-500 font-bold px-2"
+                    >
+                      X
+                    </button>
+                  </>
+                )}
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={addPrescriptionRow}
+              className="text-sm text-blue-600 hover:underline"
+            >
+              + Thêm thuốc
+            </button>
           </div>
 
           <div className="flex gap-3 mt-6">
             <button
               onClick={handleSave}
-              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
             >
-              <SaveIcon size={18} /> Lưu
+              <SaveIcon size={18} /> Lưu hồ sơ
             </button>
             <button
               onClick={handleCancel}
-              className="flex items-center gap-2 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
             >
               <XIcon size={18} /> Hủy
             </button>
@@ -272,102 +575,50 @@ const MedicalRecordView = () => {
         </div>
       )}
 
+      {/* Bảng dữ liệu */}
       <div className="overflow-x-auto bg-white rounded-xl shadow-sm border border-gray-200">
         <table className="w-full">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">
-                Mã LH
-              </th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">
+              <th className="px-6 py-3 text-left text-sm font-semibold">
                 Khách hàng
               </th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">
+              <th className="px-6 py-3 text-left text-sm font-semibold">
                 Thú cưng
               </th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">
+              <th className="px-6 py-3 text-left text-sm font-semibold">
                 Ngày khám
               </th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">
-                Triệu chứng
-              </th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">
+              <th className="px-6 py-3 text-left text-sm font-semibold">
                 Chẩn đoán
               </th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">
-                Ngày tái khám
-              </th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">
-                Trạng thái
-              </th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">
+              <th className="px-6 py-3 text-left text-sm font-semibold">
                 Thao tác
               </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
             {records.map((record) => (
-              <tr
-                key={record.id}
-                className="hover:bg-gray-50 transition-colors"
-              >
-                <td className="px-6 py-4 text-sm text-gray-700 font-medium">
-                  {record.MaLichHen}
-                </td>
-                <td className="px-6 py-4 text-sm text-gray-700">
-                  {record.TenKhachHang}
-                </td>
-                <td className="px-6 py-4 text-sm text-gray-700">
-                  {record.TenThuCung}
-                </td>
-                <td className="px-6 py-4 text-sm text-gray-700">
-                  {new Date(record.NgayKham).toLocaleDateString("vi-VN")}
-                </td>
-                <td className="px-6 py-4 text-sm text-gray-700">
-                  <div className="max-w-xs truncate" title={record.TrieuChung}>
-                    {record.TrieuChung}
-                  </div>
-                </td>
-                <td className="px-6 py-4 text-sm text-gray-700">
-                  <div className="max-w-xs truncate" title={record.ChanDoan}>
-                    {record.ChanDoan}
-                  </div>
-                </td>
-                <td className="px-6 py-4 text-sm text-gray-700">
-                  {record.NgayTaiKham
-                    ? new Date(record.NgayTaiKham).toLocaleDateString("vi-VN")
+              <tr key={record.MaKB} className="hover:bg-gray-50">
+                <td className="px-6 py-4 text-sm">{record.TenKhachHang}</td>
+                <td className="px-6 py-4 text-sm">{record.TenThuCung}</td>
+                <td className="px-6 py-4 text-sm">
+                  {record.NgayKham
+                    ? new Date(record.NgayKham).toLocaleDateString("vi-VN")
                     : "-"}
                 </td>
-                <td className="px-6 py-4 text-sm">
-                  <span
-                    className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                      record.TrangThai === "Đã khám"
-                        ? "bg-green-100 text-green-800"
-                        : record.TrangThai === "Chưa khám"
-                        ? "bg-yellow-100 text-yellow-800"
-                        : "bg-red-100 text-red-800"
-                    }`}
-                  >
-                    {record.TrangThai}
-                  </span>
+                <td className="px-6 py-4 text-sm max-w-xs truncate">
+                  {record.ChanDoan}
                 </td>
                 <td className="px-6 py-4 text-sm">
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => handleEdit(record)}
-                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                      title="Chỉnh sửa"
-                    >
-                      <EditIcon size={18} />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(record.id)}
-                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                      title="Xóa"
-                    >
-                      <DeleteIcon size={18} />
-                    </button>
-                  </div>
+                  <button
+                    onClick={() => handleEdit(record)}
+                    className="text-blue-600 hover:text-blue-800"
+                    title="Sửa"
+                  >
+                    <EditIcon size={18} />
+                  </button>
+                  {/* Đã bỏ nút xóa */}
                 </td>
               </tr>
             ))}

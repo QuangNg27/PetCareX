@@ -1,62 +1,101 @@
-const CustomerRepository = require('../repositories/CustomerRepository');
-const PetRepository = require('../repositories/PetRepository');
-const { AppError } = require('../middleware/errorHandler');
+const CustomerRepository = require("../repositories/CustomerRepository");
+const PetRepository = require("../repositories/PetRepository");
+const { AppError } = require("../middleware/errorHandler");
 
 class CustomerService {
-    constructor() {
-        this.customerRepo = new CustomerRepository();
-        this.petRepo = new PetRepository();
+  constructor() {
+    this.customerRepo = new CustomerRepository();
+    this.petRepo = new PetRepository();
+  }
+
+  async getProfile(customerId) {
+    const profile = await this.customerRepo.getCustomerProfile(customerId);
+    if (!profile) {
+      throw new AppError("Không tìm thấy thông tin khách hàng", 404);
     }
 
-    async getProfile(customerId) {
-        const profile = await this.customerRepo.getCustomerProfile(customerId);
-        if (!profile) {
-            throw new AppError('Không tìm thấy thông tin khách hàng', 404);
-        }
+    return {
+      success: true,
+      data: profile,
+    };
+  }
 
-        return {
-            success: true,
-            data: profile
-        };
+  async updateProfile(customerId, profileData) {
+    const updated = await this.customerRepo.updateCustomerProfile(
+      customerId,
+      profileData
+    );
+    if (!updated) {
+      throw new AppError("Cập nhật thông tin thất bại", 400);
     }
 
-    async updateProfile(customerId, profileData) {
-        const updated = await this.customerRepo.updateCustomerProfile(customerId, profileData);
-        if (!updated) {
-            throw new AppError('Cập nhật thông tin thất bại', 400);
-        }
+    return {
+      success: true,
+      message: "Cập nhật thông tin thành công",
+    };
+  }
 
-        return {
-            success: true,
-            message: 'Cập nhật thông tin thành công'
-        };
-    }
+  async getMembershipSpending(customerId) {
+    const spending = await this.customerRepo.getCustomerSpending(customerId);
 
-    async getMembershipSpending(customerId) {
-        const spending = await this.customerRepo.getCustomerSpending(customerId);
+    return {
+      success: true,
+      data: spending,
+    };
+  }
 
-        return {
-            success: true,
-            data: spending
-        };
-    }
+  async getLoyaltyHistory(customerId) {
+    const history = await this.customerRepo.getLoyaltyHistory(customerId);
 
-    async getLoyaltyHistory(customerId) {
-        const history = await this.customerRepo.getLoyaltyHistory(customerId);
+    return {
+      success: true,
+      data: history,
+    };
+  }
 
-        return {
-            success: true,
-            data: history
-        };
-    }
+  async searchCustomers(searchTerm) {
+    const customers = await this.customerRepo.searchCustomers(searchTerm);
 
-    async searchCustomers(searchTerm) {
-        const customers = await this.customerRepo.searchCustomers(searchTerm);
+    return {
+      success: true,
+      data: customers,
+    };
+  }
 
-        return {
-            success: true,
-            data: customers
-        };
+  // Pet-related methods
+  async getPets(customerId) {
+    const pets = await this.petRepo.getCustomerPets(customerId);
+
+    return {
+      success: true,
+      data: pets,
+    };
+  }
+
+  async getPetById(petId) {
+    const pet = await this.petRepo.getPetById(petId);
+
+    return {
+      success: true,
+      data: pet,
+    };
+  }
+
+  async createPet(customerId, petData) {
+    const result = await this.petRepo.createPet(customerId, petData);
+
+    return {
+      success: true,
+      message: "Thêm thú cưng thành công",
+      data: result,
+    };
+  }
+
+  async updatePet(petId, customerId, petData) {
+    // Check ownership
+    const isOwner = await this.petRepo.checkPetOwnership(petId, customerId);
+    if (!isOwner) {
+      throw new AppError("Bạn không có quyền sửa thông tin thú cưng này", 403);
     }
 
     async createCustomer(customerData) {
@@ -103,32 +142,22 @@ class CustomerService {
         };
     }
 
-    async createPet(customerId, petData) {
-        const result = await this.petRepo.createPet(customerId, petData);
+    return {
+      success: true,
+      message: "Cập nhật thông tin thú cưng thành công",
+    };
+  }
 
-        return {
-            success: true,
-            message: 'Thêm thú cưng thành công',
-            data: result
-        };
+  async deletePet(petId, customerId) {
+    // Check ownership
+    const isOwner = await this.petRepo.checkPetOwnership(petId, customerId);
+    if (!isOwner) {
+      throw new AppError("Bạn không có quyền xóa thú cưng này", 403);
     }
 
-    async updatePet(petId, customerId, petData) {
-        // Check ownership
-        const isOwner = await this.petRepo.checkPetOwnership(petId, customerId);
-        if (!isOwner) {
-            throw new AppError('Bạn không có quyền sửa thông tin thú cưng này', 403);
-        }
-
-        const updated = await this.petRepo.updatePet(petId, petData);
-        if (!updated) {
-            throw new AppError('Cập nhật thông tin thú cưng thất bại', 400);
-        }
-
-        return {
-            success: true,
-            message: 'Cập nhật thông tin thú cưng thành công'
-        };
+    const deleted = await this.petRepo.deletePet(petId);
+    if (!deleted) {
+      throw new AppError("Xóa thú cưng thất bại", 400);
     }
 
     async deletePet(petId, customerId) {
@@ -173,12 +202,6 @@ class CustomerService {
                 ThuocDaDung: recordMedicines
             };
         });
-    
-        return {
-            success: true,
-            data: historyWithMedicines
-        };
-    }
 
     async getPetVaccinationHistory(petId, customerId, limit = 100) {
         // Check ownership - customer can only view their own pet's history
@@ -205,10 +228,29 @@ class CustomerService {
             };
         });
 
-        return {
-            success: true,
-            data: historyWithVaccines
-        };
+      return {
+        ...record,
+        Vaccines: recordVaccines,
+      };
+    });
+
+    return {
+      success: true,
+      data: historyWithVaccines,
+    };
+  }
+
+  async UpdatePassword(customerId, oldPassword, newPassword) {
+    const res = await this.customerRepo.UpdatePassword(
+      customerId,
+      oldPassword,
+      newPassword
+    );
+    if (!res) {
+      throw new AppError(
+        "Cập nhật mật khẩu thất bại. Vui lòng kiểm tra lại mật khẩu cũ.",
+        400
+      );
     }
 
     // Staff-only methods - no ownership check

@@ -1,10 +1,145 @@
-const CustomerService = require('../services/CustomerService');
-const { AppError } = require('../middleware/errorHandler');
+const CustomerService = require("../services/CustomerService");
+const { AppError } = require("../middleware/errorHandler");
 
 class CustomerController {
-    constructor() {
-        this.customerService = new CustomerService();
+  constructor() {
+    this.customerService = new CustomerService();
+  }
+
+  getProfile = async (req, res, next) => {
+    try {
+      const customerId = req.user.MaKH;
+
+      if (!customerId) {
+        throw new AppError(
+          "Chỉ khách hàng mới có thể xem thông tin cá nhân",
+          403
+        );
+      }
+
+      const result = await this.customerService.getProfile(customerId);
+      res.json(result);
+    } catch (error) {
+      next(error);
     }
+  };
+
+  updateProfile = async (req, res, next) => {
+    try {
+      const customerId = req.user.MaKH;
+
+      if (!customerId) {
+        throw new AppError("Chỉ khách hàng mới có thể cập nhật thông tin", 403);
+      }
+
+      const result = await this.customerService.updateProfile(
+        customerId,
+        req.body
+      );
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  getMembershipSpending = async (req, res, next) => {
+    try {
+      const customerId = req.user.MaKH;
+
+      if (!customerId) {
+        throw new AppError(
+          "Chỉ khách hàng mới có thể xem thông tin thành viên",
+          403
+        );
+      }
+
+      const result = await this.customerService.getMembershipSpending(
+        customerId
+      );
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  getLoyaltyHistory = async (req, res, next) => {
+    try {
+      const customerId = req.user.MaKH;
+      const limit = parseInt(req.query.limit) || 10;
+
+      if (!customerId) {
+        throw new AppError(
+          "Chỉ khách hàng mới có thể xem lịch sử điểm thưởng",
+          403
+        );
+      }
+
+      const result = await this.customerService.getLoyaltyHistory(
+        customerId,
+        limit
+      );
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  searchCustomers = async (req, res, next) => {
+    try {
+      const { q: searchTerm } = req.query;
+      const limit = parseInt(req.query.limit) || 20;
+
+      if (!searchTerm) {
+        throw new AppError("Từ khóa tìm kiếm là bắt buộc", 400);
+      }
+
+      const result = await this.customerService.searchCustomers(
+        searchTerm,
+        limit
+      );
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // Pet endpoints
+  getPets = async (req, res, next) => {
+    try {
+      const customerId = req.user.MaKH;
+
+      if (!customerId) {
+        throw new AppError(
+          "Chỉ khách hàng mới có thể xem danh sách thú cưng",
+          403
+        );
+      }
+
+      const result = await this.customerService.getPets(customerId);
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  getPetById = async (req, res, next) => {
+    try {
+      const petId = parseInt(req.params.petId);
+
+      if (isNaN(petId)) {
+        throw new AppError("Mã thú cưng không hợp lệ", 400);
+      }
+
+      const result = await this.customerService.getPetById(petId);
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  createPet = async (req, res, next) => {
+    try {
+      const customerId = req.user.MaKH;
 
     getProfile = async (req, res, next) => {
         try {
