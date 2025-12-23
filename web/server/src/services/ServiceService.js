@@ -39,7 +39,7 @@ class ServiceService {
       // Doctors can create medical examinations for any pet in their branch
       const pet = await this.petRepository.getPetById(MaTC);
       if (!pet) {
-        throw new AppError("Không tìm thấy thú cưng", 404);
+        throw new AppError("Không thấy thú cưng", 404);
       }
 
       // Create examination with doctor's full details
