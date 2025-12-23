@@ -12,7 +12,7 @@ router.get('/branches/:branchId/services', authMiddleware, serviceController.get
 // Medical examination endpoints
 router.post('/examinations',
     authMiddleware,
-    authorizeRoles(['Khách hàng']),
+    authorizeRoles(['Khách hàng', 'Tiếp tân']),
     serviceController.createMedicalExamination
 );
 
@@ -31,7 +31,7 @@ router.post('/examinations/:examinationId/prescriptions',
 // Vaccination endpoints
 router.post('/vaccinations',
     authMiddleware,
-    authorizeRoles(['Khách hàng']),
+    authorizeRoles(['Khách hàng', 'Tiếp tân']),
     serviceController.createVaccination
 );
 

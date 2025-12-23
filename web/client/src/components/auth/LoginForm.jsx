@@ -67,7 +67,9 @@ const LoginForm = () => {
         } else if (userRole === 'Bác sĩ') {
           redirectPath = '/doctor/dashboard';
         } else if (userRole === 'Bán hàng') {
-          redirectPath = '/sales/dashboard';
+          redirectPath = '/sales/invoice';
+        } else if (userRole === 'Tiếp tân') {
+          redirectPath = '/receptionist/create-appointment';
         } else if (userRole === 'Quản lý chi nhánh') {
           redirectPath = '/branch-manager/dashboard';
         } else if (userRole === 'Quản lý công ty') {
