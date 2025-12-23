@@ -62,40 +62,6 @@ class ServiceService {
     if (!pet || pet.MaKH !== requesterId) {
       throw new AppError("Bạn không có quyền với thú cưng này", 403);
     }
-
-    async createMedicalExamination(examinationData, requesterId, isStaff = false) {
-        const { MaCN, MaDV, MaTC, NgayKham } = examinationData;
-
-        // Validate pet ownership (skip if staff is creating)
-        if (!isStaff) {
-            const pet = await this.petRepository.getPetById(MaTC);
-            if (!pet || pet.MaKH !== requesterId) {
-                throw new AppError('Bạn không có quyền với thú cưng này', 403);
-            }
-        }
-
-        // Create examination
-        const result = await this.serviceRepository.createMedicalExamination({
-            MaCN,
-            MaDV,
-            MaTC,
-            NgayKham,
-        });
-
-    // If exam has MaNV, validate ownership. Otherwise allow (old exams)
-    if (examination.MaNV && examination.MaNV !== doctorId) {
-      throw new AppError("Bạn không có quyền cập nhật hồ sơ khám này", 403);
-    }
-
-    const result = await this.serviceRepository.updateMedicalExamination(
-      examinationId,
-      updateData
-    );
-    if (!result) {
-      throw new AppError("Cập nhật thất bại", 500);
-    }
-
-    return { success: true };
   }
 
   async addPrescription(examinationId, prescriptions, doctorId) {
@@ -216,8 +182,8 @@ class ServiceService {
       UuDai: discountRate,
     });
 
-        // Get vaccination service ID (MaDV) for the branch
-        const serviceResult = await this.serviceRepository.execute(`
+    // Get vaccination service ID (MaDV) for the branch
+    const serviceResult = await this.serviceRepository.execute(`
             SELECT MaDV 
             FROM Dich_vu 
             WHERE TenDV = 'Tiêm phòng'
