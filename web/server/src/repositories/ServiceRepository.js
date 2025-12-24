@@ -62,10 +62,11 @@ class ServiceRepository extends BaseRepository {
 
     const result = await this.execute(
       `
-            INSERT INTO Kham_benh (MaCN, MaDV, MaTC, MaNV, NgayKham, TrieuChung, ChanDoan, NgayTaiKham)
-            OUTPUT INSERTED.MaKB, INSERTED.MaNV
-            VALUES (@MaCN, @MaDV, @MaTC, @MaNV, @NgayKham, @TrieuChung, @ChanDoan, @NgayTaiKham)
-        `,
+        INSERT INTO Kham_benh (MaCN, MaDV, MaTC, MaNV, NgayKham, TrieuChung, ChanDoan, NgayTaiKham)
+        VALUES (@MaCN, @MaDV, @MaTC, @MaNV, @NgayKham, @TrieuChung, @ChanDoan, @NgayTaiKham);
+        
+        SELECT CAST(SCOPE_IDENTITY() AS INT) AS MaKB;
+      `,
       {
         MaCN,
         MaDV,
@@ -80,7 +81,6 @@ class ServiceRepository extends BaseRepository {
 
     return result.recordset[0];
   }
-
   async updateMedicalExamination(examinationId, updateData) {
     const { TrieuChung, ChanDoan, NgayTaiKham, MaNV } = updateData;
 
@@ -110,13 +110,18 @@ class ServiceRepository extends BaseRepository {
 
     const result = await this.execute(
       `
-            INSERT INTO Toa_thuoc (MaKB, MaSP, SoLuong)
-            VALUES (@MaKB, @MaSP, @SoLuong)
-        `,
+    SET NOCOUNT ON;
+    
+    IF NOT EXISTS (SELECT 1 FROM Toa_thuoc WHERE MaKB = @MaKB AND MaSP = @MaSP)
+    BEGIN
+      INSERT INTO Toa_thuoc (MaKB, MaSP, SoLuong)
+      VALUES (@MaKB, @MaSP, @SoLuong);
+    END
+    `,
       {
         MaKB: examinationId,
         MaSP,
-        SoLuong,
+        SoLuong: SoLuong || 1,
       }
     );
 
@@ -651,6 +656,35 @@ class ServiceRepository extends BaseRepository {
     );
 
     return result.recordset;
+  }
+
+  async deletePrescription(examinationId, medicineId) {
+    const result = await this.execute(
+      `
+    DELETE FROM Toa_thuoc
+    WHERE MaKB = @MaKB AND MaSP = @MaSP;
+    `,
+      {
+        MaKB: examinationId,
+        MaSP: medicineId,
+      }
+    );
+
+    return result.rowsAffected[0] > 0;
+  }
+
+  async deletePrescriptionsByExamination(examinationId) {
+    const result = await this.execute(
+      `
+    DELETE FROM Toa_thuoc
+    WHERE MaKB = @MaKB;
+    `,
+      {
+        MaKB: examinationId,
+      }
+    );
+
+    return result.rowsAffected[0];
   }
 }
 

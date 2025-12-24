@@ -61,6 +61,7 @@ class ServiceService {
       TrieuChung,
       ChanDoan,
       NgayTaiKham,
+      prescriptions = [],
     } = examinationData;
 
     // Bác sĩ được quyền tạo khám cho bất kỳ thú cưng nào (chỉ cần check tồn tại)
@@ -80,6 +81,21 @@ class ServiceService {
       ChanDoan,
       NgayTaiKham,
     });
+
+    const examinationId = result.MaKB;
+
+    // Thêm thuốc nếu có
+    if (prescriptions && prescriptions.length > 0) {
+      const validPrescriptions = prescriptions.filter((p) => p.MaSP);
+      if (validPrescriptions.length > 0) {
+        for (const prescription of validPrescriptions) {
+          await this.serviceRepository.addPrescription(
+            examinationId,
+            prescription
+          );
+        }
+      }
+    }
 
     return result;
   }
@@ -525,6 +541,79 @@ class ServiceService {
       success: true,
       message: "Cập nhật chi tiết tiêm phòng thành công",
     };
+  }
+
+  async deletePrescription(examinationId, medicineId, doctorId) {
+    const examination = await this.serviceRepository.getMedicalExamination(
+      examinationId
+    );
+
+    if (!examination) {
+      throw new AppError("Không tìm thấy hồ sơ khám", 404);
+    }
+
+    if (examination.MaNV && examination.MaNV !== doctorId) {
+      throw new AppError("Bạn không có quyền xóa đơn thuốc này", 403);
+    }
+
+    const result = await this.serviceRepository.deletePrescription(
+      examinationId,
+      medicineId
+    );
+
+    if (!result) {
+      throw new AppError("Xóa thuốc thất bại", 500);
+    }
+
+    return { success: true, message: "Xóa thuốc thành công" };
+  }
+
+  async updateMedicalExaminationWithPrescriptions(
+    examinationId,
+    updateData,
+    prescriptions,
+    doctorId
+  ) {
+    const examination = await this.serviceRepository.getMedicalExamination(
+      examinationId
+    );
+
+    if (!examination) {
+      throw new AppError("Không tìm thấy hồ sơ khám", 404);
+    }
+
+    if (examination.MaNV && examination.MaNV !== doctorId) {
+      throw new AppError("Bạn không có quyền cập nhật hồ sơ này", 403);
+    }
+
+    const { TrieuChung, ChanDoan, NgayTaiKham } = updateData;
+
+    // Cập nhật hồ sơ
+    await this.serviceRepository.updateMedicalExamination(examinationId, {
+      TrieuChung,
+      ChanDoan,
+      NgayTaiKham,
+    });
+
+    // Xóa tất cả đơn thuốc cũ
+    await this.serviceRepository.deletePrescriptionsByExamination(
+      examinationId
+    );
+
+    // Thêm đơn thuốc mới
+    if (prescriptions && prescriptions.length > 0) {
+      const validPrescriptions = prescriptions.filter((p) => p.MaSP);
+      if (validPrescriptions.length > 0) {
+        for (const prescription of validPrescriptions) {
+          await this.serviceRepository.addPrescription(
+            examinationId,
+            prescription
+          );
+        }
+      }
+    }
+
+    return { success: true, message: "Cập nhật hồ sơ khám thành công" };
   }
 }
 
