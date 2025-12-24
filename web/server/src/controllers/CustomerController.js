@@ -127,6 +127,21 @@ class CustomerController {
         }
     };
 
+    getPetById = async (req, res, next) => {
+        try {
+            const petId = parseInt(req.params.petId);
+            
+            if (!petId) {
+                throw new AppError('ID thú cưng không hợp lệ', 400);
+            }
+
+            const result = await this.customerService.getPetById(petId);
+            res.json(result);
+        } catch (error) {
+            next(error);
+        }
+    };
+
     createPet = async (req, res, next) => {
         try {
             const customerId = req.user.MaKH;
