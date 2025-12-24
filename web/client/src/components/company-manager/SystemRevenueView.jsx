@@ -1,34 +1,47 @@
 import React, { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
+import { companyManagerService} from '@services/companyManagerService';
 
 const SystemRevenueView = () => {
   const [selectedYear, setSelectedYear] = useState('2024');
   const [viewType, setViewType] = useState('total'); // total, branch
   const [totalRevenueData, setTotalRevData] = useState([]);
   const [branchRevenueData, setBranchRevData] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  const fetchBranchRevData = async () => {
+    try {
+      setLoading(true);
+      const data = await companyManagerService.getRevenueBranchYear(selectedYear);
+      console.log('Customer stats:', data);
+      setBranchRevData(data.data);
+    } catch (error) {
+      console.error('Lỗi khi tải thống kê khách hàng:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchTotalRevData = async () => {
+    try {
+      setLoading(true);
+      const data = await companyManagerService.getTotalRevenueYear(selectedYear);
+      console.log('Customer stats:', data);
+      setTotalRevData(data.data);
+    } catch (error) {
+      console.error('Lỗi khi tải thống kê khách hàng:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchTotalRevData = () => {
-      fetch("/mock_data/sys_rev/total_rev.json")
-        .then(response => response.json())
-        .then(data => setTotalRevData(data))
-        .catch(error => console.log(error));
-    };
-
-    fetchTotalRevData(); 
-  }, []); 
+    fetchTotalRevData();
+  }, [selectedYear]); 
 
   useEffect(() => {
-    const fetchBranchRevData = () => {
-      fetch("/mock_data/sys_rev/branch_rev.json")
-        .then(response => response.json())
-        .then(data => setBranchRevData(data))
-        .catch(error => console.log(error));
-    };
-
-    fetchBranchRevData(); 
-  }, []); 
-
+    fetchBranchRevData();
+  }, [selectedYear]); 
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('vi-VN', {
       style: 'currency',

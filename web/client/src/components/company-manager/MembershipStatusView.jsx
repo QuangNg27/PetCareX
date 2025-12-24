@@ -1,32 +1,27 @@
 import React, {useState, useEffect} from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { companyManagerService } from '@services/companyManagerService';
 
 const MembershipStatusView = () => {
   const [membershipData, setMembershipData] = useState([]);
   const [branchMembershipData, setBranchMembershipData] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  const fetchMembershipData = async () => {
+    try {
+      setLoading(true);
+      const data = await companyManagerService.getMembershipStats();
+      console.log('Customer stats:', data);
+      setMembershipData(data.data);
+    } catch (error) {
+      console.error('Lỗi khi tải thống kê hội viên:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-      const fetchMembershipData = () => {
-        fetch("/mock_data/membership/base.json")
-        .then(response => response.json())
-        .then(data => {
-          setMembershipData(data);
-        }).catch(error => console.log(error));
-      };
-  
-      fetchMembershipData();
-  }, []);
-
-  useEffect(() => {
-    const fetchBranchMembershipData = () => {
-      fetch("/mock_data/membership/branch.json")
-      .then(response => response.json())
-      .then(data => {
-        setBranchMembershipData(data);
-      }).catch(error => console.log(error));
-    };
-
-    fetchBranchMembershipData();
+    fetchMembershipData();
   }, []);
 
   const totalMembers = membershipData.reduce((sum, item) => sum + item.count, 0);

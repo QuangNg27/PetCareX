@@ -1,21 +1,37 @@
 import React, {useState, useEffect} from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import {companyManagerService} from '@services/companyManagerService';
 
 const TopServicesView = () => {
   // Mock data - Doanh thu theo loại dịch vụ (6 tháng gần nhất)
   const [monthlyServiceData, setMonthlyServiceData] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [recentMonths, setRecentMonths] = useState([]);
+
+  const fetchRevenueServices = async () => {
+    try {
+      setLoading(true);
+      const data = await companyManagerService.getRevenueServicesW6M();
+      console.log('Customer stats:', data);
+      setMonthlyServiceData(data.data);
+    } catch (error) {
+      console.error('Lỗi khi tải thống kê doanh thu dịch vụ:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchMonthlyServiceData = () => {
-      fetch("/mock_data/top_service/monthly_service_data.json")
-      .then(response => response.json())
-      .then(data => {
-        console.log(data);
-        setMonthlyServiceData(data);
-      }).catch(error => console.log(error))
-    };
+    fetchRevenueServices();
 
-    fetchMonthlyServiceData();
+    // Generate recent 6 months labels
+    const months = [];
+    const now = new Date();
+    for (let i = 5; i >= 0; i--) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      months.push(`${date.getMonth() + 1}/${date.getFullYear()}`);
+    }
+    setRecentMonths(months);
   }, []);
 
   const formatCurrency = (value) => {
@@ -39,7 +55,7 @@ const TopServicesView = () => {
           Thống kê doanh thu dịch vụ
         </h2>
         <p className="text-sm text-gray-600">
-          Dữ liệu 6 tháng gần nhất (07/2024 - 12/2024)
+          Dữ liệu 6 tháng gần nhất ({recentMonths[0]} - {recentMonths[recentMonths.length - 1]})
         </p>
       </div>
 

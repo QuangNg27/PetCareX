@@ -1,46 +1,63 @@
 import React, { useState, useEffect } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { companyManagerService } from '@services/companyManagerService';
 
 const PetStatisticsView = () => {
   const [viewType, setViewType] = useState('species'); // species, breed
   const [speciesData, setSpeciesData] = useState([]);
   const [dogBreedsData, setDogBreedsData] = useState([]);
   const [catBreedsData, setCatBreedsData] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  const fetchPetsData = async () => {
+    try {
+      setLoading(true);
+      const data = await companyManagerService.getAllPetsStats();
+      console.log('Customer stats:', data);
+      setSpeciesData(data.data);
+    } catch (error) {
+      console.error('Lỗi khi tải thống kê thú cưng:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchDogBreedsData = async () => {
+    try {
+      setLoading(true);
+      const data = await companyManagerService.getDogBreedsStats();
+      console.log('Dog breeds stats:', data);
+      setDogBreedsData(data.data);
+    } catch (error) {
+      console.error('Lỗi khi tải thống kê giống chó:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchCatBreedsData = async () => {
+    try {
+      setLoading(true);
+      const data = await companyManagerService.getCatBreedsStats();
+      console.log('Cat breeds stats:', data);
+      setCatBreedsData(data.data);
+    } catch (error) {
+      console.error('Lỗi khi tải thống kê giống mèo:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchSpeciesData = () => {
-      fetch("/mock_data/pet_stats/species.json")
-      .then(response => response.json())
-      .then(data => {
-        setSpeciesData(data);
-      }).catch(error => console.log(error));
-    };
-
-    fetchSpeciesData();
+    fetchPetsData();
   }, []);
 
   useEffect(() => {
-    const fetchCatBreedsData = () => {
-      fetch("/mock_data/pet_stats/cat_breeds.json")
-      .then(response => response.json())
-      .then(data => {
-        setCatBreedsData(data);
-      }).catch(error => console.log(error));
-    };
-
-    fetchCatBreedsData();
-  }, []);
-
-  useEffect(() => {
-    const fetchDogBreedsData = () => {
-      fetch("/mock_data/pet_stats/dog_breeds.json")
-      .then(response => response.json())
-      .then(data => {
-        setDogBreedsData(data);
-      }).catch(error => console.log(error));
-    };
-
     fetchDogBreedsData();
+  }, []);
+
+  useEffect(() => {
+    fetchCatBreedsData();
   }, []);
 
   const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
