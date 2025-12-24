@@ -168,13 +168,20 @@ const ServicesView = () => {
           alert(response.message || 'Đặt lịch thất bại');
         }
       } else if (selectedService.LoaiDichVu === 'tiem-phong') {
-        // Create vaccination
+        // Create vaccination - find MaSP from vaccine names
+        const vaccinesWithId = vaccines.map(v => {
+          const matchedVaccine = availableVaccines.find(av => 
+            av.TenSP.toLowerCase().trim() === v.name.toLowerCase().trim()
+          );
+          return matchedVaccine ? { MaSP: matchedVaccine.MaSP } : null;
+        }).filter(v => v !== null); // Only include vaccines that were found
+        
         const vaccData = {
           MaCN: parseInt(bookingData.branchId),
           MaDV: selectedService.id,
           MaTC: parseInt(bookingData.petId),
           NgayTiem: bookingData.appointmentDate,
-          vaccines: vaccines.map(v => ({ name: v.name }))
+          vaccines: vaccinesWithId
         };
         
         const response = await serviceService.vaccinations.create(vaccData);

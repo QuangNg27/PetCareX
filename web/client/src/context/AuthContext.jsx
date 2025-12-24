@@ -322,36 +322,47 @@ export const AuthProvider = ({ children }) => {
             TrieuChung: item.TrieuChung,
             ChanDoan: item.ChanDoan,
             NgayTaiKham: item.NgayTaiKham,
-            Thuoc: item.ChanDoan
-              ? `Chẩn đoán: ${item.ChanDoan}`
-              : "Chưa cập nhật",
+            ThuocDaDung: item.ThuocDaDung || [],
           }));
 
-          const vaccinationAppts = (vaccinationHistory.data || []).map(
-            (item) => ({
-              id: `vacc-${item.MaTP}`,
-              MaLichHen: `TP${item.MaTP}`,
-              type: "vaccination",
-              NgayHen: item.NgayTiem,
-              TenDichVu: "Tiêm phòng vắc-xin",
-              TenThuCung: pet.Ten,
-              LoaiThuCung: `${pet.Loai} ${pet.Giong}`,
-              TenChiNhanh: item.TenCN || "Chưa cập nhật",
-              TenBacSi: item.TenBacSi || "Chưa cập nhật",
-              GoiTiem: item.MaGoi
-                ? {
-                    MaGoi: item.MaGoi,
-                    UuDai: item.UuDai || 0,
-                    CacVacxin:
-                      item.Vaccines && item.Vaccines.length > 0
-                        ? item.Vaccines.map((v) => ({
-                            TenVaccine: v.TenVaccine || "Chưa cập nhật",
-                            LieuLuong: v.LieuLuong || "Chưa cập nhật",
-                          }))
-                        : [],
-                  }
-                : null,
-            })
+          // Deduplicate vaccination records by MaTP (group records with same MaTP)
+          const vaccinationMap = new Map();
+          (vaccinationHistory.data || []).forEach((item) => {
+            const key = item.MaTP;
+            if (!vaccinationMap.has(key)) {
+              vaccinationMap.set(key, item);
+            }
+          });
+
+          const vaccinationAppts = Array.from(vaccinationMap.values()).map(
+            (item) => {
+              // Create vaccines array if exists
+              const vaccines = item.Vaccines && item.Vaccines.length > 0
+                ? item.Vaccines.map((v) => ({
+                    TenVaccine: v.TenVaccine || "Chưa cập nhật",
+                    LieuLuong: v.LieuLuong || "Chưa cập nhật",
+                    TrangThai: v.TrangThai || "Chưa cập nhật",
+                    LoaiVaccine: v.LoaiVaccine || "Chưa cập nhật",
+                  }))
+                : [];
+
+              return {
+                id: `vacc-${item.MaTP}`,
+                MaLichHen: `TP${item.MaTP}`,
+                type: "vaccination",
+                NgayHen: item.NgayTiem,
+                TenDichVu: "Tiêm phòng vắc-xin",
+                TenThuCung: pet.Ten,
+                LoaiThuCung: `${pet.Loai} ${pet.Giong}`,
+                TenChiNhanh: item.TenCN || "Chưa cập nhật",
+                TenBacSi: item.TenBacSi || "Chưa cập nhật",
+                GoiTiem: {
+                  MaGoi: item.MaGoi || null,
+                  UuDai: item.UuDai || 0,
+                  CacVacxin: vaccines,
+                },
+              };
+            }
           );
 
           return [...medicalAppts, ...vaccinationAppts];

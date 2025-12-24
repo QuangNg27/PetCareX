@@ -209,7 +209,7 @@ class PetRepository extends BaseRepository {
                 tp.NgayTiem,
                 ISNULL(nv.HoTen, N'Chưa có bác sĩ') as TenBacSi,
                 ISNULL(dv.TenDV, N'Chưa xác định') as TenDV,
-                ISNULL(cn.TenCN, N'Chưa xác định') as TenCN,
+                ISNULL(cn.TenCN, N'Chưa xác định') as TenCN
             FROM Tiem_phong tp
             LEFT JOIN Nhan_vien nv ON tp.MaNV = nv.MaNV
             LEFT JOIN Dich_vu dv ON tp.MaDV = dv.MaDV
