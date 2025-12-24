@@ -3,10 +3,9 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import ConfirmDialog from '../layout/ConfirmOverlay/confirmationBox';
 import { employeeSchema } from './employeeSchema';
+import { companyManagerService } from '@services/companyManagerService';
 
 const EmployeeManagementView = () => {
-  const baseUrl = import.meta.env.VITE_API_BASE_URL;
-
   const [searchTerm, setSearchTerm] = useState('');
   const [filterBranch, setFilterBranch] = useState('all');
   const [filterRole, setFilterRole] = useState('all');
@@ -15,49 +14,50 @@ const EmployeeManagementView = () => {
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [employees, setEmployeeData] = useState([]);
+  const [employeeRoles, setRoles] = useState([]);
+  const [branch, setBranch] = useState([]);
 
   const [showDialog, setShowDialog] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
 
-  useEffect(() => {
-    const fetchEmployeesData = () => {
-      fetch("/mock_data/employees/data.json")
-      .then(response => response.json())
-      .then(data => {
-        setEmployeeData(data);
-      }).catch(error => console.log(error));
-    };
+  const [loading, setLoading] = useState(false);
 
-    fetchEmployeesData();
-  }, []);
-
-  const removeEmployees = (id) => {
-  fetch(`${baseUrl}/company-manager/employees/delete/${id}`, {
-    method: "DELETE", 
-  })
-    .then((response) => {
-      if (!response.ok) {
-        throw new Error(`Failed to delete employee: ${response.status}`);
-      }
-
-      setEmployeeData((prevData) =>
-        prevData.filter((employee) => employee.id !== id)
-      );
-
-      console.log(`Deleted employee ${id} successfully.`);
-    })
-    .catch((error) => {
-      console.error("Delete failed:", error);
-    });
+  const fetchEmployees = async () => {
+    try {
+      setLoading(true);
+      const data = await companyManagerService.getEmployees();
+      console.log('Customer stats:', data);
+      setEmployeeData(data.data.employee_data);
+      setRoles(data.data.role_data);
+      setBranch(data.data.branch_data);
+    } catch (error) {
+      console.error('Lỗi khi tải thống kê nhân viên:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const branches = ['CN Quận 1', 'CN Quận 3', 'CN Tân Bình', 'CN Bình Thạnh', 'CN Phú Nhuận'];
-  const roles = ['Bác sĩ', 'Nhân viên bán hàng', 'Tiếp tân', 'Quản lý chi nhánh'];
+  useEffect(() => {
+    fetchEmployees();
+  }, []);
+
+  const removeEmployees = async (id) => {
+    try {
+      const response = await companyManagerService.deleteEmployee(id);
+      if (response.success) {
+        setEmployeeData(prev => prev.filter(emp => emp.id !== id));
+      }
+    } catch (error) {
+      console.error('Lỗi khi xóa nhân viên:', error);
+    }
+  }
+
+  const roles = employeeRoles.map(r => r.ChucVu);
 
   const filteredEmployees = employees.filter(emp => {
     const matchSearch = emp.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchBranch = filterBranch === 'all' || emp.branch === filterBranch;
+    const matchBranch = filterBranch === 'all' || emp.currentBranch === filterBranch;
     const matchRole = filterRole === 'all' || emp.role === filterRole;
     return matchSearch && matchBranch && matchRole;
   });
@@ -105,30 +105,20 @@ const EmployeeManagementView = () => {
   const onSubmit = async (data) => {
   try {
     if (selectedEmployee) {
-      // Edit 
-      const response = await fetch(`${baseUrl}/company-manager/employees/update/${selectedEmployee.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) throw new Error("Cập nhật thất bại");
-
+      // Edit
+      const response = await companyManagerService.updateEmployee(selectedEmployee.id, data);
+  
+      if (!response.success) throw new Error("Cập nhật thất bại");
       setEmployeeData(prev =>
-        prev.map(emp => emp.id === selectedEmployee.id ? { ...emp, ...data } : emp)
+        prev.map(emp => emp.id === selectedEmployee.id ? { ...emp, ...response.data } : emp)
       );
     } else {
       // Add 
-      const response = await fetch(`${baseUrl}/company-manager/employees/add`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
+      console.log("Adding employee with data:", data);
+      const response = await companyManagerService.addEmployee(data);
 
-      if (!response.ok) throw new Error("Thêm nhân viên thất bại");
-
-      const newEmployee = await response.json();
-      setEmployeeData(prev => [...prev, newEmployee]);
+      if (!response.success) throw new Error("Thêm thất bại");
+      setEmployeeData(prev => [...prev, response.data]);
     }
 
     setShowAddModal(false);
@@ -212,8 +202,9 @@ const EmployeeManagementView = () => {
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="all">Tất cả</option>
-              {branches.map(branch => (
-                <option key={branch} value={branch}>{branch}</option>
+              <option value="none">Không có chi nhánh</option>
+              {branch.map(b => (
+                <option key={b.MaCN} value={b.TenCN}>{b.TenCN}</option>
               ))}
             </select>
           </div>
@@ -314,7 +305,7 @@ const EmployeeManagementView = () => {
                     {employee.role}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {employee.branch}
+                    {employee.currentBranch === "none" ? "Không có" : employee.currentBranch}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {formatCurrency(employee.salary)}
@@ -446,8 +437,9 @@ const EmployeeManagementView = () => {
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">Chọn chi nhánh</option>
-                  {branches.map(branch => (
-                    <option key={branch} value={branch}>{branch}</option>
+                  <option value="none">Không có chi nhánh</option>
+                  {branch.map(b => (
+                    <option key={b.MaCN} value={b.MaCN}>{b.TenCN}</option>
                   ))}
                 </select>
                 {errors.branch && <p className="text-red-500 text-sm">{errors.branch.message}</p>}
