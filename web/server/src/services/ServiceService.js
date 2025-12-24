@@ -1,279 +1,531 @@
-const ServiceRepository = require('../repositories/ServiceRepository');
-const CustomerRepository = require('../repositories/CustomerRepository');
-const PetRepository = require('../repositories/PetRepository');
-const ProductRepository = require('../repositories/ProductRepository');
-const { AppError } = require('../middleware/errorHandler');
+const ServiceRepository = require("../repositories/ServiceRepository");
+const CustomerRepository = require("../repositories/CustomerRepository");
+const PetRepository = require("../repositories/PetRepository");
+const ProductRepository = require("../repositories/ProductRepository");
+const { AppError } = require("../middleware/errorHandler");
 
 class ServiceService {
-    constructor() {
-        this.serviceRepository = new ServiceRepository();
-        this.customerRepository = new CustomerRepository();
-        this.petRepository = new PetRepository();
-        this.productRepository = new ProductRepository();
+  constructor() {
+    this.serviceRepository = new ServiceRepository();
+    this.customerRepository = new CustomerRepository();
+    this.petRepository = new PetRepository();
+    this.productRepository = new ProductRepository();
+  }
+
+  async getBranchServices(branchId) {
+    const services = await this.serviceRepository.getBranchServices(branchId);
+    return services;
+  }
+
+  // =========================================================================
+  // 1. HÀM TẠO LỊCH KHÁM (CƠ BẢN) - Dành cho Khách hàng & Tiếp tân
+  // Logic lấy từ nhánh DEV: Gọn nhẹ, chỉ đặt lịch hẹn
+  // =========================================================================
+  async createMedicalExamination(
+    examinationData,
+    requesterId,
+    isStaff = false
+  ) {
+    const { MaCN, MaDV, MaTC, NgayKham } = examinationData;
+
+    // Validate pet ownership (nếu không phải nhân viên thì phải check chủ sở hữu)
+    if (!isStaff) {
+      const pet = await this.petRepository.getPetById(MaTC);
+      if (!pet || pet.MaKH !== requesterId) {
+        throw new AppError("Bạn không có quyền với thú cưng này", 403);
+      }
     }
 
-    async getBranchServices(branchId) {
-        const services = await this.serviceRepository.getBranchServices(branchId);
-        
-        return services;
+    // Tạo phiếu khám cơ bản
+    const result = await this.serviceRepository.createMedicalExamination({
+      MaCN,
+      MaDV,
+      MaTC,
+      NgayKham,
+    });
+
+    return result;
+  }
+
+  // =========================================================================
+  // 2. HÀM TẠO PHIẾU KHÁM (CHI TIẾT) - Dành riêng cho Bác sĩ
+  // Logic lấy từ nhánh DEV_DUC: Cho phép nhập Triệu chứng, Chẩn đoán ngay lập tức
+  // =========================================================================
+  async createDoctorExamination(examinationData) {
+    const {
+      MaCN,
+      MaDV,
+      MaTC,
+      MaNV,
+      NgayKham,
+      TrieuChung,
+      ChanDoan,
+      NgayTaiKham,
+    } = examinationData;
+
+    // Bác sĩ được quyền tạo khám cho bất kỳ thú cưng nào (chỉ cần check tồn tại)
+    const pet = await this.petRepository.getPetById(MaTC);
+    if (!pet) {
+      throw new AppError("Không tìm thấy thú cưng", 404);
     }
 
-    async createMedicalExamination(examinationData, requesterId, isStaff = false) {
-        const { MaCN, MaDV, MaTC, NgayKham } = examinationData;
+    // Tạo phiếu khám đầy đủ thông tin
+    const result = await this.serviceRepository.createMedicalExamination({
+      MaCN,
+      MaDV,
+      MaTC,
+      MaNV, // Lưu luôn bác sĩ tạo
+      NgayKham,
+      TrieuChung,
+      ChanDoan,
+      NgayTaiKham,
+    });
 
-        // Validate pet ownership (skip if staff is creating)
-        if (!isStaff) {
-            const pet = await this.petRepository.getPetById(MaTC);
-            if (!pet || pet.MaKH !== requesterId) {
-                throw new AppError('Bạn không có quyền với thú cưng này', 403);
-            }
-        }
+    return result;
+  }
 
-        // Create examination
-        const result = await this.serviceRepository.createMedicalExamination({
-            MaCN,
-            MaDV,
-            MaTC,
-            NgayKham,
-        });
+  // =========================================================================
+  // CÁC HÀM KHÁC (Giữ nguyên theo logic nhánh DEV)
+  // =========================================================================
 
-        return result;
+  async updateMedicalExamination(examinationId, updateData, doctorId) {
+    const examination = await this.serviceRepository.getMedicalExamination(
+      examinationId
+    );
+
+    if (!examination) {
+      throw new AppError("Không tìm thấy hồ sơ khám", 404);
     }
 
-    async updateMedicalExamination(examinationId, updateData, doctorId) {
-        // Check if doctor owns this examination
-        const examination = await this.serviceRepository.getMedicalExamination(examinationId);
-        if (!examination || examination.MaNV !== doctorId) {
-            throw new AppError('Bạn không có quyền cập nhật hồ sơ khám này', 403);
-        }
-
-        const result = await this.serviceRepository.updateMedicalExamination(examinationId, updateData);
-        if (!result) {
-            throw new AppError('Cập nhật thất bại', 500);
-        }
-
-        return { success: true };
+    // Nếu hồ sơ đã có bác sĩ phụ trách, chỉ bác sĩ đó mới được sửa
+    if (examination.MaNV && examination.MaNV !== doctorId) {
+      throw new AppError("Bạn không có quyền cập nhật hồ sơ khám này", 403);
     }
 
-    async addPrescription(examinationId, prescriptions, doctorId) {
-        // Validate examination ownership
-        const examination = await this.serviceRepository.getMedicalExamination(examinationId);
-        if (!examination || examination.MaNV !== doctorId) {
-            throw new AppError('Bạn không có quyền thêm đơn thuốc cho hồ sơ này', 403);
-        }
-
-        const results = [];
-        for (const prescription of prescriptions) {
-            const result = await this.serviceRepository.addPrescription(examinationId, prescription);
-            results.push(result);
-        }
-
-        return { success: true, count: results.length };
+    const result = await this.serviceRepository.updateMedicalExamination(
+      examinationId,
+      updateData
+    );
+    if (!result) {
+      throw new AppError("Cập nhật thất bại", 500);
     }
 
-    async createVaccination(vaccinationData, requesterId, isStaff = false) {
-        const { MaCN, MaDV, MaTC, NgayTiem, vaccines } = vaccinationData;
+    return { success: true };
+  }
 
-        // Validate pet ownership (skip if staff is creating)
-        if (!isStaff) {
-            const pet = await this.petRepository.getPetById(MaTC);
-            if (!pet || pet.MaKH !== requesterId) {
-                throw new AppError('Bạn không có quyền với thú cưng này', 403);
-            }
-        }
-
-        const result = await this.serviceRepository.createVaccination({
-            MaCN,
-            MaDV,
-            MaTC,
-            NgayTiem
-        });
-
-        // If vaccines are provided, insert them into Chi_tiet_tiem_phong
-        if (vaccines && vaccines.length > 0 && result.MaTP) {
-            for (const vaccine of vaccines) {
-                if (vaccine.MaSP) {
-                    await this.serviceRepository.addVaccinationDetail(result.MaTP, {
-                        MaSP: vaccine.MaSP,
-                        MaGoi: null
-                    });
-                }
-            }
-        }
-
-        return result;
+  async addPrescription(examinationId, prescriptions, doctorId) {
+    const examination = await this.serviceRepository.getMedicalExamination(
+      examinationId
+    );
+    if (!examination) {
+      throw new AppError("Không tìm thấy hồ sơ khám", 404);
     }
 
-    async updateVaccinationDetails(vaccinationId, details, doctorId) {
-        // Validate vaccination ownership
-        const vaccination = await this.serviceRepository.getVaccination(vaccinationId);
-        if (!vaccination || vaccination.MaNV !== doctorId) {
-            throw new AppError('Bạn không có quyền cập nhật thông tin tiêm phòng này', 403);
-        }
-
-        const result = await this.serviceRepository.updateVaccination(vaccinationId, details, doctorId);
-        if (!result) {
-            throw new AppError('Cập nhật thông tin tiêm phòng thất bại', 500);
-        }
+    if (examination.MaNV && examination.MaNV !== doctorId) {
+      throw new AppError(
+        "Bạn không có quyền thêm đơn thuốc cho hồ sơ này",
+        403
+      );
     }
 
-    async createVaccinationPackage(packageData, customerId) {
-        const { NgayBatDau, NgayKetThuc, vaccines, MaTC, MaCN } = packageData;
+    const results = [];
+    for (const prescription of prescriptions) {
+      const result = await this.serviceRepository.addPrescription(
+        examinationId,
+        prescription
+      );
+      results.push(result);
+    }
 
-        // Calculate discount based on package duration
-        const startDate = new Date(NgayBatDau);
-        const endDate = new Date(NgayKetThuc);
-        const durationDays = Math.floor((endDate - startDate) / (1000 * 60 * 60 * 24));
-        
-        let discountRate = 0;
-        if (durationDays >= 365 + 180) {
-            discountRate = 0.15; // 15% for 1.5+ year
-        } else if (durationDays >= 365) {
-            discountRate = 0.10; // 10% for 1+ year
-        } else if (durationDays >= 180) {
-            discountRate = 0.05; // 5% for 6+ months
+    return { success: true, count: results.length };
+  }
+
+  // Hàm này lấy từ dev_Duc (cần thiết để xem đơn thuốc)
+  async getPrescriptions(examinationId) {
+    return await this.serviceRepository.getPrescriptions(examinationId);
+  }
+
+  async createVaccination(vaccinationData, requesterId, isStaff = false) {
+    const { MaCN, MaDV, MaTC, NgayTiem, vaccines } = vaccinationData;
+
+    // Validate ownership
+    if (!isStaff) {
+      const pet = await this.petRepository.getPetById(MaTC);
+      if (!pet || pet.MaKH !== requesterId) {
+        throw new AppError("Bạn không có quyền với thú cưng này", 403);
+      }
+    }
+
+    const result = await this.serviceRepository.createVaccination({
+      MaCN,
+      MaDV,
+      MaTC,
+      NgayTiem,
+    });
+
+    // Thêm chi tiết vaccine (nếu có)
+    if (vaccines && vaccines.length > 0 && result.MaTP) {
+      for (const vaccine of vaccines) {
+        if (vaccine.MaSP) {
+          await this.serviceRepository.addVaccinationDetail(result.MaTP, {
+            MaSP: vaccine.MaSP,
+            MaGoi: null,
+          });
         }
+      }
+    }
 
-        // Create vaccination package
-        const result = await this.serviceRepository.createVaccinationPackage({
-            MaKH: customerId,
-            NgayBatDau,
-            NgayKetThuc,
-            UuDai: discountRate
-        });
+    return result;
+  }
 
-        const packageId = result.MaGoi;
+  async updateVaccinationDetails(vaccinationId, details, doctorId) {
+    const vaccination = await this.serviceRepository.getVaccination(
+      vaccinationId
+    );
+    if (!vaccination) {
+      throw new AppError("Hồ sơ tiêm phòng không tồn tại", 404);
+    }
 
-        // Get vaccination service ID (MaDV) for the branch
-        const serviceResult = await this.serviceRepository.execute(`
+    if (vaccination.MaNV !== null && vaccination.MaNV !== doctorId) {
+      throw new AppError(
+        "Bạn không có quyền cập nhật thông tin tiêm phòng này",
+        403
+      );
+    }
+
+    const result = await this.serviceRepository.updateVaccination(
+      vaccinationId,
+      details,
+      doctorId
+    );
+    if (!result) {
+      throw new AppError("Cập nhật thông tin tiêm phòng thất bại", 500);
+    }
+  }
+
+  async createVaccinationPackage(packageData, customerId) {
+    const { NgayBatDau, NgayKetThuc, vaccines, MaTC, MaCN } = packageData;
+
+    const startDate = new Date(NgayBatDau);
+    const endDate = new Date(NgayKetThuc);
+    const durationDays = Math.floor(
+      (endDate - startDate) / (1000 * 60 * 60 * 24)
+    );
+
+    let discountRate = 0;
+    if (durationDays >= 365 + 180) {
+      discountRate = 0.15;
+    } else if (durationDays >= 365) {
+      discountRate = 0.1;
+    } else if (durationDays >= 180) {
+      discountRate = 0.05;
+    }
+
+    const result = await this.serviceRepository.createVaccinationPackage({
+      MaKH: customerId,
+      NgayBatDau,
+      NgayKetThuc,
+      UuDai: discountRate,
+    });
+
+    const packageId = result.MaGoi;
+
+    // Lấy MaDV tiêm phòng
+    const serviceResult = await this.serviceRepository.execute(`
             SELECT MaDV 
             FROM Dich_vu 
             WHERE TenDV = 'Tiêm phòng'
         `);
-        
-        const maDV = serviceResult.recordset[0]?.MaDV || null;
 
-        // Add vaccine details if provided
-        if (vaccines && vaccines.length > 0) {
-            for (const vaccine of vaccines) {
-                const { MaSP, NgayTiem } = vaccine;
-                
-                // Create vaccination record (Tiem_phong)
-                const vaccinationResult = await this.serviceRepository.createVaccination({
-                    MaCN,
-                    MaDV: maDV,
-                    MaTC,
-                    NgayTiem: NgayTiem || null
-                });
+    const maDV = serviceResult.recordset[0]?.MaDV || null;
 
-                const maTP = vaccinationResult.MaTP;
+    if (vaccines && vaccines.length > 0) {
+      for (const vaccine of vaccines) {
+        const { MaSP, NgayTiem } = vaccine;
 
-                // Add vaccination detail (Chi_tiet_tiem_phong)
-                await this.serviceRepository.addVaccinationDetail(maTP, {
-                    MaSP,
-                    MaGoi: packageId
-                });
-            }
-        }
+        const vaccinationResult =
+          await this.serviceRepository.createVaccination({
+            MaCN,
+            MaDV: maDV,
+            MaTC,
+            NgayTiem: NgayTiem || null,
+          });
 
-        return result;
-    }
+        const maTP = vaccinationResult.MaTP;
 
-    async getCustomerVaccinationPackages(customerId) {
-        const packages = await this.serviceRepository.getVaccinationPackages(customerId);
-        
-        // Load vaccine details for each package
-        const packagesWithDetails = await Promise.all(
-            packages.map(async (pkg) => {
-                const vaccines = await this.serviceRepository.getVaccinationPackageDetails(pkg.MaGoi);
-                return {
-                    ...pkg,
-                    CacVacxin: vaccines.map(v => ({
-                        id: v.MaSP,
-                        TenVaccine: v.TenVaccine,
-                        LieuLuong: v.LieuLuong,
-                        TrangThai: v.TrangThai,
-                        NgayTiem: v.NgayTiem
-                    }))
-                };
-            })
-        );
-        
-        return packagesWithDetails;
-    }
-
-    async updateServicePrice(serviceId, price, effectiveDate, userRole) {
-        // Only company managers can update service prices
-        if (userRole !== 'Quản lý công ty') {
-            throw new AppError('Bạn không có quyền cập nhật giá dịch vụ', 403);
-        }
-        
-        const result = await this.serviceRepository.updateServicePrice(serviceId, price, effectiveDate);
-        return { success: result };
-    }
-
-    async getServicePriceHistory(serviceId) {
-        const history = await this.serviceRepository.getServicePriceHistory(serviceId);
-        return history;
-    }
-
-    async getAvailableVeterinarians(branchId, date) {
-        const doctors = await this.serviceRepository.getAvailableVeterinarians(branchId, date);
-        return doctors;
-    }
-
-    // Bác sĩ tiếp nhận khám bệnh hoặc tiêm phòng
-    async updateVaccination(vaccinationId, updateData, doctorId) {
-        // Validate doctor assignment
-        const vaccination = await this.serviceRepository.getVaccination(vaccinationId);
-        if (!vaccination) {
-            throw new AppError('Không tìm thấy thông tin tiêm phòng', 404);
-        }
-
-        // Check if doctor can take this vaccination (branch assignment)
-        const doctors = await this.serviceRepository.getAvailableVeterinarians(vaccination.MaCN, vaccination.NgayTiem);
-        const isValidDoctor = doctors.some(doc => doc.MaNV === doctorId);
-        if (!isValidDoctor) {
-            throw new AppError('Bạn không có quyền tiếp nhận tiêm phòng tại chi nhánh này', 403);
-        }
-
-        const result = await this.serviceRepository.updateVaccination(vaccinationId, {
-            MaNV: doctorId
+        await this.serviceRepository.addVaccinationDetail(maTP, {
+          MaSP,
+          MaGoi: packageId,
         });
-
-        if (!result) {
-            throw new AppError('Tiếp nhận tiêm phòng thất bại', 500);
-        }
-
-        return {
-            success: true,
-            message: 'Tiếp nhận tiêm phòng thành công'
-        };
+      }
     }
 
-    async updateVaccinationDetail(vaccinationDetailId, updateData, doctorId) {
-        // Validate doctor ownership through vaccination
-        const detail = await this.serviceRepository.getVaccinationDetail(vaccinationDetailId);
-        if (!detail) {
-            throw new AppError('Không tìm thấy chi tiết tiêm phòng', 404);
-        }
+    return result;
+  }
 
-        const vaccination = await this.serviceRepository.getVaccination(detail.MaTP);
-        if (!vaccination || vaccination.MaNV !== doctorId) {
-            throw new AppError('Bạn không có quyền cập nhật chi tiết tiêm phòng này', 403);
-        }
+  async getCustomerVaccinationPackages(customerId) {
+    const packages = await this.serviceRepository.getVaccinationPackages(
+      customerId
+    );
 
-        const result = await this.serviceRepository.updateVaccinationDetail(vaccinationDetailId, updateData);
-
-        if (!result) {
-            throw new AppError('Cập nhật chi tiết tiêm phòng thất bại', 500);
-        }
-
+    const packagesWithDetails = await Promise.all(
+      packages.map(async (pkg) => {
+        const vaccines =
+          await this.serviceRepository.getVaccinationPackageDetails(pkg.MaGoi);
         return {
-            success: true,
-            message: 'Cập nhật chi tiết tiêm phòng thành công'
+          ...pkg,
+          CacVacxin: vaccines.map((v) => ({
+            id: v.MaSP,
+            TenVaccine: v.TenVaccine,
+            LieuLuong: v.LieuLuong,
+            TrangThai: v.TrangThai,
+            NgayTiem: v.NgayTiem,
+          })),
         };
+      })
+    );
+
+    return packagesWithDetails;
+  }
+
+  async updateServicePrice(serviceId, price, effectiveDate, userRole) {
+    if (userRole !== "Quản lý công ty") {
+      throw new AppError("Bạn không có quyền cập nhật giá dịch vụ", 403);
     }
+
+    const result = await this.serviceRepository.updateServicePrice(
+      serviceId,
+      price,
+      effectiveDate
+    );
+    return { success: result };
+  }
+
+  async getServicePriceHistory(serviceId) {
+    const history = await this.serviceRepository.getServicePriceHistory(
+      serviceId
+    );
+    return history;
+  }
+
+  async getAvailableVeterinarians(branchId, date) {
+    const doctors = await this.serviceRepository.getAvailableVeterinarians(
+      branchId,
+      date
+    );
+    return doctors;
+  }
+
+  async getExaminations(
+    filters = {},
+    requesterId = null,
+    requesterRole = null,
+    requesterBranch = null
+  ) {
+    if (requesterRole === "Khách hàng" && filters.MaTC) {
+      const pet = await this.petRepository.getPetById(filters.MaTC);
+      if (!pet || pet.MaKH !== requesterId) {
+        throw new AppError("Bạn không có quyền xem hồ sơ khám này", 403);
+      }
+    }
+
+    if (requesterRole === "Bác sĩ") {
+      if (
+        filters.MaCN &&
+        requesterBranch &&
+        parseInt(filters.MaCN) !== parseInt(requesterBranch)
+      ) {
+        throw new AppError(
+          "Bạn không có quyền xem hồ sơ tại chi nhánh này",
+          403
+        );
+      }
+      filters.MaCN = requesterBranch;
+      if (requesterId) {
+        filters.MaNV = requesterId;
+      }
+    }
+
+    const result = await this.serviceRepository.getExaminations(filters);
+    return result;
+  }
+
+  async getExaminationsWithMedicines(
+    filters = {},
+    requesterId = null,
+    requesterRole = null,
+    requesterBranch = null
+  ) {
+    if (requesterRole === "Khách hàng" && filters.MaTC) {
+      const pet = await this.petRepository.getPetById(filters.MaTC);
+      if (!pet || pet.MaKH !== requesterId) {
+        throw new AppError("Bạn không có quyền xem hồ sơ khám này", 403);
+      }
+    }
+
+    if (requesterRole === "Bác sĩ") {
+      if (
+        filters.MaCN &&
+        requesterBranch &&
+        parseInt(filters.MaCN) !== parseInt(requesterBranch)
+      ) {
+        throw new AppError(
+          "Bạn không có quyền xem hồ sơ tại chi nhánh này",
+          403
+        );
+      }
+      filters.MaCN = requesterBranch;
+      if (requesterId) {
+        filters.MaNV = requesterId;
+      }
+    }
+
+    const result = await this.serviceRepository.getExaminationsWithMedicines(
+      filters
+    );
+    return result;
+  }
+
+  async getVaccinations(
+    filters = {},
+    requesterId = null,
+    requesterRole = null,
+    requesterBranch = null
+  ) {
+    if (requesterRole === "Khách hàng" && filters.MaTC) {
+      const pet = await this.petRepository.getPetById(filters.MaTC);
+      if (!pet || pet.MaKH !== requesterId) {
+        throw new AppError("Bạn không có quyền xem hồ sơ tiêm phòng này", 403);
+      }
+    }
+
+    if (requesterRole === "Bác sĩ") {
+      if (
+        filters.MaCN &&
+        requesterBranch &&
+        parseInt(filters.MaCN) !== parseInt(requesterBranch)
+      ) {
+        throw new AppError(
+          "Bạn không có quyền xem hồ sơ tiêm phòng tại chi nhánh này",
+          403
+        );
+      }
+      filters.MaCN = requesterBranch;
+    }
+
+    const result = await this.serviceRepository.getVaccinations(filters);
+    return result;
+  }
+
+  async getVaccinationDetails(
+    vaccinationId,
+    requesterId = null,
+    requesterRole = null,
+    requesterBranch = null
+  ) {
+    const vaccination = await this.serviceRepository.getVaccination(
+      vaccinationId
+    );
+    if (!vaccination) {
+      throw new AppError("Không tìm thấy thông tin tiêm phòng", 404);
+    }
+
+    if (requesterRole === "Khách hàng") {
+      const pet = await this.petRepository.getPetById(vaccination.MaTC);
+      if (!pet || pet.MaKH !== requesterId) {
+        throw new AppError("Bạn không có quyền xem chi tiết này", 403);
+      }
+    }
+
+    if (requesterRole === "Bác sĩ") {
+      if (
+        vaccination.MaCN &&
+        requesterBranch &&
+        parseInt(vaccination.MaCN) !== parseInt(requesterBranch)
+      ) {
+        throw new AppError(
+          "Bạn không có quyền xem chi tiết tiêm phòng tại chi nhánh này",
+          403
+        );
+      }
+    }
+
+    const details = await this.serviceRepository.getVaccinationDetails(
+      vaccinationId
+    );
+
+    return details;
+  }
+
+  async updateVaccination(vaccinationId, updateData, doctorId) {
+    const vaccination = await this.serviceRepository.getVaccination(
+      vaccinationId
+    );
+    if (!vaccination) {
+      throw new AppError("Không tìm thấy thông tin tiêm phòng", 404);
+    }
+
+    const doctors = await this.serviceRepository.getAvailableVeterinarians(
+      vaccination.MaCN,
+      vaccination.NgayTiem
+    );
+    const isValidDoctor = doctors.some((doc) => doc.MaNV === doctorId);
+    if (!isValidDoctor) {
+      throw new AppError(
+        "Bạn không có quyền tiếp nhận tiêm phòng tại chi nhánh này",
+        403
+      );
+    }
+
+    const result = await this.serviceRepository.updateVaccination(
+      vaccinationId,
+      {
+        MaNV: doctorId,
+      }
+    );
+
+    if (!result) {
+      throw new AppError("Tiếp nhận tiêm phòng thất bại", 500);
+    }
+
+    return {
+      success: true,
+      message: "Tiếp nhận tiêm phòng thành công",
+    };
+  }
+
+  async updateVaccinationDetail(vaccinationDetailId, updateData, doctorId) {
+    const detail = await this.serviceRepository.getVaccinationDetail(
+      vaccinationDetailId
+    );
+    if (!detail) {
+      throw new AppError("Không tìm thấy chi tiết tiêm phòng", 404);
+    }
+
+    const vaccination = await this.serviceRepository.getVaccination(
+      detail.MaTP
+    );
+    if (!vaccination || vaccination.MaNV !== doctorId) {
+      throw new AppError(
+        "Bạn không có quyền cập nhật chi tiết tiêm phòng này",
+        403
+      );
+    }
+
+    const result = await this.serviceRepository.updateVaccinationDetail(
+      vaccinationDetailId,
+      updateData
+    );
+
+    if (!result) {
+      throw new AppError("Cập nhật chi tiết tiêm phòng thất bại", 500);
+    }
+
+    return {
+      success: true,
+      message: "Cập nhật chi tiết tiêm phòng thành công",
+    };
+  }
 }
 
 module.exports = ServiceService;

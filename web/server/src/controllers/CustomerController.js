@@ -1,11 +1,10 @@
-const CustomerService = require('../services/CustomerService');
-const { AppError } = require('../middleware/errorHandler');
+const CustomerService = require("../services/CustomerService");
+const { AppError } = require("../middleware/errorHandler");
 
 class CustomerController {
-    constructor() {
-        this.customerService = new CustomerService();
-    }
-
+  constructor() {
+    this.customerService = new CustomerService();
+  }
     getProfile = async (req, res, next) => {
         try {
             const customerId = req.user.MaKH;

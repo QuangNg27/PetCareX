@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "@context/AuthContext";
 import {
   PlusIcon,
@@ -12,68 +12,8 @@ import {
 
 const ProductSalesView = () => {
   const { user } = useAuth();
-  const [products, setProducts] = useState([
-    {
-      id: 1,
-      TenSanPham: "Thức ăn cho chó Pedigree 2.5kg",
-      LoaiSanPham: "Thức ăn",
-      GiaBan: 250000,
-      SoLuongTonKho: 45,
-      DonViTinh: "gói",
-      MoTa: "Thức ăn khô cho chó trưởng thành",
-      Hinh: "🐕",
-    },
-    {
-      id: 2,
-      TenSanPham: "Thuốc kháng sinh Amoxicillin 250mg",
-      LoaiSanPham: "Thuốc",
-      GiaBan: 85000,
-      SoLuongTonKho: 120,
-      DonViTinh: "lọ",
-      MoTa: "Thuốc kháng sinh phổ rộng",
-      Hinh: "💊",
-    },
-    {
-      id: 3,
-      TenSanPham: "Chất diệt ký sinh trùng Ivermectin",
-      LoaiSanPham: "Thuốc",
-      GiaBan: 95000,
-      SoLuongTonKho: 80,
-      DonViTinh: "lọ",
-      MoTa: "Diệt ký sinh trùng ngoài và trong",
-      Hinh: "💊",
-    },
-    {
-      id: 4,
-      TenSanPham: "Vitamin tổng hợp cho mèo",
-      LoaiSanPham: "Vitamin",
-      GiaBan: 75000,
-      SoLuongTonKho: 60,
-      DonViTinh: "lọ",
-      MoTa: "Vitamin bổ sung dinh dưỡng",
-      Hinh: "🐈",
-    },
-    {
-      id: 5,
-      TenSanPham: "Áo quần cho chó Size M",
-      LoaiSanPham: "Quần áo",
-      GiaBan: 120000,
-      SoLuongTonKho: 35,
-      DonViTinh: "bộ",
-      MoTa: "Quần áo ấm cho chó mùa đông",
-      Hinh: "👕",
-    },
-    {
-      id: 6,
-      TenSanPham: "Cage/Chuồng cho chó Size L",
-      LoaiSanPham: "Phụ kiện",
-      GiaBan: 650000,
-      SoLuongTonKho: 8,
-      DonViTinh: "cái",
-      MoTa: "Chuồng sắt chắc chắn",
-      Hinh: "🏠",
-    },
-  ]);
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -87,10 +27,49 @@ const ProductSalesView = () => {
     SoLuongTonKho: "",
     DonViTinh: "gói",
     MoTa: "",
-    Hinh: "📦",
+    Hinh: "�",
   });
 
   const categories = ["Thức ăn", "Thuốc", "Vitamin", "Quần áo", "Phụ kiện"];
+
+  useEffect(() => {
+    let mounted = true;
+    const fetchProducts = async () => {
+      try {
+        setLoading(true);
+        const branchId = user?.MaCN;
+        // dynamic import to avoid circular depends if any
+        const { productService } = await import("@services/productService");
+        const res = await productService.getProducts(branchId);
+        // try to detect payload shapes and fallback safely
+        const items =
+          res?.data?.products || res?.products || res?.data || res || [];
+        if (mounted)
+          setProducts(
+            items.map((p) => ({
+              id: p.id || p.MaSanPham || p.MaSP || p.MaSanPham || p.ID,
+              TenSanPham: p.TenSanPham || p.tenSanPham || p.Name || p.Ten || "",
+              LoaiSanPham: p.LoaiSanPham || p.Loai || p.Category || "",
+              GiaBan: p.GiaBan || p.Price || p.gia || 0,
+              SoLuongTonKho: p.SoLuongTonKho || p.Stock || p.Quantity || 0,
+              DonViTinh: p.DonViTinh || p.Unit || "",
+              MoTa: p.MoTa || p.Description || "",
+              Hinh: p.Hinh || p.Icon || "📦",
+            }))
+          );
+      } catch (err) {
+        console.error("Lỗi khi tải sản phẩm từ API, dùng mock:", err);
+        // keep empty or fallback to old mock? choose to keep empty so dev sees no data if API down
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+
+    fetchProducts();
+    return () => {
+      mounted = false;
+    };
+  }, [user?.MaCN]);
 
   const handleAddClick = () => {
     setFormData({
