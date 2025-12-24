@@ -2,458 +2,369 @@ const ServiceService = require("../services/ServiceService");
 const { AppError } = require("../middleware/errorHandler");
 
 class ServiceController {
-  constructor() {
-    this.serviceService = new ServiceService();
-  }
-
-  getBranchServices = async (req, res, next) => {
-    try {
-      const { branchId } = req.params;
-
-      const services = await this.serviceService.getBranchServices(branchId);
-
-      res.json({
-        success: true,
-        data: {
-          services,
-          branchId,
-        },
-      });
-    } catch (error) {
-      next(error);
+    constructor() {
+        this.serviceService = new ServiceService();
     }
-  };
 
-  createMedicalExamination = async (req, res, next) => {
-    try {
-      const {
-        MaCN,
-        MaDV,
-        MaTC,
-        MaNV,
-        NgayKham,
-        TrieuChung,
-        ChanDoan,
-        NgayTaiKham,
-      } = req.body;
+    getBranchServices = async (req, res, next) => {
+        try {
+            const { branchId } = req.params;
+            const services = await this.serviceService.getBranchServices(branchId);
+            
+            res.json({
+                success: true,
+                data: { services, branchId }
+            });
+        } catch (error) {
+            next(error);
+        }
+    };
 
-      // Detailed validation with logging
-      console.log("Request body:", req.body);
-      console.log("User:", req.user);
+    // Hàm tạo khám bệnh (Logic gọn của DEV)
+    createMedicalExamination = async (req, res, next) => {
+        try {
+            const { MaCN, MaDV, MaTC, NgayKham } = req.body;
+            
+            const isStaff = !!req.user.MaNV;
+            const requesterId = req.user.MaNV || req.user.MaKH;
 
-      const missingFields = [];
-      if (!MaCN) missingFields.push("MaCN");
-      if (!MaDV) missingFields.push("MaDV");
-      if (!MaTC) missingFields.push("MaTC");
-      if (!NgayKham) missingFields.push("NgayKham");
+            const result = await this.serviceService.createMedicalExamination({
+                MaCN, MaDV, MaTC, NgayKham
+            }, requesterId, isStaff);
 
-      if (missingFields.length > 0) {
-        return res.status(400).json({
-          success: false,
-          message: `Thiều thông tin bắt buộc: ${missingFields.join(", ")}`,
-        });
-      }
+            res.status(201).json({
+                success: true,
+                message: 'Đặt lịch khám thành công',
+                data: result
+            });
+        } catch (error) {
+            next(error);
+        }
+    };
 
-      const customerId = req.user.MaKH;
-      const doctorId = req.user.MaNV; // Use MaNV from user
-      const userRole = req.user.role;
+    updateMedicalExamination = async (req, res, next) => {
+        try {
+            const { examinationId } = req.params;
+            const { TrieuChung, ChanDoan, NgayTaiKham } = req.body;
+            const doctorId = req.user.MaNV;
 
-      const finalMaNV = MaNV || doctorId;
+            await this.serviceService.updateMedicalExamination(
+                examinationId,
+                { TrieuChung, ChanDoan, NgayTaiKham },
+                doctorId
+            );
 
-      const result = await this.serviceService.createMedicalExamination(
-        {
-          MaCN,
-          MaDV,
-          MaTC,
-          MaNV: finalMaNV,
-          NgayKham,
-          TrieuChung,
-          ChanDoan,
-          NgayTaiKham,
-        },
-        customerId,
-        userRole
-      );
+            res.json({
+                success: true,
+                message: 'Cập nhật hồ sơ khám thành công'
+            });
+        } catch (error) {
+            next(error);
+        }
+    };
 
-      res.status(201).json({
-        success: true,
-        message: "Tạo hồ sơ khám thành công",
-        data: result,
-      });
-    } catch (error) {
-      next(error);
-    }
-  };
+    // Hàm thêm thuốc (Logic gọn của DEV)
+    addPrescription = async (req, res, next) => {
+        try {
+            const { examinationId } = req.params;
+            const { prescriptions } = req.body;
+            const doctorId = req.user.MaNV;
 
-  updateMedicalExamination = async (req, res, next) => {
-    try {
-      const { examinationId } = req.params;
-      const { TrieuChung, ChanDoan, NgayTaiKham } = req.body;
-      const doctorId = req.user.MaNV; // Use MaNV from user
+            await this.serviceService.addPrescription(examinationId, prescriptions, doctorId);
 
-      await this.serviceService.updateMedicalExamination(
-        examinationId,
-        { TrieuChung, ChanDoan, NgayTaiKham },
-        doctorId
-      );
+            res.json({
+                success: true,
+                message: 'Thêm đơn thuốc thành công'
+            });
+        } catch (error) {
+            next(error);
+        }
+    };
 
-      res.json({
-        success: true,
-        message: "Cập nhật hồ sơ khám thành công",
-      });
-    } catch (error) {
-      next(error);
-    }
-  };
+    // Hàm tạo tiêm chủng (Logic gọn của DEV)
+    createVaccination = async (req, res, next) => {
+        try {
+            const { MaCN, MaDV, MaTC, MaNV, NgayTiem, vaccines } = req.body;
+            
+            const isStaff = !!req.user.MaNV;
+            const requesterId = req.user.MaNV || req.user.MaKH;
 
-  addPrescription = async (req, res, next) => {
-    try {
-      const { examinationId } = req.params;
-      const { prescriptions } = req.body;
-      const doctorId = req.user.MaNV; // Use MaNV from user
-      console.log(
-        `[addPrescription] ExamID: ${examinationId}, doctorId: ${doctorId}, req.user.MaNV: ${req.user.MaNV}`,
-        req.user
-      );
+            const result = await this.serviceService.createVaccination({
+                MaCN, MaDV, MaTC, MaNV, NgayTiem, vaccines
+            }, requesterId, isStaff);
 
-      await this.serviceService.addPrescription(
-        examinationId,
-        prescriptions,
-        doctorId
-      );
+            res.status(201).json({
+                success: true,
+                message: 'Đặt lịch tiêm phòng thành công',
+                data: result
+            });
+        } catch (error) {
+            next(error);
+        }
+    };
 
-      res.json({
-        success: true,
-        message: "Thêm đơn thuốc thành công",
-      });
-    } catch (error) {
-      next(error);
-    }
-  };
+    updateVaccinationDetails = async (req, res, next) => {
+        try {
+            const { vaccinationId } = req.params;
+            const { details } = req.body;
+            const doctorId = req.user.MaNV;
+            
+            await this.serviceService.updateVaccinationDetails(vaccinationId, details, doctorId);
 
-  getPrescriptions = async (req, res, next) => {
-    try {
-      const { examinationId } = req.params;
-      const result = await this.serviceService.getPrescriptions(examinationId);
-      res.json({
-        success: true,
-        data: result,
-      });
-    } catch (error) {
-      next(error);
-    }
-  };
+            res.json({
+                success: true,
+                message: 'Cập nhật thông tin tiêm phòng thành công'
+            });
+        } catch (error) {
+            next(error);
+        }
+    };
 
-  createVaccination = async (req, res, next) => {
-    try {
-      const { MaCN, MaDV, MaTC, MaNV, NgayTiem, vaccines } = req.body;
-      const customerId = req.user.MaKH;
+    createVaccinationPackage = async (req, res, next) => {
+        try {
+            const { NgayBatDau, NgayKetThuc, vaccines, MaTC, MaCN } = req.body;
+            const customerId = req.user.MaKH;
 
-      const result = await this.serviceService.createVaccination(
-        {
-          MaCN,
-          MaDV,
-          MaTC,
-          MaNV,
-          NgayTiem,
-          vaccines,
-        },
-        customerId
-      );
+            const result = await this.serviceService.createVaccinationPackage({
+                NgayBatDau, NgayKetThuc, vaccines, MaTC, MaCN
+            }, customerId);
 
-      res.status(201).json({
-        success: true,
-        message: "Đặt lịch tiêm phòng thành công",
-        data: result,
-      });
-    } catch (error) {
-      next(error);
-    }
-  };
+            res.status(201).json({
+                success: true,
+                message: 'Tạo gói tiêm phòng thành công',
+                data: result
+            });
+        } catch (error) {
+            next(error);
+        }
+    };
 
-  updateVaccinationDetails = async (req, res, next) => {
-    try {
-      const { vaccinationId } = req.params;
-      const { details } = req.body;
-      const doctorId = req.user.MaNV;
+    getVaccinationPackages = async (req, res, next) => {
+        try {
+            const customerId = req.user.MaKH;
+            const packages = await this.serviceService.getCustomerVaccinationPackages(customerId);
 
-      await this.serviceService.updateVaccinationDetails(
-        vaccinationId,
-        details,
-        doctorId
-      );
+            res.json({
+                success: true,
+                data: { packages }
+            });
+        } catch (error) {
+            next(error);
+        }
+    };
 
-      res.json({
-        success: true,
-        message: "Cập nhật thông tin tiêm phòng thành công",
-      });
-    } catch (error) {
-      next(error);
-    }
-  };
+    updateServicePrice = async (req, res, next) => {
+        try {
+            const { serviceId } = req.params;
+            const { price, effectiveDate } = req.body;
+            const managerId = req.user.MaNV;
 
-  createVaccinationPackage = async (req, res, next) => {
-    try {
-      const { NgayBatDau, NgayKetThuc, vaccines, MaTC, MaCN } = req.body;
-      const customerId = req.user.MaKH;
+            await this.serviceService.updateServicePrice(serviceId, price, effectiveDate, managerId);
 
-      const result = await this.serviceService.createVaccinationPackage(
-        {
-          NgayBatDau,
-          NgayKetThuc,
-          vaccines,
-          MaTC,
-          MaCN,
-        },
-        customerId
-      );
+            res.json({
+                success: true,
+                message: 'Cập nhật giá dịch vụ thành công'
+            });
+        } catch (error) {
+            next(error);
+        }
+    };
 
-      res.status(201).json({
-        success: true,
-        message: "Tạo gói tiêm phòng thành công",
-        data: result,
-      });
-    } catch (error) {
-      next(error);
-    }
-  };
+    getServicePriceHistory = async (req, res, next) => {
+        try {
+            const { serviceId } = req.params;
+            const history = await this.serviceService.getServicePriceHistory(serviceId);
 
-  getVaccinationPackages = async (req, res, next) => {
-    try {
-      const customerId = req.user.MaKH;
+            res.json({
+                success: true,
+                data: { history }
+            });
+        } catch (error) {
+            next(error);
+        }
+    };
 
-      const packages = await this.serviceService.getCustomerVaccinationPackages(
-        customerId
-      );
+    getAvailableVeterinarians = async (req, res, next) => {
+        try {
+            const { branchId } = req.params;
+            const { date } = req.query;
+            const doctors = await this.serviceService.getAvailableVeterinarians(branchId, date);
 
-      res.json({
-        success: true,
-        data: {
-          packages,
-        },
-      });
-    } catch (error) {
-      next(error);
-    }
-  };
+            res.json({
+                success: true,
+                data: { doctors, date }
+            });
+        } catch (error) {
+            next(error);
+        }
+    };
 
-  updateServicePrice = async (req, res, next) => {
-    try {
-      const { serviceId } = req.params;
-      const { price, effectiveDate } = req.body;
-      const managerId = req.user.MaNV;
+    updateVaccination = async (req, res, next) => {
+        try {
+            const { vaccinationId } = req.params;
+            const doctorId = req.user.MaNV;
+            const result = await this.serviceService.updateVaccination(
+                vaccinationId,
+                req.body,
+                doctorId
+            );
+            res.json(result);
+        } catch (error) {
+            next(error);
+        }
+    };
 
-      await this.serviceService.updateServicePrice(
-        serviceId,
-        price,
-        effectiveDate,
-        managerId
-      );
+    updateVaccinationDetail = async (req, res, next) => {
+        try {
+            const { vaccinationDetailId } = req.params;
+            const { LieuLuong, TrangThai } = req.body;
+            const doctorId = req.user.MaNV;
+            const result = await this.serviceService.updateVaccinationDetail(
+                vaccinationDetailId,
+                { LieuLuong, TrangThai },
+                doctorId
+            );
+            res.json(result);
+        } catch (error) {
+            next(error);
+        }
+    };
 
-      res.json({
-        success: true,
-        message: "Cập nhật giá dịch vụ thành công",
-      });
-    } catch (error) {
-      next(error);
-    }
-  };
+    createMedicalExamination_R = async (req, res, next) => {
+        try {
+            const {
+                MaCN, MaDV, MaTC, MaNV, NgayKham, TrieuChung, ChanDoan, NgayTaiKham,
+            } = req.body;
 
-  getServicePriceHistory = async (req, res, next) => {
-    try {
-      const { serviceId } = req.params;
+            console.log("Request body:", req.body);
+            console.log("User:", req.user);
 
-      const history = await this.serviceService.getServicePriceHistory(
-        serviceId
-      );
+            const missingFields = [];
+            if (!MaCN) missingFields.push("MaCN");
+            if (!MaDV) missingFields.push("MaDV");
+            if (!MaTC) missingFields.push("MaTC");
+            if (!NgayKham) missingFields.push("NgayKham");
 
-      res.json({
-        success: true,
-        data: {
-          history,
-        },
-      });
-    } catch (error) {
-      next(error);
-    }
-  };
+            if (missingFields.length > 0) {
+                return res.status(400).json({
+                    success: false,
+                    message: `Thiếu thông tin bắt buộc: ${missingFields.join(", ")}`,
+                });
+            }
 
-  getAvailableVeterinarians = async (req, res, next) => {
-    try {
-      const { branchId } = req.params;
-      const { date } = req.query;
+            const customerId = req.user.MaKH;
+            const doctorId = req.user.MaNV;
+            const userRole = req.user.role;
+            const finalMaNV = MaNV || doctorId;
 
-      // Date validation handled by Joi schema
+            const result = await this.serviceService.createMedicalExamination(
+                {
+                    MaCN, MaDV, MaTC, MaNV: finalMaNV, NgayKham, TrieuChung, ChanDoan, NgayTaiKham,
+                },
+                customerId,
+                userRole
+            );
 
-      const doctors = await this.serviceService.getAvailableVeterinarians(
-        branchId,
-        date
-      );
+            res.status(201).json({
+                success: true,
+                message: "Tạo hồ sơ khám thành công",
+                data: result,
+            });
+        } catch (error) {
+            next(error);
+        }
+    };
+    
+    getPrescriptions = async (req, res, next) => {
+        try {
+            const { examinationId } = req.params;
+            const result = await this.serviceService.getPrescriptions(examinationId);
+            res.json({ success: true, data: result });
+        } catch (error) {
+            next(error);
+        }
+    };
 
-      res.json({
-        success: true,
-        data: {
-          doctors,
-          date,
-        },
-      });
-    } catch (error) {
-      next(error);
-    }
-  };
+    listExaminations = async (req, res, next) => {
+        try {
+            const { branchId, doctorId, petId, fromDate, toDate } = req.query;
+            const requesterId = req.user.MaKH || req.user.MaNV || req.user.MaTK;
+            const requesterRole = req.user.VaiTro || req.user.role;
+            const filters = {
+                MaCN: branchId ? parseInt(branchId) : null,
+                MaNV: doctorId ? parseInt(doctorId) : null,
+                MaTC: petId ? parseInt(petId) : null,
+                FromDate: fromDate || null,
+                ToDate: toDate || null,
+            };
+            const requesterBranch = req.user.MaCN || null;
+            const records = await this.serviceService.getExaminations(
+                filters, requesterId, requesterRole, requesterBranch
+            );
+            res.json({ success: true, data: records });
+        } catch (error) {
+            next(error);
+        }
+    };
 
-  // List examinations with optional filters (branchId, doctorId, petId, date range)
-  listExaminations = async (req, res, next) => {
-    try {
-      const { branchId, doctorId, petId, fromDate, toDate } = req.query;
-      const requesterId = req.user.MaKH || req.user.MaNV || req.user.MaTK;
-      const requesterRole = req.user.VaiTro || req.user.role;
+    listExaminationsWithMedicines = async (req, res, next) => {
+        try {
+            const { branchId, doctorId, petId, fromDate, toDate } = req.query;
+            const requesterId = req.user.MaKH || req.user.MaNV || req.user.MaTK;
+            const requesterRole = req.user.VaiTro || req.user.role;
+            const filters = {
+                MaCN: branchId ? parseInt(branchId) : null,
+                MaNV: doctorId ? parseInt(doctorId) : null,
+                MaTC: petId ? parseInt(petId) : null,
+                FromDate: fromDate || null,
+                ToDate: toDate || null,
+            };
+            const requesterBranch = req.user.MaCN || null;
+            const records = await this.serviceService.getExaminationsWithMedicines(
+                filters, requesterId, requesterRole, requesterBranch
+            );
+            res.json({ success: true, data: records });
+        } catch (error) {
+            next(error);
+        }
+    };
 
-      const filters = {
-        MaCN: branchId ? parseInt(branchId) : null,
-        MaNV: doctorId ? parseInt(doctorId) : null,
-        MaTC: petId ? parseInt(petId) : null,
-        FromDate: fromDate || null,
-        ToDate: toDate || null,
-      };
+    listVaccinations = async (req, res, next) => {
+        try {
+            const { branchId, doctorId, petId, fromDate, toDate } = req.query;
+            const requesterId = req.user.MaKH || req.user.MaNV || req.user.MaTK;
+            const requesterRole = req.user.VaiTro || req.user.role;
+            const filters = {
+                MaCN: branchId ? parseInt(branchId) : null,
+                MaNV: doctorId ? parseInt(doctorId) : null,
+                MaTC: petId ? parseInt(petId) : null,
+                FromDate: fromDate || null,
+                ToDate: toDate || null,
+            };
+            const requesterBranch = req.user.MaCN || null;
+            const records = await this.serviceService.getVaccinations(
+                filters, requesterId, requesterRole, requesterBranch
+            );
+            res.json({ success: true, data: records });
+        } catch (error) {
+            next(error);
+        }
+    };
 
-      const requesterBranch = req.user.MaCN || null;
-      const records = await this.serviceService.getExaminations(
-        filters,
-        requesterId,
-        requesterRole,
-        requesterBranch
-      );
-
-      res.json({
-        success: true,
-        data: records,
-      });
-    } catch (error) {
-      next(error);
-    }
-  };
-
-  // List examinations with medicines (for invoice creation)
-  listExaminationsWithMedicines = async (req, res, next) => {
-    try {
-      const { branchId, doctorId, petId, fromDate, toDate } = req.query;
-      const requesterId = req.user.MaKH || req.user.MaNV || req.user.MaTK;
-      const requesterRole = req.user.VaiTro || req.user.role;
-
-      const filters = {
-        MaCN: branchId ? parseInt(branchId) : null,
-        MaNV: doctorId ? parseInt(doctorId) : null,
-        MaTC: petId ? parseInt(petId) : null,
-        FromDate: fromDate || null,
-        ToDate: toDate || null,
-      };
-
-      const requesterBranch = req.user.MaCN || null;
-      const records = await this.serviceService.getExaminationsWithMedicines(
-        filters,
-        requesterId,
-        requesterRole,
-        requesterBranch
-      );
-
-      res.json({
-        success: true,
-        data: records,
-      });
-    } catch (error) {
-      next(error);
-    }
-  };
-
-  // List vaccinations
-  listVaccinations = async (req, res, next) => {
-    try {
-      const { branchId, doctorId, petId, fromDate, toDate } = req.query;
-      const requesterId = req.user.MaKH || req.user.MaNV || req.user.MaTK;
-      const requesterRole = req.user.VaiTro || req.user.role;
-
-      const filters = {
-        MaCN: branchId ? parseInt(branchId) : null,
-        MaNV: doctorId ? parseInt(doctorId) : null,
-        MaTC: petId ? parseInt(petId) : null,
-        FromDate: fromDate || null,
-        ToDate: toDate || null,
-      };
-
-      const requesterBranch = req.user.MaCN || null;
-      const records = await this.serviceService.getVaccinations(
-        filters,
-        requesterId,
-        requesterRole,
-        requesterBranch
-      );
-
-      res.json({
-        success: true,
-        data: records,
-      });
-    } catch (error) {
-      next(error);
-    }
-  };
-
-  // Get vaccination details (vaccine items) for a given vaccination session (MaTP)
-  getVaccinationDetails = async (req, res, next) => {
-    try {
-      const { vaccinationId } = req.params;
-      const requesterId = req.user.MaKH || req.user.MaNV || req.user.MaTK;
-      const requesterRole = req.user.VaiTro || req.user.role;
-      const requesterBranch = req.user.MaCN || null;
-
-      const details = await this.serviceService.getVaccinationDetails(
-        parseInt(vaccinationId),
-        requesterId,
-        requesterRole,
-        requesterBranch
-      );
-
-      res.json({ success: true, data: details });
-    } catch (error) {
-      next(error);
-    }
-  };
-
-  // Bác sĩ tiếp nhận khám bệnh hoặc tiêm phòng
-  updateVaccination = async (req, res, next) => {
-    try {
-      const { vaccinationId } = req.params;
-      const doctorId = req.user.MaNV;
-
-      const result = await this.serviceService.updateVaccination(
-        vaccinationId,
-        req.body,
-        doctorId
-      );
-
-      res.json(result);
-    } catch (error) {
-      next(error);
-    }
-  };
-
-  updateVaccinationDetail = async (req, res, next) => {
-    try {
-      const { vaccinationDetailId } = req.params;
-      const { LieuLuong, TrangThai } = req.body;
-      const doctorId = req.user.MaNV;
-
-      const result = await this.serviceService.updateVaccinationDetail(
-        vaccinationDetailId,
-        { LieuLuong, TrangThai },
-        doctorId
-      );
-
-      res.json(result);
-    } catch (error) {
-      next(error);
-    }
-  };
+    getVaccinationDetails = async (req, res, next) => {
+        try {
+            const { vaccinationId } = req.params;
+            const requesterId = req.user.MaKH || req.user.MaNV || req.user.MaTK;
+            const requesterRole = req.user.VaiTro || req.user.role;
+            const requesterBranch = req.user.MaCN || null;
+            const details = await this.serviceService.getVaccinationDetails(
+                parseInt(vaccinationId), requesterId, requesterRole, requesterBranch
+            );
+            res.json({ success: true, data: details });
+        } catch (error) {
+            next(error);
+        }
+    };
 }
 
 module.exports = ServiceController;

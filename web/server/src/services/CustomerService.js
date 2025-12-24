@@ -62,10 +62,10 @@ class CustomerService {
     };
   }
 
-  // Pet-related methods
+  // --- PET RELATED METHODS ---
+
   async getPets(customerId) {
     const pets = await this.petRepo.getCustomerPets(customerId);
-
     return {
       success: true,
       data: pets,
@@ -74,7 +74,6 @@ class CustomerService {
 
   async getPetById(petId) {
     const pet = await this.petRepo.getPetById(petId);
-
     return {
       success: true,
       data: pet,
@@ -83,7 +82,6 @@ class CustomerService {
 
   async createPet(customerId, petData) {
     const result = await this.petRepo.createPet(customerId, petData);
-
     return {
       success: true,
       message: "Thêm thú cưng thành công",
@@ -127,7 +125,54 @@ class CustomerService {
     };
   }
 
-  async getPetMedicalHistory(petId, limit = 100) {
+  // --- STAFF SPECIFIC METHODS (From branch 'dev') ---
+
+  async createCustomer(customerData) {
+    // Validate required fields
+    const { HoTen, SoDT, Email, CCCD, GioiTinh, NgaySinh } = customerData;
+
+    if (!HoTen || !SoDT || !CCCD || !NgaySinh || !GioiTinh || !Email) {
+      throw new AppError("Thiếu thông tin bắt buộc", 400);
+    }
+
+    const result = await this.customerRepo.createCustomer(customerData);
+
+    return {
+      success: true,
+      message: "Tạo khách hàng thành công",
+      data: result,
+    };
+  }
+
+  async createPetForCustomer(customerId, petData) {
+    const result = await this.petRepo.createPet(customerId, petData);
+    return {
+      success: true,
+      message: "Thêm thú cưng thành công",
+      data: result,
+    };
+  }
+
+  async getCustomerPets(customerId) {
+    const pets = await this.petRepo.getCustomerPets(customerId);
+    return {
+      success: true,
+      data: pets,
+    };
+  }
+
+  // --- HISTORY METHODS (CUSTOMER WITH OWNERSHIP CHECK) ---
+
+  async getPetMedicalHistory(petId, customerId, limit = 100) {
+    // Check ownership - customer can only view their own pet's history
+    const isOwner = await this.petRepo.checkPetOwnership(petId, customerId);
+    if (!isOwner) {
+      throw new AppError(
+        "Bạn không có quyền xem lịch sử của thú cưng này",
+        403
+      );
+    }
+
     const history = await this.petRepo.getPetMedicalHistory(petId, limit);
     const medicines = await this.petRepo.getPetMedicineBasedOnTreatment(
       history.map((h) => h.MaKB)
@@ -137,7 +182,7 @@ class CustomerService {
       const recordMedicines = medicines
         .filter((med) => med.MaKB === record.MaKB)
         .map((med) => {
-          // Bỏ MaKB khỏi medicine object
+          // Bỏ MaKB khỏi medicine object cho gọn
           const { MaKB, ...medicineWithoutMaKB } = med;
           return medicineWithoutMaKB;
         });
@@ -154,7 +199,16 @@ class CustomerService {
     };
   }
 
-  async getPetVaccinationHistory(petId, limit = 100) {
+  async getPetVaccinationHistory(petId, customerId, limit = 100) {
+    // Check ownership - customer can only view their own pet's history
+    const isOwner = await this.petRepo.checkPetOwnership(petId, customerId);
+    if (!isOwner) {
+      throw new AppError(
+        "Bạn không có quyền xem lịch sử của thú cưng này",
+        403
+      );
+    }
+
     const history = await this.petRepo.getPetVaccinationHistory(petId, limit);
     const vaccines = await this.petRepo.getPetVaccineBasedOnVaccination(
       history.map((h) => h.MaTP)
@@ -164,7 +218,6 @@ class CustomerService {
       const recordVaccines = vaccines
         .filter((vac) => vac.MaTP === record.MaTP)
         .map((vac) => {
-          // Bỏ MaTP khỏi vaccine object
           const { MaTP, ...vaccineWithoutMaTP } = vac;
           return vaccineWithoutMaTP;
         });
@@ -180,6 +233,30 @@ class CustomerService {
       data: historyWithVaccines,
     };
   }
+
+  // --- STAFF HISTORY METHODS (NO OWNERSHIP CHECK) ---
+
+  async getAnyPetMedicalHistory(petId, limit = 100) {
+    // For staff - get medical history without ownership check
+    const history = await this.petRepo.getPetMedicalHistory(petId, limit);
+    // Lưu ý: Nếu muốn trả về kèm thuốc giống hàm trên, cần copy logic map thuốc vào đây.
+    // Tạm thời giữ nguyên logic cơ bản.
+    return {
+      success: true,
+      data: history,
+    };
+  }
+
+  async getAnyPetVaccinationHistory(petId, limit = 100) {
+    // For staff - get vaccination history without ownership check
+    const history = await this.petRepo.getPetVaccinationHistory(petId, limit);
+    return {
+      success: true,
+      data: history,
+    };
+  }
+
+  // --- PASSWORD ---
 
   async UpdatePassword(customerId, oldPassword, newPassword) {
     const res = await this.customerRepo.UpdatePassword(

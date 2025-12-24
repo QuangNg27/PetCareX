@@ -65,18 +65,20 @@ const LoginForm = () => {
       if (result.success) {
         // Redirect based on user role (support both 'role' and 'VaiTro')
         const userRole = result.user.VaiTro || result.user.role;
-        let redirectPath = "/customer/dashboard"; // Default path
-
-        if (userRole === "Khách hàng") {
-          redirectPath = "/customer/dashboard";
-        } else if (userRole === "Bác sĩ") {
-          redirectPath = "/doctor/dashboard";
-        } else if (userRole === "Bán hàng") {
-          redirectPath = "/sales/invoice";
-        } else if (userRole === "Quản lý chi nhánh") {
-          redirectPath = "/branch-manager/dashboard";
-        } else if (userRole === "Quản lý công ty") {
-          redirectPath = "/company-manager/dashboard";
+        let redirectPath = '/customer/dashboard'; // Default path
+        
+        if (userRole === 'Khách hàng') {
+          redirectPath = '/customer/dashboard';
+        } else if (userRole === 'Bác sĩ') {
+          redirectPath = '/doctor/dashboard';
+        } else if (userRole === 'Bán hàng') {
+          redirectPath = '/sales/invoice';
+        } else if (userRole === 'Tiếp tân') {
+          redirectPath = '/receptionist/create-appointment';
+        } else if (userRole === 'Quản lý chi nhánh') {
+          redirectPath = '/branch-manager/dashboard';
+        } else if (userRole === 'Quản lý công ty') {
+          redirectPath = '/company-manager/dashboard';
         }
 
         navigate(redirectPath, { replace: true });

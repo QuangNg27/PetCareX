@@ -13,15 +13,24 @@ router.get(
   serviceController.getBranchServices
 );
 
-// Medical examination endpoints
+// 1. Tạo lịch khám (Khách hàng & Tiếp tân) - Dùng hàm chuẩn
 router.post(
   "/examinations",
   authMiddleware,
-  authorizeRoles(["Khách hàng", "Bác sĩ"]),
+  authorizeRoles(["Khách hàng", "Tiếp tân"]),
   serviceController.createMedicalExamination
 );
 
-// List examinations (doctors and managers can view; customers can view their pets via filters)
+// 2. Tạo phiếu khám 
+// Đường dẫn khác biệt để tránh trùng lặp method POST
+router.post(
+  "/examinations/doctor",
+  authMiddleware,
+  authorizeRoles(["Bác sĩ"]),
+  serviceController.createMedicalExamination_R
+);
+
+// 3. Xem danh sách khám 
 router.get(
   "/examinations",
   authMiddleware,
@@ -31,11 +40,11 @@ router.get(
     "Quản lý công ty",
     "Khách hàng",
     "Bán hàng",
+    "Tiếp tân",
   ]),
   serviceController.listExaminations
 );
 
-// List examinations with medicines (for invoice creation)
 router.get(
   "/examinations/with-medicines",
   authMiddleware,
@@ -45,38 +54,12 @@ router.get(
     "Quản lý công ty",
     "Khách hàng",
     "Bán hàng",
+    "Tiếp tân",
   ]),
   serviceController.listExaminationsWithMedicines
 );
 
-// List vaccinations (doctors and managers can view; customers can view their pets via filters)
-router.get(
-  "/vaccinations",
-  authMiddleware,
-  authorizeRoles([
-    "Bác sĩ",
-    "Quản lý chi nhánh",
-    "Quản lý công ty",
-    "Khách hàng",
-    "Bán hàng",
-  ]),
-  serviceController.listVaccinations
-);
-
-// Get vaccination details for a session
-router.get(
-  "/vaccinations/:vaccinationId/details",
-  authMiddleware,
-  authorizeRoles([
-    "Bác sĩ",
-    "Quản lý chi nhánh",
-    "Quản lý công ty",
-    "Khách hàng",
-    "Bán hàng",
-  ]),
-  serviceController.getVaccinationDetails
-);
-
+// 5. Cập nhật và kê đơn (Logic chung)
 router.put(
   "/examinations/:examinationId",
   authMiddleware,
@@ -98,14 +81,46 @@ router.get(
   serviceController.getPrescriptions
 );
 
-// Vaccination endpoints
+
+// 1. Tạo lịch tiêm 
 router.post(
   "/vaccinations",
   authMiddleware,
-  authorizeRoles(["Khách hàng"]),
+  authorizeRoles(["Khách hàng", "Tiếp tân"]),
   serviceController.createVaccination
 );
 
+// 2. Xem danh sách tiêm
+router.get(
+  "/vaccinations",
+  authMiddleware,
+  authorizeRoles([
+    "Bác sĩ",
+    "Quản lý chi nhánh",
+    "Quản lý công ty",
+    "Khách hàng",
+    "Bán hàng",
+    "Tiếp tân",
+  ]),
+  serviceController.listVaccinations
+);
+
+
+router.get(
+  "/vaccinations/:vaccinationId/details",
+  authMiddleware,
+  authorizeRoles([
+    "Bác sĩ",
+    "Quản lý chi nhánh",
+    "Quản lý công ty",
+    "Khách hàng",
+    "Bán hàng",
+    "Tiếp tân",
+  ]),
+  serviceController.getVaccinationDetails
+);
+
+// 4. Cập nhật chi tiết tiêm (Bác sĩ)
 router.put(
   "/vaccinations/:vaccinationId/details",
   authMiddleware,
@@ -113,7 +128,7 @@ router.put(
   serviceController.updateVaccinationDetails
 );
 
-// Vaccination package endpoints
+
 router.post(
   "/vaccination-packages",
   authMiddleware,
@@ -128,7 +143,6 @@ router.get(
   serviceController.getVaccinationPackages
 );
 
-// Service price management (admin only)
 router.put(
   "/services/:serviceId/price",
   authMiddleware,
@@ -143,7 +157,6 @@ router.get(
   serviceController.getServicePriceHistory
 );
 
-// Staff scheduling endpoints
 router.get(
   "/branches/:branchId/veterinarians",
   authMiddleware,

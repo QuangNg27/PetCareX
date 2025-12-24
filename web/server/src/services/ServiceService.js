@@ -14,15 +14,44 @@ class ServiceService {
 
   async getBranchServices(branchId) {
     const services = await this.serviceRepository.getBranchServices(branchId);
-
     return services;
   }
 
+  // =========================================================================
+  // 1. HÀM TẠO LỊCH KHÁM (CƠ BẢN) - Dành cho Khách hàng & Tiếp tân
+  // Logic lấy từ nhánh DEV: Gọn nhẹ, chỉ đặt lịch hẹn
+  // =========================================================================
   async createMedicalExamination(
     examinationData,
     requesterId,
-    userRole = "Khách hàng"
+    isStaff = false
   ) {
+    const { MaCN, MaDV, MaTC, NgayKham } = examinationData;
+
+    // Validate pet ownership (nếu không phải nhân viên thì phải check chủ sở hữu)
+    if (!isStaff) {
+      const pet = await this.petRepository.getPetById(MaTC);
+      if (!pet || pet.MaKH !== requesterId) {
+        throw new AppError("Bạn không có quyền với thú cưng này", 403);
+      }
+    }
+
+    // Tạo phiếu khám cơ bản
+    const result = await this.serviceRepository.createMedicalExamination({
+      MaCN,
+      MaDV,
+      MaTC,
+      NgayKham,
+    });
+
+    return result;
+  }
+
+  // =========================================================================
+  // 2. HÀM TẠO PHIẾU KHÁM (CHI TIẾT) - Dành riêng cho Bác sĩ
+  // Logic lấy từ nhánh DEV_DUC: Cho phép nhập Triệu chứng, Chẩn đoán ngay lập tức
+  // =========================================================================
+  async createDoctorExamination(examinationData) {
     const {
       MaCN,
       MaDV,
@@ -34,41 +63,18 @@ class ServiceService {
       NgayTaiKham,
     } = examinationData;
 
-    // Doctor can create without pet ownership validation
-    if (userRole === "Bác sĩ") {
-      // Doctors can create medical examinations for any pet in their branch
-      const pet = await this.petRepository.getPetById(MaTC);
-      if (!pet) {
-        throw new AppError("Không thấy thú cưng", 404);
-      }
-
-      // Create examination with doctor's full details
-      const result = await this.serviceRepository.createMedicalExamination({
-        MaCN,
-        MaDV,
-        MaTC,
-        MaNV,
-        NgayKham,
-        TrieuChung,
-        ChanDoan,
-        NgayTaiKham,
-      });
-
-      return result;
-    }
-
-    // Customer can only create for their own pets
+    // Bác sĩ được quyền tạo khám cho bất kỳ thú cưng nào (chỉ cần check tồn tại)
     const pet = await this.petRepository.getPetById(MaTC);
-    if (!pet || pet.MaKH !== requesterId) {
-      throw new AppError("Bạn không có quyền với thú cưng này", 403);
+    if (!pet) {
+      throw new AppError("Không tìm thấy thú cưng", 404);
     }
 
-    // Create examination
+    // Tạo phiếu khám đầy đủ thông tin
     const result = await this.serviceRepository.createMedicalExamination({
       MaCN,
       MaDV,
       MaTC,
-      MaNV,
+      MaNV, // Lưu luôn bác sĩ tạo
       NgayKham,
       TrieuChung,
       ChanDoan,
@@ -78,8 +84,11 @@ class ServiceService {
     return result;
   }
 
+  // =========================================================================
+  // CÁC HÀM KHÁC (Giữ nguyên theo logic nhánh DEV)
+  // =========================================================================
+
   async updateMedicalExamination(examinationId, updateData, doctorId) {
-    // Check if doctor owns this examination
     const examination = await this.serviceRepository.getMedicalExamination(
       examinationId
     );
@@ -88,7 +97,7 @@ class ServiceService {
       throw new AppError("Không tìm thấy hồ sơ khám", 404);
     }
 
-    // If exam has MaNV, validate ownership. Otherwise allow (old exams)
+    // Nếu hồ sơ đã có bác sĩ phụ trách, chỉ bác sĩ đó mới được sửa
     if (examination.MaNV && examination.MaNV !== doctorId) {
       throw new AppError("Bạn không có quyền cập nhật hồ sơ khám này", 403);
     }
@@ -105,7 +114,6 @@ class ServiceService {
   }
 
   async addPrescription(examinationId, prescriptions, doctorId) {
-    // Validate examination exists
     const examination = await this.serviceRepository.getMedicalExamination(
       examinationId
     );
@@ -113,7 +121,6 @@ class ServiceService {
       throw new AppError("Không tìm thấy hồ sơ khám", 404);
     }
 
-    // If exam has MaNV, validate ownership. Otherwise allow (old exams)
     if (examination.MaNV && examination.MaNV !== doctorId) {
       throw new AppError(
         "Bạn không có quyền thêm đơn thuốc cho hồ sơ này",
@@ -133,17 +140,20 @@ class ServiceService {
     return { success: true, count: results.length };
   }
 
+  // Hàm này lấy từ dev_Duc (cần thiết để xem đơn thuốc)
   async getPrescriptions(examinationId) {
     return await this.serviceRepository.getPrescriptions(examinationId);
   }
 
-  async createVaccination(vaccinationData, requesterId) {
+  async createVaccination(vaccinationData, requesterId, isStaff = false) {
     const { MaCN, MaDV, MaTC, NgayTiem, vaccines } = vaccinationData;
 
-    // Validate pet ownership
-    const pet = await this.petRepository.getPetById(MaTC);
-    if (!pet || pet.MaKH !== requesterId) {
-      throw new AppError("Bạn không có quyền với thú cưng này", 403);
+    // Validate ownership
+    if (!isStaff) {
+      const pet = await this.petRepository.getPetById(MaTC);
+      if (!pet || pet.MaKH !== requesterId) {
+        throw new AppError("Bạn không có quyền với thú cưng này", 403);
+      }
     }
 
     const result = await this.serviceRepository.createVaccination({
@@ -153,12 +163,12 @@ class ServiceService {
       NgayTiem,
     });
 
-    // If vaccines are provided, insert them into Chi_tiet_tiem_phong
+    // Thêm chi tiết vaccine (nếu có)
     if (vaccines && vaccines.length > 0 && result.MaTP) {
       for (const vaccine of vaccines) {
-        if (vaccine.name && vaccine.name.trim()) {
+        if (vaccine.MaSP) {
           await this.serviceRepository.addVaccinationDetail(result.MaTP, {
-            MaSP: vaccineProduct.MaSP,
+            MaSP: vaccine.MaSP,
             MaGoi: null,
           });
         }
@@ -169,7 +179,6 @@ class ServiceService {
   }
 
   async updateVaccinationDetails(vaccinationId, details, doctorId) {
-    // Validate vaccination existence and access
     const vaccination = await this.serviceRepository.getVaccination(
       vaccinationId
     );
@@ -177,7 +186,6 @@ class ServiceService {
       throw new AppError("Hồ sơ tiêm phòng không tồn tại", 404);
     }
 
-    // Allow update if: (1) unassigned (MaNV is null), or (2) assigned to this doctor
     if (vaccination.MaNV !== null && vaccination.MaNV !== doctorId) {
       throw new AppError(
         "Bạn không có quyền cập nhật thông tin tiêm phòng này",
@@ -198,7 +206,6 @@ class ServiceService {
   async createVaccinationPackage(packageData, customerId) {
     const { NgayBatDau, NgayKetThuc, vaccines, MaTC, MaCN } = packageData;
 
-    // Calculate discount based on package duration
     const startDate = new Date(NgayBatDau);
     const endDate = new Date(NgayKetThuc);
     const durationDays = Math.floor(
@@ -207,14 +214,13 @@ class ServiceService {
 
     let discountRate = 0;
     if (durationDays >= 365 + 180) {
-      discountRate = 0.15; // 15% for 1.5+ year
+      discountRate = 0.15;
     } else if (durationDays >= 365) {
-      discountRate = 0.1; // 10% for 1+ year
+      discountRate = 0.1;
     } else if (durationDays >= 180) {
-      discountRate = 0.05; // 5% for 6+ months
+      discountRate = 0.05;
     }
 
-    // Create vaccination package
     const result = await this.serviceRepository.createVaccinationPackage({
       MaKH: customerId,
       NgayBatDau,
@@ -224,21 +230,19 @@ class ServiceService {
 
     const packageId = result.MaGoi;
 
-    // Get vaccination service ID (MaDV) for the branch
+    // Lấy MaDV tiêm phòng
     const serviceResult = await this.serviceRepository.execute(`
-            SELECT TOP 1 MaDV 
+            SELECT MaDV 
             FROM Dich_vu 
-            WHERE TenDV LIKE N'%Tiêm%' OR TenDV LIKE N'%Vaccine%'
+            WHERE TenDV = 'Tiêm phòng'
         `);
 
     const maDV = serviceResult.recordset[0]?.MaDV || null;
 
-    // Add vaccine details if provided
     if (vaccines && vaccines.length > 0) {
       for (const vaccine of vaccines) {
         const { MaSP, NgayTiem } = vaccine;
 
-        // Create vaccination record (Tiem_phong)
         const vaccinationResult =
           await this.serviceRepository.createVaccination({
             MaCN,
@@ -249,7 +253,6 @@ class ServiceService {
 
         const maTP = vaccinationResult.MaTP;
 
-        // Add vaccination detail (Chi_tiet_tiem_phong)
         await this.serviceRepository.addVaccinationDetail(maTP, {
           MaSP,
           MaGoi: packageId,
@@ -265,7 +268,6 @@ class ServiceService {
       customerId
     );
 
-    // Load vaccine details for each package
     const packagesWithDetails = await Promise.all(
       packages.map(async (pkg) => {
         const vaccines =
@@ -287,7 +289,6 @@ class ServiceService {
   }
 
   async updateServicePrice(serviceId, price, effectiveDate, userRole) {
-    // Only company managers can update service prices
     if (userRole !== "Quản lý công ty") {
       throw new AppError("Bạn không có quyền cập nhật giá dịch vụ", 403);
     }
@@ -321,7 +322,6 @@ class ServiceService {
     requesterRole = null,
     requesterBranch = null
   ) {
-    // Access control: customers can only view their own pet's records
     if (requesterRole === "Khách hàng" && filters.MaTC) {
       const pet = await this.petRepository.getPetById(filters.MaTC);
       if (!pet || pet.MaKH !== requesterId) {
@@ -329,10 +329,7 @@ class ServiceService {
       }
     }
 
-    // For staff/doctor/managers, repository will return based on filters
-    // If requester is a doctor, restrict to the doctor's branch
     if (requesterRole === "Bác sĩ") {
-      // If a branch filter is provided and it's different from the doctor's branch, deny access
       if (
         filters.MaCN &&
         requesterBranch &&
@@ -343,10 +340,7 @@ class ServiceService {
           403
         );
       }
-      // Enforce branch filter to the doctor's branch
       filters.MaCN = requesterBranch;
-      // Also restrict to the doctor's own records (MaNV)
-      // requesterId for doctors should be the MaNV from controller
       if (requesterId) {
         filters.MaNV = requesterId;
       }
@@ -362,7 +356,6 @@ class ServiceService {
     requesterRole = null,
     requesterBranch = null
   ) {
-    // Access control: customers can only view their own pet's records
     if (requesterRole === "Khách hàng" && filters.MaTC) {
       const pet = await this.petRepository.getPetById(filters.MaTC);
       if (!pet || pet.MaKH !== requesterId) {
@@ -370,10 +363,7 @@ class ServiceService {
       }
     }
 
-    // For staff/doctor/managers, repository will return based on filters
-    // If requester is a doctor, restrict to the doctor's branch
     if (requesterRole === "Bác sĩ") {
-      // If a branch filter is provided and it's different from the doctor's branch, deny access
       if (
         filters.MaCN &&
         requesterBranch &&
@@ -384,10 +374,7 @@ class ServiceService {
           403
         );
       }
-      // Enforce branch filter to the doctor's branch
       filters.MaCN = requesterBranch;
-      // Also restrict to the doctor's own records (MaNV)
-      // requesterId for doctors should be the MaNV from controller
       if (requesterId) {
         filters.MaNV = requesterId;
       }
@@ -405,7 +392,6 @@ class ServiceService {
     requesterRole = null,
     requesterBranch = null
   ) {
-    // Customers can view their own pet vaccinations
     if (requesterRole === "Khách hàng" && filters.MaTC) {
       const pet = await this.petRepository.getPetById(filters.MaTC);
       if (!pet || pet.MaKH !== requesterId) {
@@ -413,7 +399,6 @@ class ServiceService {
       }
     }
 
-    // If requester is a doctor, restrict to the doctor's branch
     if (requesterRole === "Bác sĩ") {
       if (
         filters.MaCN &&
@@ -425,10 +410,7 @@ class ServiceService {
           403
         );
       }
-      // Enforce branch filter to the doctor's branch
       filters.MaCN = requesterBranch;
-      // Filter to show: (1) vaccinations created by this doctor, or (2) unassigned vaccinations
-      // Pass doctor ID to filter unassigned + own records
     }
 
     const result = await this.serviceRepository.getVaccinations(filters);
@@ -441,7 +423,6 @@ class ServiceService {
     requesterRole = null,
     requesterBranch = null
   ) {
-    // Validate vaccination existence and access
     const vaccination = await this.serviceRepository.getVaccination(
       vaccinationId
     );
@@ -449,7 +430,6 @@ class ServiceService {
       throw new AppError("Không tìm thấy thông tin tiêm phòng", 404);
     }
 
-    // If requester is a customer, ensure they own the pet
     if (requesterRole === "Khách hàng") {
       const pet = await this.petRepository.getPetById(vaccination.MaTC);
       if (!pet || pet.MaKH !== requesterId) {
@@ -457,7 +437,6 @@ class ServiceService {
       }
     }
 
-    // If requester is a doctor, ensure branch match
     if (requesterRole === "Bác sĩ") {
       if (
         vaccination.MaCN &&
@@ -478,9 +457,7 @@ class ServiceService {
     return details;
   }
 
-  // Bác sĩ tiếp nhận khám bệnh hoặc tiêm phòng
   async updateVaccination(vaccinationId, updateData, doctorId) {
-    // Validate doctor assignment
     const vaccination = await this.serviceRepository.getVaccination(
       vaccinationId
     );
@@ -488,7 +465,6 @@ class ServiceService {
       throw new AppError("Không tìm thấy thông tin tiêm phòng", 404);
     }
 
-    // Check if doctor can take this vaccination (branch assignment)
     const doctors = await this.serviceRepository.getAvailableVeterinarians(
       vaccination.MaCN,
       vaccination.NgayTiem
@@ -519,7 +495,6 @@ class ServiceService {
   }
 
   async updateVaccinationDetail(vaccinationDetailId, updateData, doctorId) {
-    // Validate doctor ownership through vaccination
     const detail = await this.serviceRepository.getVaccinationDetail(
       vaccinationDetailId
     );

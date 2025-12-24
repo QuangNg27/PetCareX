@@ -22,6 +22,8 @@ import DoctorDashboard from "@pages/doctor/DoctorDashboard";
 import MedicalRecordsPage from "@pages/doctor/MedicalRecordsPage";
 import VaccinationsPage from "@pages/doctor/VaccinationsPage";
 import InvoicePage from "@pages/sales/InvoicePage";
+import CreateAppointmentPage from "@pages/receptionist/CreateAppointmentPage";
+import ReceptionistAppointmentsPage from "@pages/receptionist/AppointmentsPage";
 import "./App.css";
 
 function App() {
@@ -77,6 +79,11 @@ function App() {
 
             {/* Sales routes - Invoice only */}
             <Route path="/sales/invoice" element={<InvoicePage />} />
+
+            {/* Receptionist routes */}
+            <Route path="/receptionist/create-appointment" element={<CreateAppointmentPage />} />
+            <Route path="/receptionist/appointments" element={<ReceptionistAppointmentsPage />} />
+            
             {/* Default redirect */}
             <Route path="/" element={<Navigate to="/login" replace />} />
 
