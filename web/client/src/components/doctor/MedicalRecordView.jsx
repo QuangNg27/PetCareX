@@ -4,7 +4,13 @@ import { useAuth } from "@context/AuthContext";
 import doctorService from "@services/doctorService";
 import productService from "@services/productService";
 import customerService from "@services/customerService";
-import { PlusIcon, EditIcon, SaveIcon, XIcon } from "@components/common/icons"; // Bỏ DeleteIcon
+import {
+  PlusIcon,
+  EditIcon,
+  SaveIcon,
+  XIcon,
+  DeleteIcon,
+} from "@components/common/icons";
 
 const MedicalRecordView = () => {
   const [records, setRecords] = useState([]);
@@ -12,18 +18,16 @@ const MedicalRecordView = () => {
   const [error, setError] = useState(null);
   const { user } = useAuth();
 
-  // State quản lý hiển thị form
   const [showAddForm, setShowAddForm] = useState(false);
-  const [editingId, setEditingId] = useState(null); // null = mode tạo mới, có id = mode sửa
+  const [editingId, setEditingId] = useState(null);
 
-  // State form dữ liệu
   const [formData, setFormData] = useState({
-    MaTC: "", // Dùng khi tạo mới
-    MaDV: "", // Dùng khi tạo mới
-    MaCN: "", // Mã chi nhánh
-    MaNV: "", // Mã nhân viên (bác sĩ)
-    TenKhachHang: "", // Display only
-    TenThuCung: "", // Display only
+    MaTC: "",
+    MaDV: "",
+    MaCN: "",
+    MaNV: "",
+    TenKhachHang: "",
+    TenThuCung: "",
     NgayKham: "",
     TrieuChung: "",
     ChanDoan: "",
@@ -35,7 +39,7 @@ const MedicalRecordView = () => {
   const [products, setProducts] = useState([]);
   const [pets, setPets] = useState([]);
 
-  // Load danh sách (Giữ nguyên logic cũ của bạn)
+  // Load danh sách hồ sơ
   useEffect(() => {
     let mounted = true;
     const load = async () => {
@@ -51,7 +55,7 @@ const MedicalRecordView = () => {
         setRecords(
           items.map((r) => ({
             ...r,
-            id: r.MaKB, // Đảm bảo có field id
+            id: r.MaKB,
           }))
         );
       } catch (err) {
@@ -66,11 +70,10 @@ const MedicalRecordView = () => {
     };
   }, [user?.MaCN]);
 
-  // Load thuốc để kê đơn (chỉ lấy sản phẩm có LoaiSP = "Thuốc") và danh sách thú cưng
+  // Load thuốc và thú cưng
   useEffect(() => {
     const loadDataForForm = async () => {
       try {
-        // Load medicines
         const medicinesRes = await productService.getMedicines(
           user?.MaCN || null
         );
@@ -80,7 +83,6 @@ const MedicalRecordView = () => {
             []
         );
 
-        // Load pets for selection
         const petsRes = await customerService.pets.getAll();
         const petsList =
           (petsRes && (petsRes.data || petsRes.pets)) ||
@@ -93,15 +95,13 @@ const MedicalRecordView = () => {
     if (showAddForm) loadDataForForm();
   }, [showAddForm, user?.MaCN]);
 
-  // --- XỬ LÝ SỰ KIỆN ---
-
   const handleCreateNew = () => {
-    setEditingId(null); // Mode tạo mới
+    setEditingId(null);
     setFormData({
-      MaCN: user?.MaCN || "", // Người dùng tự nhập
-      MaNV: user?.MaNV || "", // Tự động điền bác sĩ đang khám
+      MaCN: user?.MaCN || "",
+      MaNV: user?.MaNV || "",
       MaTC: "",
-      MaDV: "2", // Mặc định khám bệnh
+      MaDV: "2",
       NgayKham: new Date().toISOString().split("T")[0],
       TrieuChung: "",
       ChanDoan: "",
@@ -114,7 +114,7 @@ const MedicalRecordView = () => {
   };
 
   const handleEdit = async (record) => {
-    setEditingId(record.MaKB); // Mode sửa
+    setEditingId(record.MaKB);
     setFormData({
       ...record,
       NgayKham: record.NgayKham
@@ -122,7 +122,6 @@ const MedicalRecordView = () => {
         : "",
     });
 
-    // Load prescriptions đã lưu
     try {
       const prescriptionsData = await doctorService.getPrescriptions(
         record.MaKB
@@ -147,129 +146,81 @@ const MedicalRecordView = () => {
   const handleCancel = () => {
     setShowAddForm(false);
     setEditingId(null);
-    setError(null); // Clear error message khi tắt form
+    setError(null);
   };
 
-  // Logic lưu: Phân biệt Tạo mới vs Cập nhật
   const handleSave = async () => {
     try {
       setLoading(true);
-      setError(null); // Clear previous errors
+      setError(null);
 
-      // 1. TRƯỜNG HỢP TẠO MỚI (POST)
+      // TRƯỜNG HỢP TẠO MỚI
       if (!editingId) {
-        // Validate required fields
         if (!formData.MaCN) {
-          setError({
-            message: "Vui lòng nhập Mã Chi Nhánh",
-          });
+          setError({ message: "Vui lòng nhập Mã Chi Nhánh" });
           setLoading(false);
           return;
         }
         if (!formData.MaNV) {
-          setError({
-            message: "Vui lòng nhập Mã Nhân Viên",
-          });
+          setError({ message: "Vui lòng nhập Mã Nhân Viên" });
           setLoading(false);
           return;
         }
         if (!formData.MaTC) {
-          setError({
-            message: "Vui lòng nhập hoặc chọn Mã Thú Cưng",
-          });
+          setError({ message: "Vui lòng nhập hoặc chọn Mã Thú Cưng" });
           setLoading(false);
           return;
         }
         if (!formData.NgayKham) {
-          setError({
-            message: "Vui lòng nhập Ngày khám",
-          });
+          setError({ message: "Vui lòng nhập Ngày khám" });
           setLoading(false);
           return;
         }
 
         const createPayload = {
           MaCN: parseInt(formData.MaCN),
-          MaNV: user?.MaNV, // Lấy trực tiếp từ user, đảm bảo là đúng bác sĩ đang login
+          MaNV: user?.MaNV,
           MaTC: parseInt(formData.MaTC),
-          MaDV: 2, // Mặc định khám bệnh
-          NgayKham: formData.NgayKham, // Format: YYYY-MM-DD từ input type="date"
+          MaDV: 2,
+          NgayKham: formData.NgayKham,
           TrieuChung: formData.TrieuChung || null,
           ChanDoan: formData.ChanDoan || null,
           NgayTaiKham: formData.NgayTaiKham || null,
+          prescriptions: prescriptions.filter((p) => p.MaSP && p.SoLuong > 0),
         };
-
-        console.log("Payload gửi đi:", createPayload);
-        console.log("User MaNV:", user?.MaNV, "Type:", typeof user?.MaNV);
-        console.log("FormData MaNV:", formData.MaNV);
 
         const result = await doctorService.createMedicalExamination(
           createPayload
         );
 
-        // Lưu đơn thuốc nếu có
-        if (prescriptions.length > 0 && result.MaKB) {
-          const validPrescriptions = prescriptions.filter(
-            (p) => p.MaSP && p.SoLuong > 0
-          );
-          console.log("Valid prescriptions:", validPrescriptions);
-          if (validPrescriptions.length > 0) {
-            try {
-              await doctorService.addPrescriptions(
-                result.MaKB,
-                validPrescriptions
-              );
-              console.log("Lưu thuốc thành công!");
-            } catch (err) {
-              console.error("Lỗi lưu thuốc:", err);
-              toast.error("Lỗi khi lưu đơn thuốc: " + err.message);
-            }
-          }
-        }
-
         toast.success("Tạo hồ sơ thành công!");
-        window.location.reload(); // Reload để lấy dữ liệu mới nhất
+        window.location.reload();
         return;
       }
 
-      // 2. TRƯỜNG HỢP CẬP NHẬT (PUT)
+      // TRƯỜNG HỢP CẬP NHẬT
       const updatePayload = {
-        TrieuChung: formData.TrieuChung,
-        ChanDoan: formData.ChanDoan,
-        NgayTaiKham: formData.NgayTaiKham || null,
+        examData: {
+          TrieuChung: formData.TrieuChung,
+          ChanDoan: formData.ChanDoan,
+          NgayTaiKham: formData.NgayTaiKham || null,
+        },
+        prescriptions: prescriptions
+          .filter((p) => p.MaSP && p.SoLuong > 0)
+          .map((p) => ({
+            MaSP: p.MaSP,
+            SoLuong: p.SoLuong || 1,
+          })),
       };
 
-      await doctorService.updateExamination(
+      await doctorService.updateMedicalExaminationWithPrescriptions(
         editingId,
-        updatePayload,
-        user?.MaNV
-      ); // Gọi PUT
+        updatePayload
+      );
 
-      // Lưu đơn thuốc nếu có
-      if (prescriptions.length > 0) {
-        const validPrescriptions = prescriptions.filter(
-          (p) => p.MaSP && p.SoLuong > 0
-        );
-        console.log("Valid prescriptions (update):", validPrescriptions);
-        if (validPrescriptions.length > 0) {
-          try {
-            await doctorService.addPrescriptions(
-              editingId,
-              validPrescriptions,
-              user?.MaNV
-            );
-            console.log("Cập nhật thuốc thành công!");
-          } catch (err) {
-            console.error("Lỗi cập nhật thuốc:", err);
-            toast.error("Lỗi khi cập nhật đơn thuốc: " + err.message);
-          }
-        }
-      }
-
-      // Update UI local
       setRecords(
         records.map((r) =>
-          r.MaKB === editingId ? { ...r, ...updatePayload } : r
+          r.MaKB === editingId ? { ...r, ...updatePayload.examData } : r
         )
       );
       toast.success("Cập nhật thành công!");
@@ -281,19 +232,35 @@ const MedicalRecordView = () => {
         err.response?.data?.error ||
         err.message ||
         "Lỗi khi lưu dữ liệu";
-      setError({
-        message: errorMessage,
-      });
+      setError({ message: errorMessage });
     } finally {
       setLoading(false);
     }
   };
 
-  // Helper cho đơn thuốc (giữ nguyên logic cũ)
   const addPrescriptionRow = () =>
     setPrescriptions([...prescriptions, { MaSP: "", SoLuong: 1 }]);
-  const removePrescriptionRow = (idx) =>
+
+  const removePrescriptionRow = async (idx) => {
+    const prescription = prescriptions[idx];
+
+    // Nếu là edit mode và thuốc đã được lưu vào DB (có TenSP)
+    if (editingId && prescription.TenSP) {
+      try {
+        await doctorService.deletePrescription(editingId, prescription.MaSP);
+        toast.success("Xóa thuốc thành công!");
+      } catch (err) {
+        console.error("Lỗi xóa thuốc:", err);
+        toast.error(
+          "Lỗi xóa thuốc: " + (err.response?.data?.message || err.message)
+        );
+        return;
+      }
+    }
+
     setPrescriptions(prescriptions.filter((_, i) => i !== idx));
+  };
+
   const updatePrescriptionRow = (idx, field, value) => {
     setPrescriptions(
       prescriptions.map((p, i) => (i === idx ? { ...p, [field]: value } : p))
@@ -472,7 +439,7 @@ const MedicalRecordView = () => {
             />
           </div>
 
-          {/* Phần kê đơn thuốc */}
+          {/* Phần kê đơn thuốc - CÓ XÓA */}
           <div className="mt-4 border-t pt-4">
             <label className="block text-sm font-medium mb-2">
               Kê đơn thuốc
@@ -480,7 +447,6 @@ const MedicalRecordView = () => {
             {prescriptions.map((p, idx) => (
               <div key={idx} className="flex gap-2 mb-2 items-center">
                 {editingId && p.TenSP ? (
-                  // Hiển thị khi load từ database (edit mode)
                   <>
                     <div className="flex-1 px-3 py-2 bg-gray-50 rounded border">
                       {p.TenSP} {p.Gia && `(${p.Gia}đ)`}
@@ -500,13 +466,13 @@ const MedicalRecordView = () => {
                     />
                     <button
                       onClick={() => removePrescriptionRow(idx)}
-                      className="text-red-500 font-bold px-2"
+                      className="text-red-500 hover:text-red-700 font-bold px-2"
+                      title="Xóa thuốc"
                     >
-                      X
+                      <XIcon size={18} />
                     </button>
                   </>
                 ) : (
-                  // Chọn từ dropdown (create mode)
                   <>
                     <select
                       className="border rounded px-2 py-1 flex-1"
@@ -541,9 +507,10 @@ const MedicalRecordView = () => {
                     />
                     <button
                       onClick={() => removePrescriptionRow(idx)}
-                      className="text-red-500 font-bold px-2"
+                      className="text-red-500 hover:text-red-700 font-bold px-2"
+                      title="Xóa thuốc"
                     >
-                      X
+                      <XIcon size={18} />
                     </button>
                   </>
                 )}
@@ -575,7 +542,6 @@ const MedicalRecordView = () => {
         </div>
       )}
 
-      {/* Bảng dữ liệu */}
       <div className="overflow-x-auto bg-white rounded-xl shadow-sm border border-gray-200">
         <table className="w-full">
           <thead className="bg-gray-50 border-b border-gray-200">
@@ -618,7 +584,6 @@ const MedicalRecordView = () => {
                   >
                     <EditIcon size={18} />
                   </button>
-                  {/* Đã bỏ nút xóa */}
                 </td>
               </tr>
             ))}

@@ -21,7 +21,7 @@ router.post(
   serviceController.createMedicalExamination
 );
 
-// 2. Tạo phiếu khám 
+// 2. Tạo phiếu khám
 // Đường dẫn khác biệt để tránh trùng lặp method POST
 router.post(
   "/examinations/doctor",
@@ -30,7 +30,7 @@ router.post(
   serviceController.createMedicalExamination_R
 );
 
-// 3. Xem danh sách khám 
+// 3. Xem danh sách khám
 router.get(
   "/examinations",
   authMiddleware,
@@ -81,8 +81,23 @@ router.get(
   serviceController.getPrescriptions
 );
 
+// Xóa một thuốc trong đơn
+router.delete(
+  "/examinations/:examinationId/prescriptions/:medicineId",
+  authMiddleware,
+  authorizeRoles("Bác sĩ"),
+  serviceController.deletePrescription
+);
 
-// 1. Tạo lịch tiêm 
+// Cập nhật hồ sơ khám + đơn thuốc
+router.put(
+  "/examinations/:examinationId/with-prescriptions",
+  authMiddleware,
+  authorizeRoles("Bác sĩ"),
+  serviceController.updateMedicalExaminationWithPrescriptions
+);
+
+// 1. Tạo lịch tiêm
 router.post(
   "/vaccinations",
   authMiddleware,
@@ -105,7 +120,6 @@ router.get(
   serviceController.listVaccinations
 );
 
-
 router.get(
   "/vaccinations/:vaccinationId/details",
   authMiddleware,
@@ -127,7 +141,6 @@ router.put(
   authorizeRoles(["Bác sĩ"]),
   serviceController.updateVaccinationDetails
 );
-
 
 router.post(
   "/vaccination-packages",

@@ -53,6 +53,7 @@ const InvoicePage = () => {
   const [allProducts, setAllProducts] = useState([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("Thức ăn"); // "Tất cả", "Thức ăn", or "Phụ kiện"
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null); // "Tiền mặt" or "Chuyển khoản"
 
   // Robust price resolver: handle many backend shapes for price (Gia_san_pham may be
   // number, object, or array of prices per branch). Try to pick branch-specific price
@@ -237,7 +238,12 @@ const InvoicePage = () => {
     window.print();
   };
 
-  const handleCreateInvoice = () => {
+  const handleCreateInvoice = (paymentMethod) => {
+    if (!paymentMethod) {
+      toast.error("Vui lòng chọn hình thức thanh toán");
+      return;
+    }
+
     if (!customerId || !petId || invoiceItems.length === 0) {
       toast.error(
         "Vui lòng nhập mã khách hàng, mã thú cưng và chọn sản phẩm/dịch vụ"
@@ -258,7 +264,7 @@ const InvoicePage = () => {
           MaKH: parseInt(customerId),
           MaCN: user?.MaCN,
           NgayLap: new Date().toISOString(),
-          HinhThucTT: "Tiền mặt",
+          HinhThucTT: paymentMethod,
           CT_SanPham: [
             ...products.map((i) => ({
               MaSP: parseInt(i.id),
@@ -282,15 +288,20 @@ const InvoicePage = () => {
         const res = await invoiceService.createInvoice(payload);
         // adapt message from API or fallback
         const msg = res?.message || "Hóa đơn tạo thành công!";
-        toast.success(`${msg}\nTổng tiền: ${totalAmount.toLocaleString()}đ`);
+        const methodLabel =
+          paymentMethod === "Tiền mặt" ? "💵 Tiền mặt" : "🏦 Chuyển khoản";
+        toast.success(
+          `✓ ${msg} (${methodLabel})\nTổng tiền: ${totalAmount.toLocaleString()}đ`
+        );
         setCustomerId("");
         setPetId("");
         setCustomerName("");
         setPetName("");
         setInvoiceItems([]);
+        setSelectedPaymentMethod(null);
       } catch (err) {
         console.error("Lỗi khi tạo hoá đơn:", err);
-        toast.error("Tạo hóa đơn thất bại. Vui lòng thử lại.");
+        toast.error("✗ Tạo hóa đơn thất bại. Vui lòng thử lại.");
       }
     })();
   };
@@ -754,12 +765,23 @@ const InvoicePage = () => {
 
                 {/* Actions */}
                 <div className="space-y-2">
-                  <button
-                    onClick={handleCreateInvoice}
-                    className="w-full px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-bold"
-                  >
-                    Tạo hóa đơn
-                  </button>
+                  <p className="text-sm font-semibold text-gray-700 mb-3">
+                    Chọn hình thức thanh toán:
+                  </p>
+                  <div className="flex gap-2 mb-3">
+                    <button
+                      onClick={() => handleCreateInvoice("Tiền mặt")}
+                      className="flex-1 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-bold flex items-center justify-center gap-2"
+                    >
+                      💵 Tiền mặt
+                    </button>
+                    <button
+                      onClick={() => handleCreateInvoice("Chuyển khoản")}
+                      className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-bold flex items-center justify-center gap-2"
+                    >
+                      🏦 Chuyển khoản
+                    </button>
+                  </div>
                   <button
                     onClick={handlePrint}
                     disabled={invoiceItems.length === 0}

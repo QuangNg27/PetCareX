@@ -5,6 +5,7 @@ import {
   Route,
   Navigate,
 } from "react-router-dom";
+import { Toaster } from "react-hot-toast";
 import { AuthProvider } from "@context/AuthContext";
 import LoginPage from "@pages/LoginPage";
 import SignUpPage from "@pages/SignUpPage";
@@ -29,6 +30,7 @@ import "./App.css";
 function App() {
   return (
     <AuthProvider>
+      <Toaster position="top-right" reverseOrder={false} />
       <Router>
         <div className="App">
           <Routes>
@@ -81,9 +83,15 @@ function App() {
             <Route path="/sales/invoice" element={<InvoicePage />} />
 
             {/* Receptionist routes */}
-            <Route path="/receptionist/create-appointment" element={<CreateAppointmentPage />} />
-            <Route path="/receptionist/appointments" element={<ReceptionistAppointmentsPage />} />
-            
+            <Route
+              path="/receptionist/create-appointment"
+              element={<CreateAppointmentPage />}
+            />
+            <Route
+              path="/receptionist/appointments"
+              element={<ReceptionistAppointmentsPage />}
+            />
+
             {/* Default redirect */}
             <Route path="/" element={<Navigate to="/login" replace />} />
 

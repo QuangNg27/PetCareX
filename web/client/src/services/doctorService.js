@@ -36,7 +36,7 @@ export const doctorService = {
   createMedicalExamination: async (payload) => {
     if (!payload) throw new Error("payload required");
     const response = await apiClient.post(
-      ENDPOINTS.SERVICES.EXAMINATIONS.CREATE,
+      "/api/services/examinations/doctor",
       payload
     );
     return response.data;
@@ -67,6 +67,26 @@ export const doctorService = {
     if (!examinationId) throw new Error("examinationId required");
     const response = await apiClient.get(
       ENDPOINTS.SERVICES.EXAMINATIONS.PRESCRIPTIONS(examinationId)
+    );
+    return response.data;
+  },
+
+  // Delete a prescription from an examination
+  deletePrescription: async (examinationId, medicineId) => {
+    if (!examinationId || !medicineId)
+      throw new Error("examinationId and medicineId required");
+    const response = await apiClient.delete(
+      `/api/services/examinations/${examinationId}/prescriptions/${medicineId}`
+    );
+    return response.data;
+  },
+
+  // Update examination with prescriptions (replaces all prescriptions)
+  updateMedicalExaminationWithPrescriptions: async (examinationId, payload) => {
+    if (!examinationId) throw new Error("examinationId required");
+    const response = await apiClient.put(
+      `/api/services/examinations/${examinationId}/with-prescriptions`,
+      payload
     );
     return response.data;
   },
