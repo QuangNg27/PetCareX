@@ -184,7 +184,9 @@ const CreateAppointmentView = () => {
       errors.SDT = 'Số điện thoại không hợp lệ (10 số, bắt đầu bằng 0)';
     }
     
-    if (newCustomerForm.Email && !validateEmail(newCustomerForm.Email)) {
+    if (!newCustomerForm.Email || !newCustomerForm.Email.trim()) {
+      errors.Email = 'Vui lòng nhập email';
+    } else if (!validateEmail(newCustomerForm.Email)) {
       errors.Email = 'Email không hợp lệ';
     }
     
@@ -258,6 +260,10 @@ const CreateAppointmentView = () => {
     
     if (!newPetForm.Loai || !newPetForm.Loai.trim()) {
       errors.Loai = 'Vui lòng nhập loài thú cưng';
+    }
+    
+    if (!newPetForm.Giong || !newPetForm.Giong.trim()) {
+      errors.Giong = 'Vui lòng nhập giống thú cưng';
     }
     
     if (Object.keys(errors).length > 0) {
@@ -582,7 +588,7 @@ const CreateAppointmentView = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Email
+                    Email <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="email"
@@ -767,7 +773,7 @@ const CreateAppointmentView = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Giống
+                    Giống <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
