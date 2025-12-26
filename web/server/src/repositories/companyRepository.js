@@ -301,7 +301,7 @@ class CompanyRepository extends BaseRepository {
             const new_account = await this.execute(`
                 INSERT INTO Tai_khoan (TenDangNhap, MatKhau, MaKH, MaNV, VaiTro)
                 VALUES (@fullname, @password, NULL, @MaNV, @role)
-            `, {fullname: employeeData.fullName.replace(/\s+/g, '').toLowerCase(), password: 'password123', MaNV: newEmployeeRecord.recordset[0].MaNV, role: employeeData.role});
+            `, {fullname: "nv" + newEmployeeRecord.recordset[0].MaNV, password: 'password123', MaNV: newEmployeeRecord.recordset[0].MaNV, role: employeeData.role});
 
             const branch_name = await this.execute(`
                 SELECT TenCN FROM Chi_nhanh WHERE MaCN = @MaCN
