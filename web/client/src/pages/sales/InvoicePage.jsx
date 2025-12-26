@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useAuth } from "@context/AuthContext";
@@ -6,10 +6,7 @@ import {
   SearchIcon,
   PlusIcon,
   MinusIcon,
-  PrintIcon,
-  UserIcon,
   LogOutIcon,
-  AwardIcon,
 } from "@components/common/icons";
 // Services
 import { productService } from "@services/productService";
@@ -27,18 +24,6 @@ const InvoicePage = () => {
   React.useEffect(() => {
     localStorage.setItem("invoiceActiveTab", activeTab);
   }, [activeTab]);
-  const [showUserMenu, setShowUserMenu] = useState(false);
-  const menuRef = useRef(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (menuRef.current && !menuRef.current.contains(event.target)) {
-        setShowUserMenu(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
 
   const handleLogout = async () => {
     await logout();
@@ -474,72 +459,27 @@ const InvoicePage = () => {
         <div className="flex-1"></div>
 
         <div className="flex items-center gap-4">
-          {/* User Menu */}
-          <div className="relative" ref={menuRef}>
-            <button
-              className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors"
-              onClick={() => setShowUserMenu(!showUserMenu)}
-            >
-              <div className="w-9 h-9 bg-gradient-to-br from-primary-500 to-primary-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
-                {user?.HoTen?.charAt(0) || "U"}
-              </div>
-              <div className="text-left hidden md:block">
-                <div className="text-sm font-semibold text-gray-900">
-                  {user?.TenDangNhap || "User"}
-                </div>
-                <div className="text-xs text-gray-600">Nhân viên bán hàng</div>
-              </div>
-              <svg
-                className={`w-4 h-4 text-gray-500 transition-transform ${
-                  showUserMenu ? "rotate-180" : ""
-                }`}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 9l-7 7-7-7"
-                />
-              </svg>
-            </button>
-
-            {showUserMenu && (
-              <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
-                <div className="p-4 bg-gradient-to-br from-primary-50 to-white border-b border-gray-200">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-gradient-to-br from-primary-500 to-primary-600 rounded-full flex items-center justify-center text-white font-bold text-lg">
-                      {user?.HoTen?.charAt(0) || "U"}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-gray-900 truncate">
-                        {user?.HoTen || "User"}
-                      </p>
-                      <p className="text-xs text-gray-600 truncate">
-                        {user?.Email || "email@example.com"}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                <div className="p-2">
-                  <div className="my-1 border-t border-gray-200"></div>
-                  <button
-                    onClick={handleLogout}
-                    className="w-full flex items-center gap-3 px-3 py-2 text-sm text-error-600 hover:bg-error-50 rounded-lg transition-colors"
-                  >
-                    <LogOutIcon size={18} /> Đăng xuất
-                  </button>
-                </div>
-              </div>
-            )}
+          <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
+            {user?.HoTen?.charAt(0) || "N"}
           </div>
+          <div className="text-right hidden md:block">
+            <div className="text-sm font-semibold text-gray-900">
+              {user?.TenDangNhap || "User"}
+            </div>
+            <div className="text-xs text-gray-600">Nhân viên bán hàng</div>
+          </div>
+          <button
+            onClick={handleLogout}
+            className="p-2 text-error-600 hover:bg-error-50 rounded-lg transition-colors"
+            title="Đăng xuất"
+          >
+            <LogOutIcon size={20} />
+          </button>
         </div>
       </header>
 
       {/* Main Content */}
-      <div className="p-6">
+      <div className="p-6 relative min-h-[calc(100vh-4rem)]">
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Left: Product List */}
