@@ -588,11 +588,15 @@ class ServiceService {
 
     const { TrieuChung, ChanDoan, NgayTaiKham } = updateData;
 
-    // Cập nhật hồ sơ
+    // Cập nhật hồ sơ - KHÔNG thay đổi MaNV, chỉ cập nhật TrieuChung, ChanDoan, NgayTaiKham
+    // Nếu MaNV chưa được set, set = doctorId
+    const MaNV = examination.MaNV || doctorId;
+
     await this.serviceRepository.updateMedicalExamination(examinationId, {
       TrieuChung,
       ChanDoan,
       NgayTaiKham,
+      MaNV, // Giữ nguyên MaNV cũ hoặc set = current doctor nếu chưa có
     });
 
     // Xóa tất cả đơn thuốc cũ

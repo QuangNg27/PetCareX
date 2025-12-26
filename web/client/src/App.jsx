@@ -69,10 +69,12 @@ function App() {
               path="/preview/company-manager"
               element={<CompanyManagerDashboard />}
             />
-            <Route path="/doctor/dashboard" element={<DoctorDashboard />} />
 
             {/* Doctor routes */}
-            <Route path="/doctor/dashboard" element={<DoctorDashboard />} />
+            <Route
+              path="/doctor/dashboard"
+              element={<Navigate to="/doctor/medical-records" replace />}
+            />
             <Route
               path="/doctor/medical-records"
               element={<MedicalRecordsPage />}

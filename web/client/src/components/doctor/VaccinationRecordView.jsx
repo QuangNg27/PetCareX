@@ -1,13 +1,34 @@
 import React, { useState, useEffect } from "react";
+import toast from "react-hot-toast";
 import { useAuth } from "@context/AuthContext";
 import doctorService from "@services/doctorService";
-import { EditIcon } from "@components/common/icons";
+import { EditIcon, ChevronDownIcon } from "@components/common/icons";
 
 const VaccinationRecordView = () => {
   const { user } = useAuth();
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [expandedRows, setExpandedRows] = useState(new Set());
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const itemsPerPage = 10;
+
+  const toggleRowExpand = (recordId) => {
+    const newExpanded = new Set(expandedRows);
+    if (newExpanded.has(recordId)) {
+      newExpanded.delete(recordId);
+    } else {
+      newExpanded.add(recordId);
+    }
+    setExpandedRows(newExpanded);
+  };
+
+  // Reset to page 1 when user/branch changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [user?.MaCN]);
+
   // no product selection anymore — this page only assigns the current doctor to a session
 
   useEffect(() => {
@@ -44,12 +65,31 @@ const VaccinationRecordView = () => {
         const res = await doctorService.getVaccinations(branchId);
         // eslint-disable-next-line no-console
         console.log("VaccinationRecordView: vaccinations response:", res);
-        const items =
-          (res && (res.data || res.vaccinations)) ||
-          (Array.isArray(res) ? res : res || []);
+        let items = [];
+        let total = 0;
+
+        if (res && res.data) {
+          items = res.data;
+          total = res.total || res.data.length;
+        } else if (res && res.vaccinations) {
+          items = res.vaccinations;
+          total = res.totalCount || res.vaccinations.length;
+        } else if (Array.isArray(res)) {
+          items = res;
+          total = res.length;
+        }
+
+        // Filter: only show vaccinations without assigned doctor or assigned to current user
+        const filteredItems = items.filter(
+          (r) => !r.MaNV || r.MaNV === user?.MaNV
+        );
+
         if (!mounted) return;
+
+        setTotalRecords(filteredItems.length);
+
         // Base mapping for vaccination sessions
-        const baseRecords = items.map((r, idx) => ({
+        const baseRecords = filteredItems.map((r, idx) => ({
           id: r.id || r.MaTP || idx,
           MaTP: r.MaTP || r.id || null,
           TenThuCung: r.TenThuCung || r.petName || r.Ten || "",
@@ -94,13 +134,26 @@ const VaccinationRecordView = () => {
             Vaccines: detailsMap.get(rec.MaTP) || [],
           }));
 
-          setRecords(merged);
+          // Paginate results
+          const startIdx = (currentPage - 1) * itemsPerPage;
+          const paginatedRecords = merged.slice(
+            startIdx,
+            startIdx + itemsPerPage
+          );
+
+          setRecords(paginatedRecords);
           setError(null); // Clear any previous errors on successful load
         } catch (e) {
           // If details fetching fails, still show baseRecords
           // eslint-disable-next-line no-console
           console.error("Error fetching vaccination details:", e);
-          setRecords(baseRecords);
+          // Paginate baseRecords
+          const startIdx = (currentPage - 1) * itemsPerPage;
+          const paginatedRecords = baseRecords.slice(
+            startIdx,
+            startIdx + itemsPerPage
+          );
+          setRecords(paginatedRecords);
           setError(null); // Clear errors on successful base records load
         }
       } catch (err) {
@@ -120,7 +173,7 @@ const VaccinationRecordView = () => {
     return () => {
       mounted = false;
     };
-  }, [user]);
+  }, [user, currentPage]);
 
   // Assign the current logged-in doctor (user.MaNV) to the vaccination session.
   // The backend `updateVaccinationDetails` endpoint will accept an empty details array
@@ -128,14 +181,9 @@ const VaccinationRecordView = () => {
   const handleAssign = async (record) => {
     if (!record) return;
     if (record.MaNV) {
-      setError({ message: "Phiên này đã có bác sĩ phụ trách" });
+      toast.error("Phiên này đã có bác sĩ phụ trách");
       return;
     }
-
-    const confirmMsg = `Bạn muốn nhận phiên tiêm cho ${
-      record.TenThuCung || "(không tên)"
-    }?`;
-    if (!window.confirm(confirmMsg)) return;
 
     try {
       setLoading(true);
@@ -153,10 +201,13 @@ const VaccinationRecordView = () => {
             : r
         )
       );
+      toast.success(
+        `Nhận phiên tiêm cho ${record.TenThuCung || "(không tên)"} thành công!`
+      );
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error("Failed to assign vaccination session:", err);
-      setError({ message: "Gán phiên thất bại", raw: err });
+      toast.error("Gán phiên thất bại");
     } finally {
       setLoading(false);
     }
@@ -171,7 +222,7 @@ const VaccinationRecordView = () => {
       )}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Hồ sơ tiêm chủng</h2>
+          <h2 className="text-2xl font-bold text-gray-900">Tiêm phòng</h2>
           <p className="text-sm text-gray-600 mt-1">
             Tổng số: {records.length} bản ghi
           </p>
@@ -199,13 +250,6 @@ const VaccinationRecordView = () => {
               </th>
               <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">
                 Ngày tiêm
-              </th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">
-                Ngày tiêm tiếp
-              </th>
-              {/* Trạng thái column removed */}
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">
-                Ghi chú
               </th>
               <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">
                 Thao tác
@@ -266,19 +310,6 @@ const VaccinationRecordView = () => {
                       ? new Date(record.NgayTiem).toLocaleDateString("vi-VN")
                       : "-"}
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-700">
-                    {record.NgayTiemTiep
-                      ? new Date(record.NgayTiemTiep).toLocaleDateString(
-                          "vi-VN"
-                        )
-                      : "-"}
-                  </td>
-                  {/* Trạng thái column removed */}
-                  <td className="px-6 py-4 text-sm text-gray-700">
-                    <div className="max-w-xs truncate" title={record.GhiChu}>
-                      {record.GhiChu || "-"}
-                    </div>
-                  </td>
                   <td className="px-6 py-4 text-sm">
                     <div className="flex gap-2">
                       <button
@@ -288,88 +319,123 @@ const VaccinationRecordView = () => {
                       >
                         <EditIcon size={18} />
                       </button>
+                      <button
+                        onClick={() => toggleRowExpand(record.id)}
+                        className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                        title={
+                          expandedRows.has(record.id)
+                            ? "Ẩn chi tiết"
+                            : "Xem chi tiết"
+                        }
+                      >
+                        <ChevronDownIcon
+                          size={18}
+                          className={`transform transition-transform ${
+                            expandedRows.has(record.id) ? "rotate-180" : ""
+                          }`}
+                        />
+                      </button>
                     </div>
                   </td>
                 </tr>
 
-                {/* Details row: show vaccine item rows matching the SQL */}
-                <tr className="bg-gray-50">
-                  <td colSpan={7} className="px-6 py-4">
-                    {record.Vaccines && record.Vaccines.length > 0 ? (
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-gray-700">
-                          <thead>
-                            <tr>
-                              <th className="px-3 py-2 text-left font-medium">
-                                Thú cưng
-                              </th>
-                              <th className="px-3 py-2 text-left font-medium">
-                                Tên vắc-xin
-                              </th>
-                              <th className="px-3 py-2 text-left font-medium">
-                                Liều lượng
-                              </th>
-                              <th className="px-3 py-2 text-left font-medium">
-                                Gói tiêm
-                              </th>
-                              <th className="px-3 py-2 text-left font-medium">
-                                Ngày tiêm
-                              </th>
-                              <th className="px-3 py-2 text-left font-medium">
-                                Ngày kết thúc gói
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y">
-                            {record.Vaccines.map((v, i) => (
-                              <tr key={i} className="">
-                                <td className="px-3 py-2">
-                                  {v.TenThuCung || record.TenThuCung || "-"}
-                                </td>
-                                <td className="px-3 py-2">
-                                  {v.TenVaccine ||
-                                    v.TenSP ||
-                                    v.TenVacXin ||
-                                    v.name ||
-                                    "-"}
-                                </td>
-                                <td className="px-3 py-2">
-                                  {v.LieuLuong || "-"}
-                                </td>
-                                <td className="px-3 py-2">
-                                  {v.GoiTiem || v.MaGoi || "-"}
-                                </td>
-                                <td className="px-3 py-2">
-                                  {v.NgayTiem
-                                    ? new Date(v.NgayTiem).toLocaleDateString(
-                                        "vi-VN"
-                                      )
-                                    : "-"}
-                                </td>
-                                <td className="px-3 py-2">
-                                  {v.NgayKetThuc
-                                    ? new Date(
-                                        v.NgayKetThuc
-                                      ).toLocaleDateString("vi-VN")
-                                    : "-"}
-                                </td>
+                {/* Details row: show vaccine item rows matching the SQL - only if expanded */}
+                {expandedRows.has(record.id) && (
+                  <tr className="bg-gray-50">
+                    <td colSpan={7} className="px-6 py-4">
+                      {record.Vaccines && record.Vaccines.length > 0 ? (
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-sm text-gray-700">
+                            <thead>
+                              <tr>
+                                <th className="px-3 py-2 text-left font-medium">
+                                  Thú cưng
+                                </th>
+                                <th className="px-3 py-2 text-left font-medium">
+                                  Tên vắc-xin
+                                </th>
+                                <th className="px-3 py-2 text-left font-medium">
+                                  Liều lượng
+                                </th>
+                                <th className="px-3 py-2 text-left font-medium">
+                                  Ngày tiêm
+                                </th>
                               </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    ) : (
-                      <div className="text-sm text-gray-500">
-                        Không có vắc-xin chi tiết cho phiên này.
-                      </div>
-                    )}
-                  </td>
-                </tr>
+                            </thead>
+                            <tbody className="divide-y">
+                              {record.Vaccines.map((v, i) => (
+                                <tr key={i} className="">
+                                  <td className="px-3 py-2">
+                                    {v.TenThuCung || record.TenThuCung || "-"}
+                                  </td>
+                                  <td className="px-3 py-2">
+                                    {v.TenVaccine ||
+                                      v.TenSP ||
+                                      v.TenVacXin ||
+                                      v.name ||
+                                      "-"}
+                                  </td>
+                                  <td className="px-3 py-2">
+                                    {v.LieuLuong || "-"}
+                                  </td>
+                                  <td className="px-3 py-2">
+                                    {v.NgayTiem
+                                      ? new Date(v.NgayTiem).toLocaleDateString(
+                                          "vi-VN"
+                                        )
+                                      : "-"}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      ) : (
+                        <div className="text-sm text-gray-500">
+                          Không có vắc-xin chi tiết cho phiên này.
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                )}
               </React.Fragment>
             ))}
           </tbody>
         </table>
       </div>
+
+      {/* Pagination */}
+      {totalRecords > itemsPerPage && (
+        <div className="mt-6 flex items-center justify-between">
+          <div className="text-sm text-gray-600">
+            Trang {currentPage} / {Math.ceil(totalRecords / itemsPerPage)}{" "}
+            (Tổng: {totalRecords})
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+              disabled={currentPage === 1}
+              className="px-4 py-2 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            >
+              ← Trước
+            </button>
+            <button
+              onClick={() =>
+                setCurrentPage(
+                  Math.min(
+                    Math.ceil(totalRecords / itemsPerPage),
+                    currentPage + 1
+                  )
+                )
+              }
+              disabled={currentPage >= Math.ceil(totalRecords / itemsPerPage)}
+              className="px-4 py-2 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            >
+              Sau →
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

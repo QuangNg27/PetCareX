@@ -4,7 +4,7 @@ import MedicalRecordView from "@components/doctor/MedicalRecordView";
 
 const MedicalRecordsPage = () => {
   return (
-    <DoctorDashboardLayout title="Hồ sơ y tế">
+    <DoctorDashboardLayout title="Khám bệnh">
       <MedicalRecordView />
     </DoctorDashboardLayout>
   );

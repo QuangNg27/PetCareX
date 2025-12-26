@@ -345,7 +345,15 @@ class ServiceController {
 
   listExaminations = async (req, res, next) => {
     try {
-      const { branchId, doctorId, petId, fromDate, toDate } = req.query;
+      const {
+        branchId,
+        doctorId,
+        petId,
+        fromDate,
+        toDate,
+        page = 1,
+        limit = 10,
+      } = req.query;
       const requesterId = req.user.MaKH || req.user.MaNV || req.user.MaTK;
       const requesterRole = req.user.VaiTro || req.user.role;
       const filters = {
@@ -356,13 +364,28 @@ class ServiceController {
         ToDate: toDate || null,
       };
       const requesterBranch = req.user.MaCN || null;
+      const pageNum = Math.max(1, parseInt(page) || 1);
+      const pageSize = Math.max(1, Math.min(100, parseInt(limit) || 10));
+
       const records = await this.serviceService.getExaminations(
         filters,
         requesterId,
         requesterRole,
         requesterBranch
       );
-      res.json({ success: true, data: records });
+
+      const total = records.length;
+      const startIdx = (pageNum - 1) * pageSize;
+      const endIdx = startIdx + pageSize;
+      const paginatedData = records.slice(startIdx, endIdx);
+
+      res.json({
+        success: true,
+        data: paginatedData,
+        total,
+        page: pageNum,
+        limit: pageSize,
+      });
     } catch (error) {
       next(error);
     }
@@ -395,7 +418,15 @@ class ServiceController {
 
   listVaccinations = async (req, res, next) => {
     try {
-      const { branchId, doctorId, petId, fromDate, toDate } = req.query;
+      const {
+        branchId,
+        doctorId,
+        petId,
+        fromDate,
+        toDate,
+        page = 1,
+        limit = 10,
+      } = req.query;
       const requesterId = req.user.MaKH || req.user.MaNV || req.user.MaTK;
       const requesterRole = req.user.VaiTro || req.user.role;
       const filters = {
@@ -406,13 +437,28 @@ class ServiceController {
         ToDate: toDate || null,
       };
       const requesterBranch = req.user.MaCN || null;
+      const pageNum = Math.max(1, parseInt(page) || 1);
+      const pageSize = Math.max(1, Math.min(100, parseInt(limit) || 10));
+
       const records = await this.serviceService.getVaccinations(
         filters,
         requesterId,
         requesterRole,
         requesterBranch
       );
-      res.json({ success: true, data: records });
+
+      const total = records.length;
+      const startIdx = (pageNum - 1) * pageSize;
+      const endIdx = startIdx + pageSize;
+      const paginatedData = records.slice(startIdx, endIdx);
+
+      res.json({
+        success: true,
+        data: paginatedData,
+        total,
+        page: pageNum,
+        limit: pageSize,
+      });
     } catch (error) {
       next(error);
     }
