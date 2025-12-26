@@ -243,12 +243,6 @@ const VaccinationRecordView = () => {
                 Bác sĩ phụ trách
               </th>
               <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">
-                Tên vắc-xin
-              </th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">
-                Liều lượng
-              </th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">
                 Ngày tiêm
               </th>
               <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">
@@ -276,34 +270,6 @@ const VaccinationRecordView = () => {
                     ) : (
                       <span className="text-gray-400">-</span>
                     )}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-700">
-                    {/* summary: show comma-separated vaccine names if available */}
-                    <div
-                      className="max-w-xs truncate"
-                      title={
-                        record.Vaccines && record.Vaccines.length
-                          ? record.Vaccines.map(
-                              (v) =>
-                                v.TenVaccine || v.TenSP || v.TenVacXin || v.name
-                            ).join(", ")
-                          : "-"
-                      }
-                    >
-                      {record.Vaccines && record.Vaccines.length
-                        ? record.Vaccines.map(
-                            (v) =>
-                              v.TenVaccine || v.TenSP || v.TenVacXin || v.name
-                          ).join(", ")
-                        : "-"}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-700">
-                    {record.Vaccines && record.Vaccines.length
-                      ? record.Vaccines.map((v) => v.LieuLuong || "-").join(
-                          ", "
-                        )
-                      : "-"}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-700">
                     {record.NgayTiem
@@ -342,32 +308,23 @@ const VaccinationRecordView = () => {
                 {/* Details row: show vaccine item rows matching the SQL - only if expanded */}
                 {expandedRows.has(record.id) && (
                   <tr className="bg-gray-50">
-                    <td colSpan={7} className="px-6 py-4">
+                    <td colSpan={5} className="px-6 py-4">
                       {record.Vaccines && record.Vaccines.length > 0 ? (
                         <div className="overflow-x-auto">
                           <table className="w-full text-sm text-gray-700">
                             <thead>
                               <tr>
                                 <th className="px-3 py-2 text-left font-medium">
-                                  Thú cưng
-                                </th>
-                                <th className="px-3 py-2 text-left font-medium">
                                   Tên vắc-xin
                                 </th>
                                 <th className="px-3 py-2 text-left font-medium">
                                   Liều lượng
-                                </th>
-                                <th className="px-3 py-2 text-left font-medium">
-                                  Ngày tiêm
                                 </th>
                               </tr>
                             </thead>
                             <tbody className="divide-y">
                               {record.Vaccines.map((v, i) => (
                                 <tr key={i} className="">
-                                  <td className="px-3 py-2">
-                                    {v.TenThuCung || record.TenThuCung || "-"}
-                                  </td>
                                   <td className="px-3 py-2">
                                     {v.TenVaccine ||
                                       v.TenSP ||
@@ -377,13 +334,6 @@ const VaccinationRecordView = () => {
                                   </td>
                                   <td className="px-3 py-2">
                                     {v.LieuLuong || "-"}
-                                  </td>
-                                  <td className="px-3 py-2">
-                                    {v.NgayTiem
-                                      ? new Date(v.NgayTiem).toLocaleDateString(
-                                          "vi-VN"
-                                        )
-                                      : "-"}
                                   </td>
                                 </tr>
                               ))}
