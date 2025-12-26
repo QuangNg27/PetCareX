@@ -450,3 +450,9 @@ export const PrintIcon = (props) => (
     <rect x="6" y="14" width="12" height="8" />
   </BaseIcon>
 );
+
+export const ChevronDownIcon = (props) => (
+  <BaseIcon {...props}>
+    <polyline points="6 9 12 15 18 9" />
+  </BaseIcon>
+);

@@ -1,28 +1,32 @@
 import React from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
+import { useAuth } from "@context/AuthContext";
 import {
   HomeIcon,
   ClipboardIcon,
   ShieldIcon,
   PetIcon,
+  LogOutIcon,
 } from "@components/common/icons";
 
 const Sidebar = () => {
+  const navigate = useNavigate();
+  const { logout } = useAuth();
+
+  const handleLogout = async () => {
+    await logout();
+    navigate("/login");
+  };
+
   const menuItems = [
     {
-      icon: HomeIcon,
-      label: "Tổng quan",
-      path: "/doctor/dashboard",
-      end: true,
-    },
-    {
       icon: ClipboardIcon,
-      label: "Hồ sơ y tế",
+      label: "Khám bệnh",
       path: "/doctor/medical-records",
     },
     {
       icon: ShieldIcon,
-      label: "Tiêm chủng",
+      label: "Tiêm phòng",
       path: "/doctor/vaccinations",
     },
   ];
@@ -69,6 +73,17 @@ const Sidebar = () => {
           })}
         </ul>
       </nav>
+
+      {/* Logout button at bottom */}
+      <div className="p-4 border-t border-gray-200">
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-error-600 hover:bg-error-50 rounded-lg transition-colors"
+        >
+          <LogOutIcon size={20} />
+          <span>Đăng xuất</span>
+        </button>
+      </div>
     </aside>
   );
 };

@@ -782,13 +782,6 @@ const InvoicePage = () => {
                       🏦 Chuyển khoản
                     </button>
                   </div>
-                  <button
-                    onClick={handlePrint}
-                    disabled={invoiceItems.length === 0}
-                    className="w-full px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors font-bold disabled:opacity-50 flex items-center justify-center gap-2"
-                  >
-                    <PrintIcon size={18} /> In hóa đơn
-                  </button>
                 </div>
 
                 {/* Info */}

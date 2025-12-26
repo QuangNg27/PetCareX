@@ -17,6 +17,9 @@ const MedicalRecordView = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const { user } = useAuth();
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const itemsPerPage = 10;
 
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -39,6 +42,11 @@ const MedicalRecordView = () => {
   const [products, setProducts] = useState([]);
   const [pets, setPets] = useState([]);
 
+  // Reset to page 1 when user/branch changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [user?.MaCN]);
+
   // Load danh sách hồ sơ
   useEffect(() => {
     let mounted = true;
@@ -46,10 +54,24 @@ const MedicalRecordView = () => {
       try {
         setLoading(true);
         const branchId = user?.MaCN;
-        const res = await doctorService.getExaminations(branchId);
-        const items =
-          (res && (res.data || res.examinations)) ||
-          (Array.isArray(res) ? res : []);
+        const res = await doctorService.getExaminations(branchId, {
+          page: currentPage,
+          limit: itemsPerPage,
+        });
+
+        let items = [];
+        let total = 0;
+
+        if (res && res.data) {
+          items = res.data;
+          total = res.total || res.data.length;
+        } else if (res && res.examinations) {
+          items = res.examinations;
+          total = res.totalCount || res.examinations.length;
+        } else if (Array.isArray(res)) {
+          items = res;
+          total = res.length;
+        }
 
         if (!mounted) return;
         setRecords(
@@ -58,6 +80,7 @@ const MedicalRecordView = () => {
             id: r.MaKB,
           }))
         );
+        setTotalRecords(total);
       } catch (err) {
         console.error("Lỗi tải hồ sơ:", err);
       } finally {
@@ -68,7 +91,7 @@ const MedicalRecordView = () => {
     return () => {
       mounted = false;
     };
-  }, [user?.MaCN]);
+  }, [user?.MaCN, currentPage]);
 
   // Load thuốc và thú cưng
   useEffect(() => {
@@ -218,13 +241,39 @@ const MedicalRecordView = () => {
         updatePayload
       );
 
+      // Reload records from API - reset to page 1 to see latest record
+      const branchId = user?.MaCN;
+      const res = await doctorService.getExaminations(branchId, {
+        page: 1,
+        limit: itemsPerPage,
+      });
+
+      let items = [];
+      let total = 0;
+
+      if (res && res.data) {
+        items = res.data;
+        total = res.total || res.data.length;
+      } else if (res && res.examinations) {
+        items = res.examinations;
+        total = res.totalCount || res.examinations.length;
+      } else if (Array.isArray(res)) {
+        items = res;
+        total = res.length;
+      }
+
       setRecords(
-        records.map((r) =>
-          r.MaKB === editingId ? { ...r, ...updatePayload.examData } : r
-        )
+        items.map((r) => ({
+          ...r,
+          id: r.MaKB,
+        }))
       );
+      setTotalRecords(total);
+      setCurrentPage(1);
+
       toast.success("Cập nhật thành công!");
       setShowAddForm(false);
+      setEditingId(null);
     } catch (err) {
       console.error("Lỗi chi tiết:", err);
       const errorMessage =
@@ -241,24 +290,11 @@ const MedicalRecordView = () => {
   const addPrescriptionRow = () =>
     setPrescriptions([...prescriptions, { MaSP: "", SoLuong: 1 }]);
 
-  const removePrescriptionRow = async (idx) => {
-    const prescription = prescriptions[idx];
-
-    // Nếu là edit mode và thuốc đã được lưu vào DB (có TenSP)
-    if (editingId && prescription.TenSP) {
-      try {
-        await doctorService.deletePrescription(editingId, prescription.MaSP);
-        toast.success("Xóa thuốc thành công!");
-      } catch (err) {
-        console.error("Lỗi xóa thuốc:", err);
-        toast.error(
-          "Lỗi xóa thuốc: " + (err.response?.data?.message || err.message)
-        );
-        return;
-      }
-    }
-
+  const removePrescriptionRow = (idx) => {
+    // Chỉ update state, không gọi API xóa ngay
+    // Sẽ xóa khi click Save, backend sẽ xóa all + thêm lại những cái còn lại
     setPrescriptions(prescriptions.filter((_, i) => i !== idx));
+    toast.success("Đã xóa thuốc khỏi danh sách (nhấn Lưu để cập nhật)");
   };
 
   const updatePrescriptionRow = (idx, field, value) => {
@@ -278,7 +314,7 @@ const MedicalRecordView = () => {
 
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Hồ sơ y tế</h2>
+          <h2 className="text-2xl font-bold text-gray-900">Khám bệnh</h2>
           <p className="text-sm text-gray-600">
             Tổng số: {records.length} hồ sơ
           </p>
@@ -309,13 +345,14 @@ const MedicalRecordView = () => {
                   </label>
                   <input
                     type="number"
-                    placeholder="Nhập mã chi nhánh"
-                    className="w-full px-3 py-2 border rounded"
+                    className="w-full px-3 py-2 border rounded bg-gray-100"
                     value={formData.MaCN}
-                    onChange={(e) =>
-                      setFormData({ ...formData, MaCN: e.target.value })
-                    }
+                    readOnly
+                    disabled
                   />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Tự động từ chi nhánh đang đăng nhập
+                  </p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">
@@ -488,7 +525,7 @@ const MedicalRecordView = () => {
                       <option value="">Chọn thuốc...</option>
                       {products.map((prod) => (
                         <option key={prod.MaSP} value={prod.MaSP}>
-                          {prod.TenSP} (Ton: {prod.SLTonKho})
+                          {prod.TenSP}
                         </option>
                       ))}
                     </select>
@@ -590,6 +627,39 @@ const MedicalRecordView = () => {
           </tbody>
         </table>
       </div>
+
+      {/* Pagination */}
+      {totalRecords > itemsPerPage && (
+        <div className="mt-6 flex items-center justify-between">
+          <div className="text-sm text-gray-600">
+            Trang {currentPage} / {Math.ceil(totalRecords / itemsPerPage)}{" "}
+            (Tổng: {totalRecords})
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+              disabled={currentPage === 1}
+              className="px-4 py-2 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            >
+              ← Trước
+            </button>
+            <button
+              onClick={() =>
+                setCurrentPage(
+                  Math.min(
+                    Math.ceil(totalRecords / itemsPerPage),
+                    currentPage + 1
+                  )
+                )
+              }
+              disabled={currentPage >= Math.ceil(totalRecords / itemsPerPage)}
+              className="px-4 py-2 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            >
+              Sau →
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

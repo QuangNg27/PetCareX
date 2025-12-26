@@ -84,6 +84,19 @@ class ServiceRepository extends BaseRepository {
   async updateMedicalExamination(examinationId, updateData) {
     const { TrieuChung, ChanDoan, NgayTaiKham, MaNV } = updateData;
 
+    // First verify exam exists
+    const checkBeforeUpdate = await this.execute(
+      `SELECT MaKB FROM Kham_benh WHERE MaKB = @MaKB`,
+      { MaKB: parseInt(examinationId) }
+    );
+
+    if (
+      !checkBeforeUpdate.recordset ||
+      checkBeforeUpdate.recordset.length === 0
+    ) {
+      throw new Error(`Examination ${examinationId} not found`);
+    }
+
     const result = await this.execute(
       `
             UPDATE Kham_benh 
@@ -98,9 +111,24 @@ class ServiceRepository extends BaseRepository {
         ChanDoan,
         NgayTaiKham,
         MaNV,
-        MaKB: examinationId,
+        MaKB: parseInt(examinationId),
       }
     );
+
+    // Verify exam still exists after update
+    const checkAfterUpdate = await this.execute(
+      `SELECT MaKB FROM Kham_benh WHERE MaKB = @MaKB`,
+      { MaKB: parseInt(examinationId) }
+    );
+
+    if (
+      !checkAfterUpdate.recordset ||
+      checkAfterUpdate.recordset.length === 0
+    ) {
+      throw new Error(
+        `CRITICAL: Examination ${examinationId} was deleted during update`
+      );
+    }
 
     return result.rowsAffected[0] > 0;
   }
@@ -659,14 +687,19 @@ class ServiceRepository extends BaseRepository {
   }
 
   async deletePrescription(examinationId, medicineId) {
+    // Validate parameters
+    if (!examinationId || !medicineId) {
+      throw new Error("examinationId and medicineId are required");
+    }
+
     const result = await this.execute(
       `
     DELETE FROM Toa_thuoc
     WHERE MaKB = @MaKB AND MaSP = @MaSP;
     `,
       {
-        MaKB: examinationId,
-        MaSP: medicineId,
+        MaKB: parseInt(examinationId),
+        MaSP: parseInt(medicineId),
       }
     );
 
@@ -674,15 +707,42 @@ class ServiceRepository extends BaseRepository {
   }
 
   async deletePrescriptionsByExamination(examinationId) {
+    // Validate parameter
+    if (!examinationId) {
+      throw new Error("examinationId is required");
+    }
+
+    // First, check if exam exists
+    const checkResult = await this.execute(
+      `SELECT MaKB FROM Kham_benh WHERE MaKB = @MaKB`,
+      { MaKB: parseInt(examinationId) }
+    );
+
+    if (!checkResult.recordset || checkResult.recordset.length === 0) {
+      throw new Error(`Examination ${examinationId} not found`);
+    }
+
     const result = await this.execute(
       `
     DELETE FROM Toa_thuoc
     WHERE MaKB = @MaKB;
     `,
       {
-        MaKB: examinationId,
+        MaKB: parseInt(examinationId),
       }
     );
+
+    // Verify exam still exists after delete
+    const verifyResult = await this.execute(
+      `SELECT MaKB FROM Kham_benh WHERE MaKB = @MaKB`,
+      { MaKB: parseInt(examinationId) }
+    );
+
+    if (!verifyResult.recordset || verifyResult.recordset.length === 0) {
+      throw new Error(
+        `CRITICAL: Examination ${examinationId} was accidentally deleted during prescription deletion`
+      );
+    }
 
     return result.rowsAffected[0];
   }

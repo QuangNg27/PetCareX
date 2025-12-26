@@ -4,7 +4,7 @@ import VaccinationRecordView from "@components/doctor/VaccinationRecordView";
 
 const VaccinationsPage = () => {
   return (
-    <DoctorDashboardLayout title="Tiêm chủng">
+    <DoctorDashboardLayout title="Tiêm phòng">
       <VaccinationRecordView />
     </DoctorDashboardLayout>
   );
