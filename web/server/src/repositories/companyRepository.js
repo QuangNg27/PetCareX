@@ -298,6 +298,11 @@ class CompanyRepository extends BaseRepository {
                 VALUES (@MaNV, @MaCN, @NgayBD, NULL)
             `, {MaNV: newEmployeeRecord.recordset[0].MaNV, MaCN: employeeData.branch, NgayBD: employeeData.entryDate});
 
+            const new_account = await this.execute(`
+                INSERT INTO Tai_khoan (TenDangNhap, MatKhau, MaKH, MaNV, VaiTro)
+                VALUES (@fullname, @password, NULL, @MaNV, @role)
+            `, {fullname: employeeData.fullName.replace(/\s+/g, '').toLowerCase(), password: 'password123', MaNV: newEmployeeRecord.recordset[0].MaNV, role: employeeData.role});
+
             const branch_name = await this.execute(`
                 SELECT TenCN FROM Chi_nhanh WHERE MaCN = @MaCN
             `, {MaCN: employeeData.branch});
@@ -337,6 +342,19 @@ class CompanyRepository extends BaseRepository {
                 SET NgayKT = @NgayKT
                 WHERE MaNV = @id AND NgayKT IS NULL
             `, {id, NgayKT: new Date()});
+
+            const previousRole = await this.execute(`
+                SELECT VaiTro FROM Tai_khoan
+                WHERE MaNV = @id
+            `, {id});
+
+            if(previousRole.recordset[0].VaiTro !== employeeData.role) {
+                const updateAccount = await this.execute(`
+                    UPDATE Tai_khoan
+                    SET VaiTro = @role
+                    WHERE MaNV = @id
+                `, {id, role: employeeData.role});
+            }
 
             if(employeeData.branch !== 'none') {
                 const newHistoryRecord = await this.execute(`
@@ -387,6 +405,11 @@ class CompanyRepository extends BaseRepository {
         try {
             const historyDeletion = await this.execute(`
                 DELETE FROM Lich_su_nhan_vien
+                WHERE MaNV = @id
+            `, {id});
+
+            const accountDeletion = await this.execute(`
+                DELETE FROM Tai_khoan
                 WHERE MaNV = @id
             `, {id});
 

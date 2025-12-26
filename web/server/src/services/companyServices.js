@@ -1,4 +1,4 @@
-const CompanyRepository = require('../repositories/companyRepository');
+const CompanyRepository = require('../repositories/CompanyRepository');
 
 class CompanyService {
     constructor() {
