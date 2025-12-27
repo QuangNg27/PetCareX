@@ -127,12 +127,9 @@ class CustomerRepository extends BaseRepository {
                 kh.DiemLoyalty
             FROM Khach_hang kh
             LEFT JOIN Cap_thanh_vien ctv ON kh.CapDo = ctv.MaCap
-            WHERE kh.HoTen LIKE @SearchTerm
-                OR kh.SoDT LIKE @SearchTerm
-                OR kh.Email LIKE @SearchTerm
-                OR kh.CCCD LIKE @SearchTerm
+            WHERE kh.SoDT = @SearchTerm
         `, { 
-            SearchTerm: `%${searchTerm}%`
+            SearchTerm: searchTerm
         });
 
         return result.recordset;
