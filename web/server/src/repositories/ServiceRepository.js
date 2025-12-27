@@ -186,8 +186,9 @@ class ServiceRepository extends BaseRepository {
     const result = await this.execute(
       `
             INSERT INTO Tiem_phong (MaCN, MaDV, MaTC, NgayTiem)
-            OUTPUT INSERTED.MaTP
-            VALUES (@MaCN, @MaDV, @MaTC, @NgayTiem)
+            VALUES (@MaCN, @MaDV, @MaTC, @NgayTiem);
+            
+            SELECT SCOPE_IDENTITY() AS MaTP;
         `,
       {
         MaCN,
