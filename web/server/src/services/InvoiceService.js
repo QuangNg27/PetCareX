@@ -57,7 +57,15 @@ class InvoiceService {
     }
 
     if (!MaCN) {
-      throw new AppError("Không tìm thấy chi nhánh của nhân viên", 404);
+      console.error(
+        `[InvoiceService.createInvoice] Employee ${
+          requestUser?.MaNV || requesterId
+        } has no branch assignment in Lich_su_nhan_vien`
+      );
+      throw new AppError(
+        "Nhân viên chưa được gán chi nhánh. Vui lòng liên hệ quản lý.",
+        404
+      );
     }
 
     // At least one of CT_SanPham or CT_DichVu must be provided
@@ -220,10 +228,6 @@ class InvoiceService {
     flatServices.forEach((row) => {
       let loaiDichVu = (row.LoaiDichVu || "").trim();
 
-      console.log(
-        `[InvoiceService.getCustomerPetsServices] Processing: loai="${loaiDichVu}", MaKB=${row.MaKB}, MaTP=${row.MaTP}, TenThuCung="${row.TenThuCung}", TenDV="${row.TenDV}"`
-      );
-
       // Chỉ lấy dịch vụ chính (Khám bệnh hoặc Tiêm phòng)
       if (
         loaiDichVu.includes("Khám") ||
@@ -250,9 +254,6 @@ class InvoiceService {
         const key = `vacc_${row.MaTP}`;
         if (!seenKeys.has(key)) {
           seenKeys.add(key);
-          console.log(
-            `[InvoiceService.getCustomerPetsServices] ✓ ADDING VACCINATION: MaTP=${row.MaTP}, TenDV="${row.TenDV}"`
-          );
           mainServices.push({
             loai: "Tiêm phòng",
             MaTP: row.MaTP,
@@ -264,18 +265,8 @@ class InvoiceService {
             NgayDichVu: row.NgayDichVu,
           });
         }
-      } else {
-        console.log(
-          `[InvoiceService.getCustomerPetsServices] ✗ SKIPPING (not Khám/Tiêm): loai="${loaiDichVu}"`
-        );
       }
     });
-
-    console.log(
-      `[InvoiceService.getCustomerPetsServices] Customer ${customerId} services count: ${
-        mainServices?.length || 0
-      }`
-    );
 
     return {
       customerId,

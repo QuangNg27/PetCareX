@@ -214,14 +214,34 @@ const InvoicePage = () => {
   };
 
   const totalAmount = invoiceItems.reduce((sum, item) => {
-    // Cộng giá dịch vụ chính
+    // Skip medicines/vaccines items (already counted separately)
+    if (item.isMedicine) {
+      return sum + item.gia * item.soLuong;
+    }
+
+    // For services: only count main service price (details are added as separate items)
     let itemTotal = item.gia * item.soLuong;
 
-    // Cộng giá của thuốc/vaccine (details)
-    if (Array.isArray(item.details)) {
-      itemTotal += item.details.reduce((detailSum, detail) => {
-        return detailSum + detail.gia * (detail.soLuong || 1);
-      }, 0);
+    // If this is a raw service WITHOUT separated details, count details
+    // (backward compatibility for services that might not have details separated yet)
+    if (
+      item.isService &&
+      Array.isArray(item.details) &&
+      item.details.length > 0
+    ) {
+      // Check if this service's details are already in invoiceItems as separate items
+      const detailsAlreadySeparated = item.details.every((detail) =>
+        invoiceItems.some(
+          (invItem) => invItem.parentServiceId === item.id && invItem.isMedicine
+        )
+      );
+
+      // Only add details if they're NOT already separated as items
+      if (!detailsAlreadySeparated) {
+        itemTotal += item.details.reduce((detailSum, detail) => {
+          return detailSum + detail.gia * (detail.soLuong || 1);
+        }, 0);
+      }
     }
 
     return sum + itemTotal;
@@ -257,25 +277,30 @@ const InvoicePage = () => {
           NgayLap: new Date().toISOString(),
           HinhThucTT: paymentMethod,
           CT_SanPham: [
+            // Regular products
             ...products.map((i) => ({
               MaSP: parseInt(i.id),
               SoLuong: parseInt(i.soLuong),
               GiaApDung: parseFloat(i.gia),
             })),
-            // Medicines are also products (CT_SanPham)
-            ...medicines.map((i) => ({
-              MaSP: parseInt(i.MaSP),
-              SoLuong: parseInt(i.soLuong),
-              GiaApDung: parseFloat(i.gia),
-            })),
+            // Medicines and vaccines as products
+            ...medicines
+              .filter((i) => i.MaSP) // Only include items with MaSP
+              .map((i) => ({
+                MaSP: parseInt(i.MaSP),
+                SoLuong: parseInt(i.soLuong || 1),
+                GiaApDung: parseFloat(i.gia || 0),
+              })),
           ],
           CT_DichVu: services.map((i) => ({
             MaDV: parseInt(i.MaDV),
             MaTC: parseInt(i.MaTC),
             MaKB: i.MaKB ? parseInt(i.MaKB) : null,
+            MaTP: i.MaTP ? parseInt(i.MaTP) : null,
             GiaApDung: parseFloat(i.gia),
           })),
         };
+
         const res = await invoiceService.createInvoice(payload);
         // adapt message from API or fallback
         const msg = res?.message || "Hóa đơn tạo thành công!";
@@ -371,6 +396,7 @@ const InvoicePage = () => {
             const medicines = medicinesRes?.data?.medicines || [];
             medicines.forEach((medicine) => {
               mainServiceItem.details.push({
+                MaSP: medicine.MaSP,
                 tenChiTiet: medicine.TenSP || medicine.TenChiTiet,
                 gia: medicine.SoTien || 0,
                 soLuong: medicine.SoLuong || 1,
@@ -393,6 +419,7 @@ const InvoicePage = () => {
             const vaccines = vaccinesRes?.data?.vaccines || [];
             vaccines.forEach((vaccine) => {
               mainServiceItem.details.push({
+                MaSP: vaccine.MaSP,
                 tenChiTiet: vaccine.TenSP || vaccine.TenChiTiet,
                 gia: vaccine.SoTien || 0,
                 lieuLuong: vaccine.LieuLuong,
@@ -428,9 +455,43 @@ const InvoicePage = () => {
 
   // Add service to invoice
   const addServiceToInvoice = (service) => {
-    const newItem = { ...service, soLuong: 1 };
-    setInvoiceItems([...invoiceItems, newItem]);
-    toast.success(`Đã thêm: ${service.tenSanPham}`);
+    const itemsToAdd = [];
+
+    // Add main service
+    const mainService = {
+      ...service,
+      soLuong: 1,
+    };
+    itemsToAdd.push(mainService);
+
+    // Add medicines/vaccines as separate products
+    if (service.details && service.details.length > 0) {
+      service.details.forEach((detail, idx) => {
+        // Ensure MaSP is properly extracted (might be in MaSP field from backend)
+        const maSP = detail.MaSP || detail.maSP;
+
+        itemsToAdd.push({
+          id: `${service.id}_detail_${idx}`,
+          tenSanPham: detail.tenChiTiet || detail.TenSP || detail.TenChiTiet,
+          gia: detail.gia || detail.SoTien || 0,
+          soLuong: detail.soLuong || detail.SoLuong || 1,
+          MaSP: maSP,
+          isMedicine: true,
+          parentServiceId: service.id,
+          // Keep reference to parent service for CT_DichVu linkage if needed
+          MaKB: service.MaKB || null,
+          MaTP: service.MaTP || null,
+          MaTC: service.MaTC,
+        });
+      });
+    }
+
+    setInvoiceItems([...invoiceItems, ...itemsToAdd]);
+    toast.success(
+      `Đã thêm: ${service.tenSanPham}${
+        service.details?.length ? ` (+ ${service.details.length} chi tiết)` : ""
+      }`
+    );
   };
   return (
     <div className="min-h-screen bg-gray-100">
@@ -603,71 +664,81 @@ const InvoicePage = () => {
                       Dịch vụ của khách hàng ({customerServices.length})
                     </h3>
                     <div className="space-y-2 max-h-80 overflow-y-auto">
-                      {customerServices.map((service, idx) => (
-                        <div
-                          key={idx}
-                          className="bg-gradient-to-r from-blue-50 to-blue-100 p-3 rounded-lg border border-blue-200"
-                        >
-                          <div className="flex items-start justify-between mb-2">
-                            <div className="flex-1">
-                              <p className="text-sm font-bold text-gray-900">
-                                {service.tenSanPham}
-                              </p>
-                              <div className="flex items-center gap-2 mt-1">
-                                <span className="px-2 py-1 bg-blue-600 text-white rounded text-xs font-medium">
-                                  {service.loai}
-                                </span>
-                                <span className="text-sm font-bold text-primary-600">
-                                  {(Number(service.gia) || 0).toLocaleString()}đ
-                                </span>
-                              </div>
-                            </div>
-                            <button
-                              onClick={() => addServiceToInvoice(service)}
-                              className="px-3 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-xs font-medium ml-2"
-                            >
-                              + Thêm
-                            </button>
-                          </div>
-
-                          {/* Service Details (medicines/vaccines) */}
-                          {service.details && service.details.length > 0 && (
-                            <div className="mt-3 pl-3 border-l-2 border-blue-300 space-y-2">
-                              <p className="text-xs font-semibold text-gray-700">
-                                Chi tiết:
-                              </p>
-                              {service.details.map((detail, dIdx) => (
-                                <div
-                                  key={dIdx}
-                                  className="text-xs bg-white p-2 rounded border border-blue-100"
-                                >
-                                  <div className="flex justify-between items-start">
-                                    <span className="text-gray-700 font-medium">
-                                      {detail.tenChiTiet}
-                                    </span>
-                                    <span className="text-primary-600 font-bold">
-                                      {(
-                                        Number(detail.gia) || 0
-                                      ).toLocaleString()}
-                                      đ
-                                    </span>
-                                  </div>
-                                  {detail.soLuong && (
-                                    <p className="text-gray-600 mt-1">
-                                      SL: {detail.soLuong}
-                                    </p>
-                                  )}
-                                  {detail.lieuLuong && (
-                                    <p className="text-gray-600 mt-1">
-                                      Liều: {detail.lieuLuong}
-                                    </p>
-                                  )}
+                      {customerServices
+                        .filter((service) => {
+                          // Hide if already added to invoice
+                          return !invoiceItems.some(
+                            (item) => item.id === service.id && item.isService
+                          );
+                        })
+                        .map((service, idx) => (
+                          <div
+                            key={idx}
+                            className="bg-gradient-to-r from-blue-50 to-blue-100 p-3 rounded-lg border border-blue-200"
+                          >
+                            <div className="flex items-start justify-between mb-2">
+                              <div className="flex-1">
+                                <p className="text-sm font-bold text-gray-900">
+                                  {service.tenSanPham}
+                                </p>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <span className="px-2 py-1 bg-blue-600 text-white rounded text-xs font-medium">
+                                    {service.loai}
+                                  </span>
+                                  <span className="text-sm font-bold text-primary-600">
+                                    {(
+                                      Number(service.gia) || 0
+                                    ).toLocaleString()}
+                                    đ
+                                  </span>
                                 </div>
-                              ))}
+                              </div>
+                              <button
+                                onClick={() => addServiceToInvoice(service)}
+                                className="px-3 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-xs font-medium ml-2"
+                              >
+                                + Thêm
+                              </button>
                             </div>
-                          )}
-                        </div>
-                      ))}
+
+                            {/* Service Details (medicines/vaccines) */}
+                            {service.details && service.details.length > 0 && (
+                              <div className="mt-3 pl-3 border-l-2 border-blue-300 space-y-2">
+                                <p className="text-xs font-semibold text-gray-700">
+                                  Chi tiết:
+                                </p>
+                                {service.details.map((detail, dIdx) => (
+                                  <div
+                                    key={dIdx}
+                                    className="text-xs bg-white p-2 rounded border border-blue-100"
+                                  >
+                                    <div className="flex justify-between items-start">
+                                      <span className="text-gray-700 font-medium">
+                                        {detail.tenChiTiet}
+                                      </span>
+                                      <span className="text-primary-600 font-bold">
+                                        {(
+                                          Number(detail.gia) || 0
+                                        ).toLocaleString()}
+                                        đ
+                                      </span>
+                                    </div>
+                                    {detail.soLuong && (
+                                      <p className="text-gray-600 mt-1">
+                                        SL: {detail.soLuong}
+                                      </p>
+                                    )}
+                                    {detail.lieuLuong && (
+                                      <p className="text-gray-600 mt-1">
+                                        Liều: {detail.lieuLuong}
+                                      </p>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ))}
                     </div>
                   </div>
                 )}
