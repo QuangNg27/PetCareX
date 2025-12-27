@@ -18,7 +18,7 @@ const SQL_ERROR_MAP = {
   2: ERROR_MESSAGES.DATABASE_ERROR, // Timeout
   18: ERROR_MESSAGES.DATABASE_ERROR, // Login failed
   2627: "Dữ liệu đã tồn tại trong hệ thống",
-  547: "Không thể xóa do có dữ liệu liên quan",
+  547: "Lỗi ràng buộc dữ liệu",
   515: "Thiếu thông tin bắt buộc",
   544: "Không thể chèn giá trị NULL",
   8152: "Dữ liệu vượt quá độ dài cho phép",
