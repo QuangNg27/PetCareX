@@ -75,10 +75,10 @@ const EmployeeManagementView = () => {
     reset({
       fullName: selectedEmployee.name,
       gender: selectedEmployee.gender,
-      dob: selectedEmployee.dob,
-      entryDate: selectedEmployee.startDate,
+      dob: selectedEmployee.dob.toString().split('T')[0],
+      entryDate: selectedEmployee.startDate.toString().split('T')[0],
       role: selectedEmployee.role,
-      branch: selectedEmployee.branch,
+      branch: branch.find(b => b.TenCN === selectedEmployee.currentBranch)?.MaCN || "none",
       salary: selectedEmployee.salary,
     });
   } else if (showAddModal) {

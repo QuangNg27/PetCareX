@@ -356,7 +356,7 @@ class CompanyRepository extends BaseRepository {
                 `, {id, role: employeeData.role});
             }
 
-            if(employeeData.branch !== 'none') {
+            if(employeeData.branch !== 'none' && employeeData.branch !== previousBranch.recordset[0]?.MaCN) {
                 const newHistoryRecord = await this.execute(`
                     INSERT INTO Lich_su_nhan_vien (MaNV, MaCN, NgayBD, NgayKT)
                     VALUES (@MaNV, @MaCN, @NgayBD, NULL)
