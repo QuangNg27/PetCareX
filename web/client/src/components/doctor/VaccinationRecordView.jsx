@@ -12,6 +12,8 @@ const VaccinationRecordView = () => {
   const [expandedRows, setExpandedRows] = useState(new Set());
   const [currentPage, setCurrentPage] = useState(1);
   const [totalRecords, setTotalRecords] = useState(0);
+  const [editingRecord, setEditingRecord] = useState(null);
+  const [editingVaccines, setEditingVaccines] = useState([]);
   const itemsPerPage = 10;
 
   const toggleRowExpand = (recordId) => {
@@ -52,6 +54,7 @@ const VaccinationRecordView = () => {
         setLoading(true);
         setError(null);
         const branchId = user?.MaCN;
+        const doctorId = user?.MaNV;
         // Debug: log branchId and call result to diagnose empty responses/timeouts
         // eslint-disable-next-line no-console
         console.log(
@@ -60,15 +63,21 @@ const VaccinationRecordView = () => {
           "user.MaNV=",
           user?.MaNV,
           "user.MaTK=",
-          user?.MaTK
+          user?.MaTK,
+          "page=",
+          currentPage
         );
-        const res = await doctorService.getVaccinations(branchId);
+        const res = await doctorService.getVaccinations(branchId, {
+          doctorId,
+          page: currentPage,
+          limit: itemsPerPage,
+        });
         // eslint-disable-next-line no-console
         console.log("VaccinationRecordView: vaccinations response:", res);
         let items = [];
         let total = 0;
 
-        if (res && res.data) {
+        if (res && res.data && Array.isArray(res.data)) {
           items = res.data;
           total = res.total || res.data.length;
         } else if (res && res.vaccinations) {
@@ -80,13 +89,15 @@ const VaccinationRecordView = () => {
         }
 
         // Filter: only show vaccinations without assigned doctor or assigned to current user
+        // (Backend already filters these, but keep for safety)
         const filteredItems = items.filter(
           (r) => !r.MaNV || r.MaNV === user?.MaNV
         );
 
         if (!mounted) return;
 
-        setTotalRecords(filteredItems.length);
+        // Use backend's total count, not filtered items
+        setTotalRecords(total);
 
         // Base mapping for vaccination sessions
         const baseRecords = filteredItems.map((r, idx) => ({
@@ -134,26 +145,14 @@ const VaccinationRecordView = () => {
             Vaccines: detailsMap.get(rec.MaTP) || [],
           }));
 
-          // Paginate results
-          const startIdx = (currentPage - 1) * itemsPerPage;
-          const paginatedRecords = merged.slice(
-            startIdx,
-            startIdx + itemsPerPage
-          );
-
-          setRecords(paginatedRecords);
+          // Backend already paginated, no need to slice again
+          setRecords(merged);
           setError(null); // Clear any previous errors on successful load
         } catch (e) {
-          // If details fetching fails, still show baseRecords
+          // If details fetching fails, still show baseRecords without pagination needed
           // eslint-disable-next-line no-console
           console.error("Error fetching vaccination details:", e);
-          // Paginate baseRecords
-          const startIdx = (currentPage - 1) * itemsPerPage;
-          const paginatedRecords = baseRecords.slice(
-            startIdx,
-            startIdx + itemsPerPage
-          );
-          setRecords(paginatedRecords);
+          setRecords(baseRecords);
           setError(null); // Clear errors on successful base records load
         }
       } catch (err) {
@@ -208,6 +207,76 @@ const VaccinationRecordView = () => {
       // eslint-disable-next-line no-console
       console.error("Failed to assign vaccination session:", err);
       toast.error("Gán phiên thất bại");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Open edit modal for vaccination details
+  const handleEditVaccines = (record) => {
+    setEditingRecord(record);
+    setEditingVaccines(
+      (record.Vaccines || []).map((v) => ({
+        ...v,
+      }))
+    );
+  };
+
+  // Close edit modal
+  const handleCloseEditModal = () => {
+    setEditingRecord(null);
+    setEditingVaccines([]);
+  };
+
+  // Update vaccine dose/status
+  const handleUpdateVaccine = (index, field, value) => {
+    const updated = [...editingVaccines];
+    updated[index] = { ...updated[index], [field]: value };
+    setEditingVaccines(updated);
+  };
+
+  // Save edited vaccines
+  const handleSaveVaccines = async () => {
+    if (!editingRecord) return;
+
+    try {
+      setLoading(true);
+      const id = editingRecord.MaTP || editingRecord.id;
+      const details = editingVaccines.map((v) => ({
+        MaSP: v.MaSP,
+        LieuLuong: v.LieuLuong || v.LieuLuong,
+        TrangThai: v.TrangThai || "Chưa tiêm",
+      }));
+
+      // eslint-disable-next-line no-console
+      console.log(
+        "handleSaveVaccines: sending to API:",
+        "id=",
+        id,
+        "details=",
+        details
+      );
+
+      await doctorService.updateVaccinationDetails(id, details);
+
+      // eslint-disable-next-line no-console
+      console.log("handleSaveVaccines: API call successful");
+
+      // Update local records
+      setRecords((prev) =>
+        prev.map((r) =>
+          r.id === editingRecord.id || r.MaTP === editingRecord.MaTP
+            ? { ...r, Vaccines: editingVaccines }
+            : r
+        )
+      );
+
+      toast.success("Cập nhật chi tiết tiêm phòng thành công!");
+      handleCloseEditModal();
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error("Failed to save vaccination details:", err);
+      toast.error("Cập nhật chi tiết thất bại");
     } finally {
       setLoading(false);
     }
@@ -320,6 +389,9 @@ const VaccinationRecordView = () => {
                                 <th className="px-3 py-2 text-left font-medium">
                                   Liều lượng
                                 </th>
+                                <th className="px-3 py-2 text-left font-medium">
+                                  Trạng thái
+                                </th>
                               </tr>
                             </thead>
                             <tbody className="divide-y">
@@ -335,10 +407,19 @@ const VaccinationRecordView = () => {
                                   <td className="px-3 py-2">
                                     {v.LieuLuong || "-"}
                                   </td>
+                                  <td className="px-3 py-2">
+                                    {v.TrangThai || "Chưa tiêm"}
+                                  </td>
                                 </tr>
                               ))}
                             </tbody>
                           </table>
+                          <button
+                            onClick={() => handleEditVaccines(record)}
+                            className="mt-3 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm"
+                          >
+                            Chỉnh sửa chi tiết
+                          </button>
                         </div>
                       ) : (
                         <div className="text-sm text-gray-500">
@@ -355,34 +436,123 @@ const VaccinationRecordView = () => {
       </div>
 
       {/* Pagination */}
-      {totalRecords > itemsPerPage && (
+      {totalRecords > 0 && (
         <div className="mt-6 flex items-center justify-between">
           <div className="text-sm text-gray-600">
             Trang {currentPage} / {Math.ceil(totalRecords / itemsPerPage)}{" "}
             (Tổng: {totalRecords})
           </div>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-              disabled={currentPage === 1}
-              className="px-4 py-2 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-            >
-              ← Trước
-            </button>
-            <button
-              onClick={() =>
-                setCurrentPage(
-                  Math.min(
-                    Math.ceil(totalRecords / itemsPerPage),
-                    currentPage + 1
+          {totalRecords > itemsPerPage && (
+            <div className="flex gap-2">
+              <button
+                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                disabled={currentPage === 1}
+                className="px-4 py-2 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+              >
+                ← Trước
+              </button>
+              <button
+                onClick={() =>
+                  setCurrentPage(
+                    Math.min(
+                      Math.ceil(totalRecords / itemsPerPage),
+                      currentPage + 1
+                    )
                   )
-                )
-              }
-              disabled={currentPage >= Math.ceil(totalRecords / itemsPerPage)}
-              className="px-4 py-2 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-            >
-              Sau →
-            </button>
+                }
+                disabled={currentPage >= Math.ceil(totalRecords / itemsPerPage)}
+                className="px-4 py-2 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+              >
+                Sau →
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Edit Vaccines Modal */}
+      {editingRecord && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-96 overflow-y-auto">
+            <div className="p-6 border-b border-gray-200">
+              <h3 className="text-lg font-bold text-gray-900">
+                Chỉnh sửa chi tiết tiêm - {editingRecord.TenThuCung}
+              </h3>
+            </div>
+
+            <div className="p-6 space-y-4">
+              {editingVaccines.length > 0 ? (
+                <>
+                  {editingVaccines.map((v, idx) => (
+                    <div
+                      key={idx}
+                      className="border border-gray-200 rounded-lg p-4 space-y-3"
+                    >
+                      <div className="font-medium text-gray-700">
+                        {v.TenVaccine || v.TenSP || v.TenVacXin || "Vắc-xin"}
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Liều lượng
+                          </label>
+                          <input
+                            type="text"
+                            value={v.LieuLuong || ""}
+                            onChange={(e) =>
+                              handleUpdateVaccine(
+                                idx,
+                                "LieuLuong",
+                                e.target.value
+                              )
+                            }
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="VD: 1 mũi"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Trạng thái
+                          </label>
+                          <select
+                            value={v.TrangThai || "Chưa tiêm"}
+                            onChange={(e) =>
+                              handleUpdateVaccine(
+                                idx,
+                                "TrangThai",
+                                e.target.value
+                              )
+                            }
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          >
+                            <option>Chưa tiêm</option>
+                            <option>Đã tiêm</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </>
+              ) : (
+                <p className="text-gray-500">Không có vắc-xin để chỉnh sửa.</p>
+              )}
+            </div>
+
+            <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
+              <button
+                onClick={handleCloseEditModal}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleSaveVaccines}
+                disabled={loading}
+                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 transition-colors"
+              >
+                {loading ? "Đang lưu..." : "Lưu"}
+              </button>
+            </div>
           </div>
         </div>
       )}

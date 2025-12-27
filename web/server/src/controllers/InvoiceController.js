@@ -11,6 +11,9 @@ class InvoiceController {
     this.getCustomerInvoices = this.getCustomerInvoices.bind(this);
     this.getMyInvoices = this.getMyInvoices.bind(this);
     this.getBranchInvoices = this.getBranchInvoices.bind(this);
+    this.getCustomerPetsServices = this.getCustomerPetsServices.bind(this);
+    this.getMedicinesForExam = this.getMedicinesForExam.bind(this);
+    this.getVaccinesForVaccination = this.getVaccinesForVaccination.bind(this);
   }
 
   async createInvoice(req, res, next) {
@@ -19,17 +22,6 @@ class InvoiceController {
         req.body;
       const requesterId = req.user.MaTK || req.user.userId; // Fix: use MaTK or userId
       const userRole = req.user.role;
-
-      console.log(
-        "[createInvoice] MaKH:",
-        MaKH,
-        "MaCN:",
-        MaCN,
-        "requesterId:",
-        requesterId,
-        "userRole:",
-        userRole
-      );
 
       const result = await this.invoiceService.createInvoice(
         {
@@ -150,6 +142,80 @@ class InvoiceController {
       res.json({
         success: true,
         data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getCustomerPetsServices(req, res, next) {
+    try {
+      const { customerId } = req.params;
+      const requesterId = req.user.MaTK || req.user.userId;
+      const userRole = req.user.role;
+
+      const result = await this.invoiceService.getCustomerPetsServices(
+        parseInt(customerId),
+        requesterId,
+        userRole
+      );
+
+      // Prevent caching for dynamic customer services
+      res.set("Cache-Control", "no-cache, no-store, must-revalidate");
+      res.set("Pragma", "no-cache");
+      res.set("Expires", "0");
+
+      res.json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getMedicinesForExam(req, res, next) {
+    try {
+      const { MaKB } = req.params;
+
+      const medicines = await this.invoiceService.getMedicinesForExam(
+        parseInt(MaKB)
+      );
+
+      res.set("Cache-Control", "no-cache, no-store, must-revalidate");
+      res.set("Pragma", "no-cache");
+      res.set("Expires", "0");
+
+      res.json({
+        success: true,
+        data: {
+          MaKB: parseInt(MaKB),
+          medicines: medicines || [],
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getVaccinesForVaccination(req, res, next) {
+    try {
+      const { MaTP } = req.params;
+
+      const vaccines = await this.invoiceService.getVaccinesForVaccination(
+        parseInt(MaTP)
+      );
+
+      res.set("Cache-Control", "no-cache, no-store, must-revalidate");
+      res.set("Pragma", "no-cache");
+      res.set("Expires", "0");
+
+      res.json({
+        success: true,
+        data: {
+          MaTP: parseInt(MaTP),
+          vaccines: vaccines || [],
+        },
       });
     } catch (error) {
       next(error);

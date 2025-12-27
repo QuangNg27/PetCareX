@@ -6,6 +6,19 @@ class ServiceController {
     this.serviceService = new ServiceService();
   }
 
+  getAllServices = async (req, res, next) => {
+    try {
+      const services = await this.serviceService.getAllServices();
+
+      res.json({
+        success: true,
+        data: services,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
   getBranchServices = async (req, res, next) => {
     try {
       const { branchId } = req.params;

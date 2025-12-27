@@ -27,6 +27,7 @@ const ServicesView = () => {
   const [selectedPackage, setSelectedPackage] = useState('');
   const [branches, setBranches] = useState([]);
   const [pets, setPets] = useState([]);
+  const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
@@ -44,12 +45,14 @@ const ServicesView = () => {
   const loadInitialData = async () => {
     try {
       setLoading(true);
-      const [branchesResponse, petsData, vaccinesResponse] = await Promise.all([
+      const [servicesResponse, branchesResponse, petsData, vaccinesResponse] = await Promise.all([
+        serviceService.getAll(),
         apiClient.get(ENDPOINTS.BRANCHES.LIST),
         cachedPets ? Promise.resolve(cachedPets) : fetchPets(),
         apiClient.get(`${ENDPOINTS.PRODUCTS.CATEGORIES}?category=Vaccine`)
       ]);
       
+      setServices(servicesResponse.data || servicesResponse || []);
       setBranches(branchesResponse.data?.data || branchesResponse.data || []);
       setPets(petsData || []);
       setAvailableVaccines(vaccinesResponse.data?.data || vaccinesResponse.data || []);
@@ -61,30 +64,26 @@ const ServicesView = () => {
     }
   };
 
-  const services = [
-    {
-      id: 1,
-      TenDichVu: 'Khám bệnh',
-      MoTa: 'Khám sức khỏe tổng quát, phát hiện và điều trị các vấn đề sức khỏe cho thú cưng',
-      LoaiDichVu: 'kham-benh',
-      Color: 'blue'
-    },
-    {
-      id: 2,
-      TenDichVu: 'Tiêm phòng',
-      MoTa: 'Tiêm các loại vaccine phòng bệnh để bảo vệ sức khỏe thú cưng',
-      LoaiDichVu: 'tiem-phong',
-      Color: 'green'
-    }
-  ];
+  // Map service names to types and colors
+  const serviceTypeMap = {
+    'Khám bệnh': { LoaiDichVu: 'kham-benh', Color: 'blue', MoTa: 'Khám sức khỏe tổng quát, phát hiện và điều trị các vấn đề sức khỏe cho thú cưng' },
+    'Tiêm phòng': { LoaiDichVu: 'tiem-phong', Color: 'green', MoTa: 'Tiêm các loại vaccine phòng bệnh để bảo vệ sức khỏe thú cưng' }
+  };
+
+  const enrichedServices = services.map(service => ({
+    ...service,
+    id: service.MaDV,
+    TenDichVu: service.TenDV,
+    ...(serviceTypeMap[service.TenDV] || { LoaiDichVu: 'other', Color: 'gray', MoTa: '' })
+  }));
 
   const [selectedCategory, setSelectedCategory] = useState('all');
 
   const categories = [];
 
   const filteredServices = selectedCategory === 'all' 
-    ? services 
-    : services.filter(s => s.LoaiDichVu === selectedCategory);
+    ? enrichedServices 
+    : enrichedServices.filter(s => s.LoaiDichVu === selectedCategory);
 
   const handleBookService = (service) => {
     setSelectedService(service);
@@ -98,10 +97,10 @@ const ServicesView = () => {
     setShowBookingModal(true);
     
     // Filter branches that have this service
-    filterBranchesForService(service.id);
+    filterBranchesForService(service.MaDV);
   };
 
-  const filterBranchesForService = async (serviceId) => {
+  const filterBranchesForService = async (serviceMaDV) => {
     try {
       // Load service availability for all branches
       const branchPromises = branches.map(async (branch) => {
@@ -110,7 +109,7 @@ const ServicesView = () => {
           const services = response.data?.services || response.services || [];
           return {
             branchId: branch.MaChiNhanh,
-            hasService: services.some(s => s.MaDV === serviceId)
+            hasService: services.some(s => s.MaDV === serviceMaDV)
           };
         } catch (err) {
           return { branchId: branch.MaChiNhanh, hasService: false };
@@ -154,7 +153,7 @@ const ServicesView = () => {
         // Create examination
         const examData = {
           MaCN: parseInt(bookingData.branchId),
-          MaDV: selectedService.id,
+          MaDV: selectedService.MaDV,
           MaTC: parseInt(bookingData.petId),
           NgayKham: bookingData.appointmentDate
         };
@@ -178,7 +177,7 @@ const ServicesView = () => {
         
         const vaccData = {
           MaCN: parseInt(bookingData.branchId),
-          MaDV: selectedService.id,
+          MaDV: selectedService.MaDV,
           MaTC: parseInt(bookingData.petId),
           NgayTiem: bookingData.appointmentDate,
           vaccines: vaccinesWithId
@@ -225,12 +224,12 @@ const ServicesView = () => {
     <div className="p-6">
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-gray-900">Dịch vụ chăm sóc thú cưng</h2>
-        <p className="text-sm text-gray-600 mt-1">{services.length} dịch vụ</p>
+        <p className="text-sm text-gray-600 mt-1">{enrichedServices.length} dịch vụ</p>
       </div>
 
       {/* Services Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {services.map(service => (
+        {filteredServices.map(service => (
           <div key={service.id} className={`p-6 rounded-xl shadow-sm border-2 hover:shadow-md transition-all ${
             service.Color === 'blue' ? 'border-blue-200 bg-gradient-to-br from-blue-50 to-blue-100' :
             service.Color === 'green' ? 'border-green-200 bg-gradient-to-br from-green-50 to-green-100' :

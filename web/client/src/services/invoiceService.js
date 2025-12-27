@@ -18,6 +18,27 @@ export const invoiceService = {
     );
     return response.data;
   },
+
+  getCustomerServices: async (customerId) => {
+    const response = await apiClient.get(
+      `/api/invoices/customer-services/${customerId}`
+    );
+    return response.data;
+  },
+
+  getMedicinesForExam: async (MaKB) => {
+    const response = await apiClient.get(
+      `/api/invoices/exam/${MaKB}/medicines`
+    );
+    return response.data;
+  },
+
+  getVaccinesForVaccination: async (MaTP) => {
+    const response = await apiClient.get(
+      `/api/invoices/vaccination/${MaTP}/vaccines`
+    );
+    return response.data;
+  },
 };
 
 export default invoiceService;

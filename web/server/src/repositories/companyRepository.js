@@ -289,8 +289,10 @@ class CompanyRepository extends BaseRepository {
 
             const newEmployeeRecord = await this.execute(`
                 INSERT INTO Nhan_vien (HoTen, GioiTinh, NgaySinh, NgayVaoLam, ChucVu, Luong)
-                OUTPUT INSERTED.MaNV, INSERTED.HoTen, INSERTED.GioiTinh, INSERTED.NgaySinh, INSERTED.NgayVaoLam, INSERTED.ChucVu, INSERTED.Luong
-                VALUES (@HoTen, @GioiTinh, @NgaySinh, @NgayVaoLam, @ChucVu, @Luong)
+                VALUES (@HoTen, @GioiTinh, @NgaySinh, @NgayVaoLam, @ChucVu, @Luong);
+                
+                SELECT SCOPE_IDENTITY() AS MaNV, @HoTen AS HoTen, @GioiTinh AS GioiTinh, 
+                       @NgaySinh AS NgaySinh, @NgayVaoLam AS NgayVaoLam, @ChucVu AS ChucVu, @Luong AS Luong;
             `, insert_data);
             
             const newHistoryRecord = await this.execute(`
@@ -357,10 +359,19 @@ class CompanyRepository extends BaseRepository {
             }
 
             if(employeeData.branch !== 'none' && employeeData.branch !== previousBranch.recordset[0]?.MaCN) {
-                const newHistoryRecord = await this.execute(`
-                    INSERT INTO Lich_su_nhan_vien (MaNV, MaCN, NgayBD, NgayKT)
-                    VALUES (@MaNV, @MaCN, @NgayBD, NULL)
+                // Kiểm tra xem có record nào với cùng MaNV, MaCN và NgayBD không
+                const existingRecord = await this.execute(`
+                    SELECT MaNV FROM Lich_su_nhan_vien
+                    WHERE MaNV = @MaNV AND MaCN = @MaCN AND CAST(NgayBD AS DATE) = CAST(@NgayBD AS DATE)
                 `, {MaNV: id, MaCN: employeeData.branch, NgayBD: new Date()});
+                
+                // Chỉ INSERT nếu chưa có record
+                if(existingRecord.recordset.length === 0) {
+                    const newHistoryRecord = await this.execute(`
+                        INSERT INTO Lich_su_nhan_vien (MaNV, MaCN, NgayBD, NgayKT)
+                        VALUES (@MaNV, @MaCN, @NgayBD, NULL)
+                    `, {MaNV: id, MaCN: employeeData.branch, NgayBD: new Date()});
+                }
             }
 
             const updatedEmployeeRecord = await this.execute(`
@@ -371,7 +382,6 @@ class CompanyRepository extends BaseRepository {
                     NgayVaoLam = @NgayVaoLam,
                     ChucVu = @ChucVu,
                     Luong = @Luong
-                OUTPUT INSERTED.MaNV, INSERTED.HoTen, INSERTED.GioiTinh, INSERTED.NgaySinh, INSERTED.NgayVaoLam, INSERTED.ChucVu, INSERTED.Luong
                 WHERE MaNV = @id
             `, {...update_data});
 

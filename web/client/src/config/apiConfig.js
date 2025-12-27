@@ -44,6 +44,7 @@ export const ENDPOINTS = {
   },
 
   SERVICES: {
+    ALL: "/api/services/all",
     BY_BRANCH: (branchId) => `/api/services/branches/${branchId}/services`,
 
     EXAMINATIONS: {
