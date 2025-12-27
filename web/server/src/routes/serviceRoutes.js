@@ -6,6 +6,13 @@ const { authorizeRoles } = require("../middleware/authorizeRoles");
 const router = express.Router();
 const serviceController = new ServiceController();
 
+// Get all services
+router.get(
+  "/all",
+  authMiddleware,
+  serviceController.getAllServices
+);
+
 // Get services available at a specific branch
 router.get(
   "/branches/:branchId/services",

@@ -12,6 +12,11 @@ class ServiceService {
     this.productRepository = new ProductRepository();
   }
 
+  async getAllServices() {
+    const services = await this.serviceRepository.getAllServices();
+    return services;
+  }
+
   async getBranchServices(branchId) {
     const services = await this.serviceRepository.getBranchServices(branchId);
     return services;
