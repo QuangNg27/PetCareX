@@ -23,17 +23,6 @@ class InvoiceController {
       const requesterId = req.user.MaTK || req.user.userId; // Fix: use MaTK or userId
       const userRole = req.user.role;
 
-      console.log(
-        "[createInvoice] MaKH:",
-        MaKH,
-        "MaCN:",
-        MaCN,
-        "requesterId:",
-        requesterId,
-        "userRole:",
-        userRole
-      );
-
       const result = await this.invoiceService.createInvoice(
         {
           MaKH,
@@ -165,24 +154,10 @@ class InvoiceController {
       const requesterId = req.user.MaTK || req.user.userId;
       const userRole = req.user.role;
 
-      console.log(
-        `[InvoiceController.getCustomerPetsServices] Fetching for customerId: ${customerId}, requesterId: ${requesterId}, userRole: ${userRole}`
-      );
-
       const result = await this.invoiceService.getCustomerPetsServices(
         parseInt(customerId),
         requesterId,
         userRole
-      );
-
-      console.log(
-        `[InvoiceController.getCustomerPetsServices] Result - total: ${
-          result.total
-        }, services count: ${result.services?.length || 0}`
-      );
-      console.log(
-        `[InvoiceController.getCustomerPetsServices] First service:`,
-        result.services?.[0]
       );
 
       // Prevent caching for dynamic customer services
@@ -195,10 +170,6 @@ class InvoiceController {
         data: result,
       });
     } catch (error) {
-      console.error(
-        `[InvoiceController.getCustomerPetsServices] Error: ${error.message}`,
-        error
-      );
       next(error);
     }
   }
@@ -207,22 +178,8 @@ class InvoiceController {
     try {
       const { MaKB } = req.params;
 
-      console.log(
-        `[InvoiceController.getMedicinesForExam] Fetching medicines for MaKB: ${MaKB}`
-      );
-
       const medicines = await this.invoiceService.getMedicinesForExam(
         parseInt(MaKB)
-      );
-
-      console.log(
-        `[InvoiceController.getMedicinesForExam] Found ${
-          medicines?.length || 0
-        } medicines`
-      );
-      console.log(
-        `[InvoiceController.getMedicinesForExam] Medicines data:`,
-        medicines
       );
 
       res.set("Cache-Control", "no-cache, no-store, must-revalidate");
@@ -237,10 +194,6 @@ class InvoiceController {
         },
       });
     } catch (error) {
-      console.error(
-        `[InvoiceController.getMedicinesForExam] Error: ${error.message}`,
-        error
-      );
       next(error);
     }
   }
@@ -249,22 +202,8 @@ class InvoiceController {
     try {
       const { MaTP } = req.params;
 
-      console.log(
-        `[InvoiceController.getVaccinesForVaccination] Fetching vaccines for MaTP: ${MaTP}`
-      );
-
       const vaccines = await this.invoiceService.getVaccinesForVaccination(
         parseInt(MaTP)
-      );
-
-      console.log(
-        `[InvoiceController.getVaccinesForVaccination] Found ${
-          vaccines?.length || 0
-        } vaccines`
-      );
-      console.log(
-        `[InvoiceController.getVaccinesForVaccination] Vaccines data:`,
-        vaccines
       );
 
       res.set("Cache-Control", "no-cache, no-store, must-revalidate");
@@ -279,10 +218,6 @@ class InvoiceController {
         },
       });
     } catch (error) {
-      console.error(
-        `[InvoiceController.getVaccinesForVaccination] Error: ${error.message}`,
-        error
-      );
       next(error);
     }
   }

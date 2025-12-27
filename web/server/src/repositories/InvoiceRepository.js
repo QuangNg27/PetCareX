@@ -260,14 +260,6 @@ class InvoiceRepository extends BaseRepository {
       { MaKH: customerId }
     );
 
-    // eslint-disable-next-line no-console
-    console.log(
-      `[InvoiceRepository.getCustomerPetsServices] Query result - Total rows: ${
-        result.recordset?.length || 0
-      }`,
-      result.recordset ? result.recordset.slice(0, 3) : "No data"
-    );
-
     return result.recordset;
   }
 
@@ -286,12 +278,6 @@ class InvoiceRepository extends BaseRepository {
       { MaKB }
     );
 
-    console.log(
-      `[InvoiceRepository.getMedicinesForExam] MaKB=${MaKB}, found ${
-        result.recordset?.length || 0
-      } medicines`
-    );
-
     return result.recordset || [];
   }
 
@@ -308,12 +294,6 @@ class InvoiceRepository extends BaseRepository {
         WHERE cttp.MaTP = @MaTP
       `,
       { MaTP }
-    );
-
-    console.log(
-      `[InvoiceRepository.getVaccinesForVaccination] MaTP=${MaTP}, found ${
-        result.recordset?.length || 0
-      } vaccines`
     );
 
     return result.recordset || [];
