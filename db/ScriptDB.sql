@@ -355,6 +355,7 @@ GO
 
 /* Indexes */
 CREATE INDEX IX_TaiKhoan_TenDangNhap ON Tai_khoan(TenDangNhap);
+CREATE INDEX IX_KhachHang_SoDT ON Khach_hang(SoDT);
 CREATE INDEX IX_KhachHang_CapDo ON Khach_hang(CapDo);
 CREATE INDEX IX_ThuCung_MaKH ON Thu_cung(MaKH);
 CREATE INDEX IX_KhamBenh_MaTC ON Kham_benh(MaTC);
@@ -363,6 +364,7 @@ CREATE INDEX IX_GoiTiem_MaKH ON Goi_tiem(MaKH);
 CREATE INDEX IX_HoaDon_MaKH ON Hoa_don(MaKH);
 CREATE INDEX IX_HoaDon_MaCN ON Hoa_don(MaCN);
 CREATE INDEX IX_ChiTietHoaDonDV_MaHD ON Chi_tiet_hoa_don_DV(MaHD);
+CREATE INDEX IX_DanhGia_MaCN ON Danh_gia(MaCN);
 GO
 
 CREATE OR ALTER PROCEDURE Update_HangKhachHang

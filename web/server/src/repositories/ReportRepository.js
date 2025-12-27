@@ -125,7 +125,7 @@ class ReportRepository extends BaseRepository {
             SELECT
                 YEAR(hd.NgayLap) as Nam,
                 MONTH(hd.NgayLap) as Thang,
-                ISNULL(SUM(ctdv.GiaApDung), 0) as TongDoanhThu,
+                ISNULL(SUM(ctdv.GiaApDung), 0) as TongDoanhThu
             FROM Dich_vu dv
             INNER JOIN Chi_tiet_hoa_don_DV ctdv ON dv.MaDV = ctdv.MaDV
             INNER JOIN Hoa_don hd ON ctdv.MaHD = hd.MaHD
@@ -156,7 +156,7 @@ class ReportRepository extends BaseRepository {
             SELECT
                 YEAR(hd.NgayLap) as Nam,
                 MONTH(hd.NgayLap) as Thang,
-                ISNULL(SUM(ctdv.GiaApDung), 0) as TongDoanhThu,
+                ISNULL(SUM(ctdv.GiaApDung), 0) as TongDoanhThu
             FROM Dich_vu dv
             INNER JOIN Chi_tiet_hoa_don_DV ctdv ON dv.MaDV = ctdv.MaDV
             INNER JOIN Hoa_don hd ON ctdv.MaHD = hd.MaHD
@@ -187,7 +187,7 @@ class ReportRepository extends BaseRepository {
             SELECT
                 YEAR(hd.NgayLap) as Nam,
                 MONTH(hd.NgayLap) as Thang,
-                ISNULL(SUM(ctsp.SoLuong * ctsp.GiaApDung), 0) as TongDoanhThu,
+                ISNULL(SUM(ctsp.SoLuong * ctsp.GiaApDung), 0) as TongDoanhThu
             FROM Chi_tiet_hoa_don_SP ctsp
             INNER JOIN Hoa_don hd ON ctsp.MaHD = hd.MaHD
             WHERE hd.NgayLap BETWEEN @StartDate AND @EndDate
