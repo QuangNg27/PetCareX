@@ -48,6 +48,48 @@ router.get(
   invoiceController.getBranchInvoices
 );
 
+// Get customer pets services for creating invoice
+router.get(
+  "/customer-services/:customerId",
+  authMiddleware,
+  authorizeRoles([
+    "Khách hàng",
+    "Bán hàng",
+    "Tiếp tân",
+    "Quản lý chi nhánh",
+    "Quản lý công ty",
+  ]),
+  invoiceController.getCustomerPetsServices
+);
+
+// Get medicines for examination
+router.get(
+  "/exam/:MaKB/medicines",
+  authMiddleware,
+  authorizeRoles([
+    "Khách hàng",
+    "Bán hàng",
+    "Tiếp tân",
+    "Quản lý chi nhánh",
+    "Quản lý công ty",
+  ]),
+  invoiceController.getMedicinesForExam
+);
+
+// Get vaccines for vaccination
+router.get(
+  "/vaccination/:MaTP/vaccines",
+  authMiddleware,
+  authorizeRoles([
+    "Khách hàng",
+    "Bán hàng",
+    "Tiếp tân",
+    "Quản lý chi nhánh",
+    "Quản lý công ty",
+  ]),
+  invoiceController.getVaccinesForVaccination
+);
+
 // Get specific invoice details (generic param route should come after specific routes)
 router.get("/:invoiceId", authMiddleware, invoiceController.getInvoice);
 

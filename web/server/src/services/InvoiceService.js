@@ -199,6 +199,98 @@ class InvoiceService {
       filters: { branchId, startDate, endDate },
     };
   }
+
+  async getCustomerPetsServices(customerId, requesterId, userRole) {
+    // Customers can only view their own pets services
+    if (userRole === "Khách hàng" && customerId !== requesterId) {
+      throw new AppError(
+        "Bạn chỉ có thể xem dịch vụ của các thú cưng của mình",
+        403
+      );
+    }
+
+    const flatServices = await this.invoiceRepository.getCustomerPetsServices(
+      customerId
+    );
+
+    // Chỉ lấy dịch vụ chính (Khám bệnh và Tiêm phòng), bỏ Thuốc và Vắc xin
+    const mainServices = [];
+    const seenKeys = new Set();
+
+    flatServices.forEach((row) => {
+      let loaiDichVu = (row.LoaiDichVu || "").trim();
+
+      console.log(
+        `[InvoiceService.getCustomerPetsServices] Processing: loai="${loaiDichVu}", MaKB=${row.MaKB}, MaTP=${row.MaTP}, TenThuCung="${row.TenThuCung}", TenDV="${row.TenDV}"`
+      );
+
+      // Chỉ lấy dịch vụ chính (Khám bệnh hoặc Tiêm phòng)
+      if (
+        loaiDichVu.includes("Khám") ||
+        loaiDichVu.toLowerCase().includes("khám")
+      ) {
+        const key = `exam_${row.MaKB}`;
+        if (!seenKeys.has(key)) {
+          seenKeys.add(key);
+          mainServices.push({
+            loai: "Khám bệnh",
+            MaKB: row.MaKB,
+            MaDV: row.MaDV,
+            MaTC: row.MaTC,
+            TenThuCung: row.TenThuCung,
+            TenDV: row.TenDV,
+            GiaDichVu: row.GiaDichVu,
+            NgayDichVu: row.NgayDichVu,
+          });
+        }
+      } else if (
+        loaiDichVu.includes("Tiêm") ||
+        loaiDichVu.toLowerCase().includes("tiêm")
+      ) {
+        const key = `vacc_${row.MaTP}`;
+        if (!seenKeys.has(key)) {
+          seenKeys.add(key);
+          console.log(
+            `[InvoiceService.getCustomerPetsServices] ✓ ADDING VACCINATION: MaTP=${row.MaTP}, TenDV="${row.TenDV}"`
+          );
+          mainServices.push({
+            loai: "Tiêm phòng",
+            MaTP: row.MaTP,
+            MaDV: row.MaDV,
+            MaTC: row.MaTC,
+            TenThuCung: row.TenThuCung,
+            TenDV: row.TenDV,
+            GiaDichVu: row.GiaDichVu,
+            NgayDichVu: row.NgayDichVu,
+          });
+        }
+      } else {
+        console.log(
+          `[InvoiceService.getCustomerPetsServices] ✗ SKIPPING (not Khám/Tiêm): loai="${loaiDichVu}"`
+        );
+      }
+    });
+
+    console.log(
+      `[InvoiceService.getCustomerPetsServices] Customer ${customerId} services count: ${
+        mainServices?.length || 0
+      }`
+    );
+
+    return {
+      customerId,
+      services: mainServices || [],
+      total: mainServices?.length || 0,
+    };
+  }
+
+  async getMedicinesForExam(MaKB) {
+    return await this.invoiceRepository.getMedicinesForExam(MaKB);
+  }
+
+  async getVaccinesForVaccination(MaTP) {
+    return await this.invoiceRepository.getVaccinesForVaccination(MaTP);
+  }
 }
 
 module.exports = InvoiceService;

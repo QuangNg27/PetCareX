@@ -357,6 +357,8 @@ class ServiceService {
         );
       }
       filters.MaCN = requesterBranch;
+      // Luôn set MaNV để hiển thị cả khám của bác sĩ này + khám chưa nhận
+      // (Logic trong repository sẽ hiển thị MaNV = requesterId OR MaNV IS NULL)
       if (requesterId) {
         filters.MaNV = requesterId;
       }
@@ -426,7 +428,9 @@ class ServiceService {
           403
         );
       }
-      filters.MaCN = requesterBranch;
+      if (!filters.MaCN && requesterBranch) {
+        filters.MaCN = requesterBranch;
+      }
     }
 
     const result = await this.serviceRepository.getVaccinations(filters);

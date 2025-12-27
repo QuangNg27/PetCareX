@@ -186,8 +186,8 @@ class ServiceRepository extends BaseRepository {
     const result = await this.execute(
       `
             INSERT INTO Tiem_phong (MaCN, MaDV, MaTC, NgayTiem)
-            OUTPUT INSERTED.MaTP
-            VALUES (@MaCN, @MaDV, @MaTC, @NgayTiem)
+            VALUES (@MaCN, @MaDV, @MaTC, @NgayTiem);
+            SELECT SCOPE_IDENTITY() as MaTP;
         `,
       {
         MaCN,
@@ -201,7 +201,8 @@ class ServiceRepository extends BaseRepository {
   }
 
   async updateVaccination(vaccinationId, updateData, doctorId) {
-    const first = await this.execute(
+    // Update MaNV (doctor assignment)
+    await this.execute(
       `
             UPDATE Tiem_phong
             SET MaNV = @MaNV
@@ -213,9 +214,10 @@ class ServiceRepository extends BaseRepository {
       }
     );
 
+    // Update chi tiết tiêm phòng (LieuLuong, TrangThai)
     for (const detail of updateData) {
       const { MaSP, LieuLuong, TrangThai } = detail;
-      await this.execute(
+      const result = await this.execute(
         `
                 UPDATE Chi_tiet_tiem_phong
                 SET LieuLuong = @LieuLuong,
@@ -229,9 +231,13 @@ class ServiceRepository extends BaseRepository {
           MaSP,
         }
       );
+      // eslint-disable-next-line no-console
+      console.log(
+        `ServiceRepository.updateVaccination: Updated Chi_tiet_tiem_phong MaTP=${vaccinationId} MaSP=${MaSP} rowsAffected=${result.rowsAffected[0]}`
+      );
     }
 
-    return first.rowsAffected[0] > 0;
+    return true;
   }
 
   async addVaccinationDetail(vaccinationId, detailData) {
@@ -450,7 +456,7 @@ class ServiceRepository extends BaseRepository {
               FROM Gia_dich_vu
             ) gdv ON dv.MaDV = gdv.MaDV AND gdv.rn = 1
             WHERE (@MaCN IS NULL OR kb.MaCN = @MaCN)
-            AND (@MaNV IS NULL OR kb.MaNV = @MaNV)
+            AND (@MaNV IS NULL OR kb.MaNV = @MaNV OR kb.MaNV IS NULL)
             AND (@MaTC IS NULL OR kb.MaTC = @MaTC)
             AND (@FromDate IS NULL OR kb.NgayKham >= @FromDate)
             AND (@ToDate IS NULL OR kb.NgayKham <= @ToDate)
@@ -592,9 +598,11 @@ class ServiceRepository extends BaseRepository {
     const result = await this.execute(
       `
             SELECT 
+                CTTP.MaSP AS MaSP,
                 TC.Ten AS TenThuCung,
                 SP.TenSP AS TenVaccine,
                 CTTP.LieuLuong AS LieuLuong,
+                CTTP.TrangThai AS TrangThai,
                 CASE 
                     WHEN CTTP.MaGoi IS NULL THEN N'Tiêm lẻ' 
                     ELSE CAST(CTTP.MaGoi AS NVARCHAR(10)) 
@@ -644,11 +652,16 @@ class ServiceRepository extends BaseRepository {
       INNER JOIN Khach_hang kh ON tc.MaKH = kh.MaKH
       LEFT JOIN Nhan_vien nv ON tp.MaNV = nv.MaNV
       LEFT JOIN Dich_vu dv ON tp.MaDV = dv.MaDV
+      LEFT JOIN Lich_su_nhan_vien ls ON nv.MaNV = ls.MaNV 
+        AND ls.MaCN = tp.MaCN
+        AND ls.NgayBD <= tp.NgayTiem
+        AND (ls.NgayKT IS NULL OR ls.NgayKT >= tp.NgayTiem)
       WHERE (@MaCN IS NULL OR tp.MaCN = @MaCN)
-      AND (@MaNV IS NULL OR tp.MaNV = @MaNV)
+      AND (@MaNV IS NULL OR tp.MaNV = @MaNV OR tp.MaNV IS NULL)
       AND (@MaTC IS NULL OR tp.MaTC = @MaTC)
       AND (@FromDate IS NULL OR tp.NgayTiem >= @FromDate)
       AND (@ToDate IS NULL OR tp.NgayTiem <= @ToDate)
+      AND (tp.MaNV IS NULL OR ls.MaNV IS NOT NULL)
       ORDER BY tp.NgayTiem DESC
     `,
       {
