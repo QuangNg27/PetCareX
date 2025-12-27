@@ -12,7 +12,7 @@ class CompanyRepository extends BaseRepository {
                     SUM(h.TongTien) AS TotalRevenue
                 FROM Chi_nhanh c
                 JOIN Hoa_don h ON h.MaCN = c.MaCN
-                WHERE YEAR(h.NgayLap) = @year
+                WHERE h.NgayLap >= DATEFROMPARTS(@year, 1, 1) AND h.NgayLap < DATEFROMPARTS(@year + 1, 1, 1)
                 GROUP BY c.MaCN, c.TenCN
             `, {year});
             const result_prev_year = await this.execute(`
@@ -21,7 +21,7 @@ class CompanyRepository extends BaseRepository {
                     SUM(h.TongTien) AS TotalRevenue
                 FROM Chi_nhanh c
                 JOIN Hoa_don h ON h.MaCN = c.MaCN
-                WHERE YEAR(h.NgayLap) = @year
+                WHERE h.NgayLap >= DATEFROMPARTS(@year - 1, 1, 1) AND h.NgayLap < DATEFROMPARTS(@year, 1, 1)
                 GROUP BY c.MaCN, c.TenCN
                 `, {year: year - 1});
             
@@ -51,7 +51,7 @@ class CompanyRepository extends BaseRepository {
                     MONTH(h.NgayLap) AS month,
                     SUM(h.TongTien) AS revenue
                 FROM Hoa_don h
-                WHERE YEAR(h.NgayLap) = @year
+                WHERE h.NgayLap >= DATEFROMPARTS(@year, 1, 1) AND h.NgayLap < DATEFROMPARTS(@year + 1, 1, 1)
                 GROUP BY MONTH(h.NgayLap)
                 ORDER BY Month
             `, {year});
