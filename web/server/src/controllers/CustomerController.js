@@ -139,13 +139,6 @@ class CustomerController {
     try {
       const customerId = req.user.MaKH;
 
-      if (!customerId) {
-        throw new AppError(
-          "Chỉ khách hàng mới có thể xem danh sách thú cưng",
-          403
-        );
-      }
-
       const result = await this.customerService.getPets(customerId);
       res.json(result);
     } catch (error) {

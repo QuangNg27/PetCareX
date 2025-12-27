@@ -2,6 +2,16 @@ import apiClient from '@config/apiClient';
 import { ENDPOINTS } from '@config/apiConfig';
 
 export const serviceService = {
+  // Get all services
+  async getAll() {
+    try {
+      const response = await apiClient.get(ENDPOINTS.SERVICES.ALL);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
   // Get services by branch
   async getByBranch(branchId) {
     try {

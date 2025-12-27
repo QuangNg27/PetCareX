@@ -99,8 +99,9 @@ class CustomerRepository extends BaseRepository {
 
         const result = await this.execute(`
             INSERT INTO Khach_hang (HoTen, SoDT, Email, CCCD, GioiTinh, NgaySinh)
-            OUTPUT INSERTED.MaKH
-            VALUES (@HoTen, @SoDT, @Email, @CCCD, @GioiTinh, @NgaySinh)
+            VALUES (@HoTen, @SoDT, @Email, @CCCD, @GioiTinh, @NgaySinh);
+            
+            SELECT SCOPE_IDENTITY() AS MaKH;
         `, {
             HoTen,
             SoDT,

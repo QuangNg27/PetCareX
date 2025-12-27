@@ -81,11 +81,10 @@ class EmployeeRepository extends BaseRepository {
         const { HoTen, GioiTinh, NgaySinh, ChucVu, Luong, NgayVaoLam } = employeeData;
         
         const result = await this.execute(`
-            @OutputTable TABLE (MaNV INT);
-
             INSERT INTO Nhan_vien (HoTen, GioiTinh, NgaySinh, NgayVaoLam, ChucVu, Luong)
-            OUTPUT INSERTED.MaNV INTO @OutputTable
-            VALUES (@HoTen, @GioiTinh, @NgaySinh, @NgayVaoLam, @ChucVu, @Luong)
+            VALUES (@HoTen, @GioiTinh, @NgaySinh, @NgayVaoLam, @ChucVu, @Luong);
+            
+            SELECT SCOPE_IDENTITY() AS MaNV;
         `, {
             HoTen,
             GioiTinh,

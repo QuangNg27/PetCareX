@@ -83,8 +83,8 @@ const PetsView = () => {
   };
 
   const handleAddPet = async () => {
-    if (!newPet.Ten || !newPet.Loai) {
-      alert('Vui lòng nhập tên và loài thú cưng');
+    if (!newPet.Ten || !newPet.Loai || !newPet.Giong || !newPet.GioiTinh || !newPet.NgaySinh) {
+      alert('Vui lòng điền đầy đủ thông tin thú cưng (trừ tình trạng sức khỏe)');
       return;
     }
 
@@ -129,8 +129,8 @@ const PetsView = () => {
   };
 
   const handleEditPet = async () => {
-    if (!editPet.Ten || !editPet.Loai) {
-      alert('Vui lòng nhập tên và loài thú cưng');
+    if (!editPet.Ten || !editPet.Loai || !editPet.Giong || !editPet.GioiTinh || !editPet.NgaySinh) {
+      alert('Vui lòng điền đầy đủ thông tin thú cưng (trừ tình trạng sức khỏe)');
       return;
     }
 
@@ -338,22 +338,24 @@ const PetsView = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Giống</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Giống *</label>
                   <input 
                     type="text" 
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent" 
                     placeholder="Nhập giống"
                     value={newPet.Giong}
                     onChange={(e) => handleInputChange('Giong', e.target.value)}
+                    required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Giới tính</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Giới tính *</label>
                   <select 
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     value={newPet.GioiTinh}
                     onChange={(e) => handleInputChange('GioiTinh', e.target.value)}
+                    required
                   >
                     <option value="Đực">Đực</option>
                     <option value="Cái">Cái</option>
@@ -361,12 +363,13 @@ const PetsView = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Ngày sinh</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Ngày sinh *</label>
                   <input 
                     type="date" 
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     value={newPet.NgaySinh}
                     onChange={(e) => handleInputChange('NgaySinh', e.target.value)}
+                    required
                   />
                 </div>
 
@@ -444,22 +447,24 @@ const PetsView = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Giống</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Giống *</label>
                   <input 
                     type="text" 
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent" 
                     placeholder="Nhập giống"
                     value={editPet.Giong}
                     onChange={(e) => handleEditInputChange('Giong', e.target.value)}
+                    required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Giới tính</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Giới tính *</label>
                   <select 
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     value={editPet.GioiTinh}
                     onChange={(e) => handleEditInputChange('GioiTinh', e.target.value)}
+                    required
                   >
                     <option value="Đực">Đực</option>
                     <option value="Cái">Cái</option>
@@ -467,12 +472,13 @@ const PetsView = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Ngày sinh</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Ngày sinh *</label>
                   <input 
                     type="date" 
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     value={editPet.NgaySinh}
                     onChange={(e) => handleEditInputChange('NgaySinh', e.target.value)}
+                    required
                   />
                 </div>
 

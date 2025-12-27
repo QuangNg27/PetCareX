@@ -187,7 +187,8 @@ class ServiceRepository extends BaseRepository {
       `
             INSERT INTO Tiem_phong (MaCN, MaDV, MaTC, NgayTiem)
             VALUES (@MaCN, @MaDV, @MaTC, @NgayTiem);
-            SELECT SCOPE_IDENTITY() as MaTP;
+            
+            SELECT SCOPE_IDENTITY() AS MaTP;
         `,
       {
         MaCN,
