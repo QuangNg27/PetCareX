@@ -69,11 +69,4 @@ router.put('/:employeeId/branches/:branchId/salary',
     employeeController.updateEmployeeSalary
 );
 
-// Branch-specific endpoints
-router.get('/branches/:branchId',
-    authMiddleware,
-    authorizeRoles(['Quản lý chi nhánh', 'Quản lý công ty']),
-    employeeController.getBranchEmployees
-);
-
 module.exports = router;

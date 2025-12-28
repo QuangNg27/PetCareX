@@ -5,9 +5,13 @@ class PetRepository extends BaseRepository {
         const { Ten, Loai, Giong, GioiTinh, NgaySinh, TinhTrangSucKhoe } = petData;
         
         const result = await this.execute(`
+            DECLARE @OutputTable TABLE (MaTC INT);
+            
             INSERT INTO Thu_cung (MaKH, Ten, Loai, Giong, GioiTinh, NgaySinh, TinhTrangSucKhoe)
-            OUTPUT INSERTED.MaTC
-            VALUES (@MaKH, @Ten, @Loai, @Giong, @GioiTinh, @NgaySinh, @TinhTrangSucKhoe)
+            OUTPUT INSERTED.MaTC INTO @OutputTable
+            VALUES (@MaKH, @Ten, @Loai, @Giong, @GioiTinh, @NgaySinh, @TinhTrangSucKhoe);
+            
+            SELECT MaTC FROM @OutputTable;
         `, {
             MaKH: customerId,
             Ten,
@@ -95,9 +99,9 @@ class PetRepository extends BaseRepository {
         return result.rowsAffected[0] > 0;
     }
 
-    async getPetMedicalHistory(petId, limit = 10) {
+    async getPetMedicalHistory(petId, limit = 100) {
         const result = await this.execute(`
-            SELECT TOP (@Limit)
+            SELECT
                 kb.MaKB,
                 kb.NgayKham,
                 kb.TrieuChung,
@@ -108,14 +112,12 @@ class PetRepository extends BaseRepository {
                 cn.TenCN
             FROM Kham_benh kb
             LEFT JOIN Nhan_vien nv ON kb.MaNV = nv.MaNV
-            JOIN Dich_vu_chi_nhanh dvcn ON kb.MaCN = dvcn.MaCN AND kb.MaDV = dvcn.MaDV
-            JOIN Dich_vu dv ON dvcn.MaDV = dv.MaDV
-            JOIN Chi_nhanh cn ON kb.MaCN = cn.MaCN
+            LEFT JOIN Dich_vu dv ON kb.MaDV = dv.MaDV
+            LEFT JOIN Chi_nhanh cn ON kb.MaCN = cn.MaCN
             WHERE kb.MaTC = @MaTC
             ORDER BY kb.NgayKham DESC
         `, { 
-            MaTC: petId,
-            Limit: limit
+            MaTC: petId
         });
 
         return result.recordset;
@@ -137,7 +139,7 @@ class PetRepository extends BaseRepository {
             SELECT 
                 tt.MaKB,
                 sp.TenSP as TenThuoc,
-                tt.SoLuong,
+                tt.SoLuong
             FROM Toa_thuoc tt
             JOIN San_pham sp ON tt.MaSP = sp.MaSP
             WHERE tt.MaKB IN (${placeholders})
@@ -147,24 +149,77 @@ class PetRepository extends BaseRepository {
         return result.recordset;
     }       
 
-    async getPetVaccinationHistory(petId, limit = 10) {
+    async getPetVaccinationHistory(petId, limit = 100) {
         const result = await this.execute(`
-            SELECT TOP (@Limit)
+            SELECT
                 tp.MaTP,
                 tp.NgayTiem,
-                nv.HoTen as TenBacSi,
-                dv.TenDV,
-                cn.TenCN
+                ISNULL(nv.HoTen, N'Chưa có bác sĩ') as TenBacSi,
+                ISNULL(dv.TenDV, N'Chưa xác định') as TenDV,
+                ISNULL(cn.TenCN, N'Chưa xác định') as TenCN,
+                cttp.MaGoi,
+                gt.UuDai
             FROM Tiem_phong tp
             LEFT JOIN Nhan_vien nv ON tp.MaNV = nv.MaNV
-            JOIN Dich_vu_chi_nhanh dvcn ON tp.MaCN = dvcn.MaCN AND tp.MaDV = dvcn.MaDV
-            JOIN Dich_vu dv ON dvcn.MaDV = dv.MaDV
-            JOIN Chi_nhanh cn ON tp.MaCN = cn.MaCN
+            LEFT JOIN Dich_vu dv ON tp.MaDV = dv.MaDV
+            LEFT JOIN Chi_nhanh cn ON tp.MaCN = cn.MaCN
+            LEFT JOIN Chi_tiet_tiem_phong cttp ON tp.MaTP = cttp.MaTP
+            LEFT JOIN Goi_tiem gt ON cttp.MaGoi = gt.MaGoi
             WHERE tp.MaTC = @MaTC
             ORDER BY tp.NgayTiem DESC
         `, { 
+            MaTC: petId
+        });
+
+        return result.recordset;
+    }
+
+    // Branch-specific pet medical history
+    async getPetMedicalHistoryByBranch(petId, branchId, limit = 100) {
+        const result = await this.execute(`
+            SELECT
+                kb.MaKB,
+                kb.NgayKham,
+                kb.TrieuChung,
+                kb.ChanDoan,
+                kb.NgayTaiKham,
+                nv.HoTen as TenBacSi,
+                dv.TenDV,
+                cn.TenCN
+            FROM Kham_benh kb
+            LEFT JOIN Nhan_vien nv ON kb.MaNV = nv.MaNV
+            LEFT JOIN Dich_vu dv ON kb.MaDV = dv.MaDV
+            LEFT JOIN Chi_nhanh cn ON kb.MaCN = cn.MaCN
+            WHERE kb.MaTC = @MaTC
+            AND kb.MaCN = @MaCN
+            ORDER BY kb.NgayKham DESC
+        `, { 
             MaTC: petId,
-            Limit: limit
+            MaCN: branchId
+        });
+
+        return result.recordset;
+    }
+
+    // Branch-specific pet vaccination history
+    async getPetVaccinationHistoryByBranch(petId, branchId, limit = 100) {
+        const result = await this.execute(`
+            SELECT
+                tp.MaTP,
+                tp.NgayTiem,
+                ISNULL(nv.HoTen, N'Chưa có bác sĩ') as TenBacSi,
+                ISNULL(dv.TenDV, N'Chưa xác định') as TenDV,
+                ISNULL(cn.TenCN, N'Chưa xác định') as TenCN
+            FROM Tiem_phong tp
+            LEFT JOIN Nhan_vien nv ON tp.MaNV = nv.MaNV
+            LEFT JOIN Dich_vu dv ON tp.MaDV = dv.MaDV
+            LEFT JOIN Chi_nhanh cn ON tp.MaCN = cn.MaCN
+            WHERE tp.MaTC = @MaTC
+            AND tp.MaCN = @MaCN
+            ORDER BY tp.NgayTiem DESC
+        `, { 
+            MaTC: petId,
+            MaCN: branchId
         });
 
         return result.recordset;

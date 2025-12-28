@@ -82,9 +82,9 @@ class EmployeeRepository extends BaseRepository {
         
         const result = await this.execute(`
             INSERT INTO Nhan_vien (HoTen, GioiTinh, NgaySinh, NgayVaoLam, ChucVu, Luong)
-            OUTPUT inserted.MaNV as MaNhanVien, inserted.HoTen, inserted.GioiTinh,
-                   inserted.NgaySinh, inserted.NgayVaoLam, inserted.ChucVu, inserted.Luong
-            VALUES (@HoTen, @GioiTinh, @NgaySinh, @NgayVaoLam, @ChucVu, @Luong)
+            VALUES (@HoTen, @GioiTinh, @NgaySinh, @NgayVaoLam, @ChucVu, @Luong);
+            
+            SELECT SCOPE_IDENTITY() AS MaNV;
         `, {
             HoTen,
             GioiTinh,
@@ -166,30 +166,6 @@ class EmployeeRepository extends BaseRepository {
         });
 
         return result.rowsAffected[0] > 0;
-    }
-
-    async getBranchEmployees(branchId, activeOnly = true) {
-        let whereClause = 'WHERE ls.MaCN = @MaCN';
-        const params = { MaCN: branchId };
-
-        if (activeOnly) {
-            whereClause += ' AND ls.NgayBD <= CAST(GETDATE() AS DATE) AND (ls.NgayKT IS NULL OR ls.NgayKT >= CAST(GETDATE() AS DATE))';
-        }
-
-        const result = await this.execute(`
-            SELECT 
-                nv.MaNV,
-                nv.HoTen,
-                nv.ChucVu,
-                nv.Luong as LuongCoBan,
-                ls.NgayBD,
-                ls.NgayKT
-            FROM Lich_su_nhan_vien ls
-            JOIN Nhan_vien nv ON ls.MaNV = nv.MaNV
-            ${whereClause}
-        `, params);
-
-        return result.recordset;
     }
 
     async getEmployeeRoles() {

@@ -17,6 +17,7 @@ const branchRoutes = require('./routes/branchRoutes');
 const employeeRoutes = require('./routes/employeeRoutes');
 const reportRoutes = require('./routes/reportRoutes');
 const reviewRoutes = require('./routes/reviewRoutes');
+const companyRoutes = require('./routes/companyRoutes');
 
 // Import middleware
 const { errorHandler } = require('./middleware/errorHandler');
@@ -30,6 +31,8 @@ app.use(cors({
     origin: process.env.CLIENT_URL || 'http://localhost:3000',
     credentials: true
 }));
+
+console.log('CORS Origin:', process.env.CLIENT_URL || 'http://localhost:3000');
 
 // Logging middleware
 app.use(morgan('combined'));
@@ -57,6 +60,7 @@ app.use('/api/branches', branchRoutes);
 app.use('/api/employees', employeeRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/reviews', reviewRoutes);
+app.use('/api/company', companyRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {
@@ -74,6 +78,10 @@ const startServer = async () => {
     try {
         // Test database connection
         console.log('📊 Connecting to database...');
+        console.log('DB_USER:', process.env.DB_USER);
+        console.log('DB_PASSWORD:', process.env.DB_PASSWORD);
+        console.log('DB_HOST:', process.env.DB_HOST);
+        console.log('DB_NAME:', process.env.DB_NAME);
         await pool.connect();
         console.log('✅ Database connected successfully');
         

@@ -22,13 +22,6 @@ router.get('/:branchId/employees',
 // Lấy dịch vụ theo chi nhánh
 router.get('/:branchId/services', authMiddleware, branchController.getBranchServices);
 
-// Tạo chi nhánh mới (chỉ quản lý công ty)
-router.post('/',
-    authMiddleware,
-    authorizeRoles(['Quản lý công ty']),
-    branchController.createBranch
-);
-
 // Cập nhật thông tin chi nhánh
 router.put('/:branchId',
     authMiddleware,

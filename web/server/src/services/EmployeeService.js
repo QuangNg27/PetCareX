@@ -205,17 +205,6 @@ class EmployeeService {
         };
     }
 
-    async getBranchEmployees(branchId, activeOnly = true, userRole) {
-        // Only managers can view branch employees
-        if (!['Quản lý chi nhánh', 'Quản lý công ty'].includes(userRole)) {
-            throw new AppError('Bạn không có quyền xem danh sách nhân viên chi nhánh', 403);
-        }
-
-        const employees = await this.employeeRepository.getBranchEmployees(branchId, activeOnly);
-        
-        return employees;
-    }
-
     async getEmployeeRoles() {
         const roles = await this.employeeRepository.getEmployeeRoles();
         return roles;
@@ -251,14 +240,11 @@ class EmployeeService {
             // Tạo nhân viên trước
             const employee = await this.createEmployee(employeeData, userRole);
             
-            if (employee.success) {
-                const bcrypt = require('bcryptjs');
-                
+            if (employee.success) {                
                 // Tạo tên đăng nhập tự động từ tên và ID nhân viên
                 const username = this.generateUsername(employeeData.HoTen, employee.employeeId);
                 // Tạo mật khẩu mặc định (có thể thay đổi sau)
                 const defaultPassword = 'PetCareX@123';
-                const hashedPassword = await bcrypt.hash(defaultPassword, 12);
                 
                 // Sử dụng stored procedure Create_TaiKhoan trực tiếp
                 await this.employeeRepository.execute(`
@@ -270,7 +256,7 @@ class EmployeeService {
                         @VaiTro = @VaiTro
                 `, {
                     TenDangNhap: username,
-                    MatKhau: hashedPassword,
+                    MatKhau: defaultPassword,
                     MaNV: employee.employeeId,
                     VaiTro: employeeData.ChucVu
                 });

@@ -1,5 +1,4 @@
 const BaseRepository = require('./BaseRepository');
-const bcrypt = require('bcryptjs');
 
 class AuthRepository extends BaseRepository {
     async createAccount(userData, accountData) {
@@ -73,6 +72,24 @@ class AuthRepository extends BaseRepository {
         });
 
         return result.rowsAffected[0] > 0;
+    }
+
+    async getEmployeeBranchInfo(employeeId) {
+        const result = await this.execute(`
+            SELECT TOP 1 
+                ls.MaCN,
+                cn.TenCN,
+                cn.DiaChi,
+                cn.SoDT
+            FROM Lich_su_nhan_vien ls
+            JOIN Chi_nhanh cn ON ls.MaCN = cn.MaCN
+            WHERE ls.MaNV = @MaNV 
+                AND ls.NgayBD <= CAST(GETDATE() AS DATE) 
+                AND (ls.NgayKT IS NULL OR ls.NgayKT >= CAST(GETDATE() AS DATE))
+            ORDER BY ls.NgayBD DESC
+        `, { MaNV: employeeId });
+
+        return result.recordset[0];
     }
 }
 

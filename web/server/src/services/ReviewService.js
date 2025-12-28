@@ -108,6 +108,26 @@ class ReviewService {
             throw new AppError('Lỗi khi lấy đánh giá mới nhất: ' + error.message, 500);
         }
     }
+
+    // Lấy tất cả đánh giá
+    async getAllReviews(page = 1, limit = 0) {
+        try {
+            const offset = limit > 0 ? (page - 1) * limit : 0;
+            const reviews = await this.reviewRepository.getAllReviews(limit, offset);
+            
+            return {
+                success: true,
+                data: reviews,
+                pagination: {
+                    page: parseInt(page),
+                    limit: parseInt(limit),
+                    total: reviews.length
+                }
+            };
+        } catch (error) {
+            throw new AppError('Lỗi khi lấy tất cả đánh giá: ' + error.message, 500);
+        }
+    }
 }
 
 module.exports = ReviewService;

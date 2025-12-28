@@ -36,10 +36,17 @@ const authMiddleware = async (req, res, next) => {
                 CASE 
                     WHEN tk.MaNV IS NOT NULL THEN nv.ChucVu
                     ELSE NULL
-                END AS ChucVu
+                END AS ChucVu,
+                CASE 
+                    WHEN tk.MaNV IS NOT NULL THEN lsnv.MaCN
+                    ELSE NULL
+                END AS MaCN
             FROM Tai_khoan tk
             LEFT JOIN Khach_hang kh ON tk.MaKH = kh.MaKH
             LEFT JOIN Nhan_vien nv ON tk.MaNV = nv.MaNV
+            LEFT JOIN Lich_su_nhan_vien lsnv ON tk.MaNV = lsnv.MaNV 
+                AND lsnv.NgayBD <= CAST(GETDATE() AS DATE)
+                AND (lsnv.NgayKT IS NULL OR lsnv.NgayKT >= CAST(GETDATE() AS DATE))
             WHERE tk.TenDangNhap = @TenDangNhap
         `);
 
@@ -48,7 +55,11 @@ const authMiddleware = async (req, res, next) => {
         }
 
         // Add user info to request
-        req.user = result.recordset[0];
+        const userData = result.recordset[0];
+        req.user = {
+            ...userData,
+            role: userData.VaiTro // Map VaiTro to role for compatibility
+        };
         next();
 
     } catch (error) {

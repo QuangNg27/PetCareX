@@ -6,7 +6,6 @@ import Button from '@components/common/Button';
 import { UserIcon, PasswordIcon, EyeIcon, EyeOffIcon } from '@components/common/icons';
 import { useSignup } from '@context/SignupContext';
 import { validateSignupStep1 } from '@utils/validation';
-import './SignupStep1.css';
 
 const SignupStep1 = () => {
   const navigate = useNavigate();
@@ -82,21 +81,30 @@ const SignupStep1 = () => {
       title="Tạo tài khoản mới" 
       subtitle="Bước 1: Thông tin đăng nhập"
     >
-      <div className="signup-progress">
-        <div className="progress-bar">
-          <div className="progress-step active">1</div>
-          <div className="progress-line"></div>
-          <div className="progress-step">2</div>
-        </div>
-        <div className="progress-labels">
-          <span className="active">Thông tin đăng nhập</span>
-          <span>Thông tin cá nhân</span>
+      {/* Progress Indicator */}
+      <div className="mb-8">
+        <div className="flex items-center justify-center mb-3">
+          <div className="flex items-center gap-2">
+            <div className="flex flex-col items-center">
+              <div className="w-8 h-8 bg-primary-600 text-white rounded-full flex items-center justify-center font-semibold text-sm">
+                1
+              </div>
+              <span className="text-primary-600 font-semibold text-xs mt-2 whitespace-nowrap">Thông tin đăng nhập</span>
+            </div>
+            <div className="w-24 h-1 bg-gray-200 mb-6"></div>
+            <div className="flex flex-col items-center">
+              <div className="w-8 h-8 bg-gray-200 text-gray-400 rounded-full flex items-center justify-center font-semibold text-sm">
+                2
+              </div>
+              <span className="text-gray-400 text-xs mt-2 whitespace-nowrap">Thông tin cá nhân</span>
+            </div>
+          </div>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="signup-step1-form">
+      <form onSubmit={handleSubmit} className="space-y-5">
         {errors.general && (
-          <div className="error-message">
+          <div className="p-4 bg-error-50 border border-error-200 text-error-700 rounded-lg text-sm">
             {errors.general}
           </div>
         )}
@@ -113,7 +121,7 @@ const SignupStep1 = () => {
           required
         />
 
-        <div className="password-field">
+        <div className="relative">
           <FormField
             label="Mật khẩu"
             name="password"
@@ -126,17 +134,19 @@ const SignupStep1 = () => {
             required
           />
           
-          <button
-            type="button"
-            className="password-toggle"
-            onClick={togglePasswordVisibility}
-            aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
-          >
-            {showPassword ? <EyeOffIcon /> : <EyeIcon />}
-          </button>
+          {formData.password && (
+            <button
+              type="button"
+              className="absolute right-3 top-[38px] text-gray-400 hover:text-gray-600 transition-colors"
+              onClick={togglePasswordVisibility}
+              aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+            >
+              {showPassword ? <EyeOffIcon size={20} /> : <EyeIcon size={20} />}
+            </button>
+          )}
         </div>
 
-        <div className="password-field">
+        <div className="relative">
           <FormField
             label="Xác nhận mật khẩu"
             name="confirmPassword"
@@ -149,14 +159,16 @@ const SignupStep1 = () => {
             required
           />
           
-          <button
-            type="button"
-            className="password-toggle"
-            onClick={toggleConfirmPasswordVisibility}
-            aria-label={showConfirmPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
-          >
-            {showConfirmPassword ? <EyeOffIcon /> : <EyeIcon />}
-          </button>
+          {formData.confirmPassword && (
+            <button
+              type="button"
+              className="absolute right-3 top-[38px] text-gray-400 hover:text-gray-600 transition-colors"
+              onClick={toggleConfirmPasswordVisibility}
+              aria-label={showConfirmPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+            >
+              {showConfirmPassword ? <EyeOffIcon size={20} /> : <EyeIcon size={20} />}
+            </button>
+          )}
         </div>
 
         <Button
@@ -164,15 +176,15 @@ const SignupStep1 = () => {
             variant="primary"
             size="lg"
             loading={loading}
-            className="next-button"
+            className="w-full"
           >
             {loading ? 'Đang xử lý...' : 'Tiếp theo'}
         </Button>
 
-        <div className="form-footer">
-          <p>
+        <div className="text-center pt-4 border-t border-gray-200">
+          <p className="text-sm text-gray-600">
             Đã có tài khoản?{' '}
-            <Link to="/login" className="login-link">
+            <Link to="/login" className="text-primary-600 hover:text-primary-700 font-semibold transition-colors">
               Đăng nhập ngay
             </Link>
           </p>

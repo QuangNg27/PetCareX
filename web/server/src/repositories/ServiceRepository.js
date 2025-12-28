@@ -1,8 +1,9 @@
-const BaseRepository = require('./BaseRepository');
+const BaseRepository = require("./BaseRepository");
 
 class ServiceRepository extends BaseRepository {
-    async getBranchServices(branchId) {
-        const result = await this.execute(`
+  async getBranchServices(branchId) {
+    const result = await this.execute(
+      `
             SELECT 
                 dv.MaDV,
                 dv.TenDV,
@@ -19,13 +20,15 @@ class ServiceRepository extends BaseRepository {
                 )
             WHERE dvcn.MaCN = @MaCN
             ORDER BY dv.TenDV
-        `, { MaCN: branchId });
+        `,
+      { MaCN: branchId }
+    );
 
-        return result.recordset;
-    }
+    return result.recordset;
+  }
 
-    async getAllServices() {
-        const result = await this.execute(`
+  async getAllServices() {
+    const result = await this.execute(`
             SELECT 
                 dv.MaDV,
                 dv.TenDV,
@@ -42,198 +45,360 @@ class ServiceRepository extends BaseRepository {
             ORDER BY dv.TenDV
         `);
 
-        return result.recordset;
+    return result.recordset;
+  }
+
+  async createMedicalExamination(examinationData) {
+    const {
+      MaCN,
+      MaDV,
+      MaTC,
+      MaNV,
+      NgayKham,
+      TrieuChung,
+      ChanDoan,
+      NgayTaiKham,
+    } = examinationData;
+
+    const result = await this.execute(
+      `
+        INSERT INTO Kham_benh (MaCN, MaDV, MaTC, MaNV, NgayKham, TrieuChung, ChanDoan, NgayTaiKham)
+        VALUES (@MaCN, @MaDV, @MaTC, @MaNV, @NgayKham, @TrieuChung, @ChanDoan, @NgayTaiKham);
+        
+        SELECT CAST(SCOPE_IDENTITY() AS INT) AS MaKB;
+      `,
+      {
+        MaCN,
+        MaDV,
+        MaTC,
+        MaNV: MaNV || null,
+        NgayKham,
+        TrieuChung: TrieuChung || null,
+        ChanDoan: ChanDoan || null,
+        NgayTaiKham: NgayTaiKham || null,
+      }
+    );
+
+    return result.recordset[0];
+  }
+  async updateMedicalExamination(examinationId, updateData) {
+    const { TrieuChung, ChanDoan, NgayTaiKham, MaNV } = updateData;
+
+    // First verify exam exists
+    const checkBeforeUpdate = await this.execute(
+      `SELECT MaKB FROM Kham_benh WHERE MaKB = @MaKB`,
+      { MaKB: parseInt(examinationId) }
+    );
+
+    if (
+      !checkBeforeUpdate.recordset ||
+      checkBeforeUpdate.recordset.length === 0
+    ) {
+      throw new Error(`Examination ${examinationId} not found`);
     }
 
-    async createMedicalExamination(examinationData) {
-        const { MaCN, MaDV, MaTC, MaNV, NgayKham, TrieuChung, ChanDoan, NgayTaiKham } = examinationData;
-        
-        const result = await this.execute(`
-            INSERT INTO Kham_benh (MaCN, MaDV, MaTC, MaNV, NgayKham, TrieuChung, ChanDoan, NgayTaiKham)
-            OUTPUT INSERTED.MaKB
-            VALUES (@MaCN, @MaDV, @MaTC, @MaNV, @NgayKham, @TrieuChung, @ChanDoan, @NgayTaiKham)
-        `, {
-            MaCN,
-            MaDV,
-            MaTC,
-            MaNV,
-            NgayKham,
-            TrieuChung,
-            ChanDoan,
-            NgayTaiKham
-        });
-
-        return result.recordset[0];
-    }
-
-    async updateMedicalExamination(examinationId, updateData) {
-        const { TrieuChung, ChanDoan, NgayTaiKham, MaNV } = updateData;
-        
-        const result = await this.execute(`
+    const result = await this.execute(
+      `
             UPDATE Kham_benh 
             SET TrieuChung = @TrieuChung,
                 ChanDoan = @ChanDoan,
                 NgayTaiKham = @NgayTaiKham,
                 MaNV = @MaNV
             WHERE MaKB = @MaKB
-        `, {
-            TrieuChung,
-            ChanDoan,
-            NgayTaiKham,
-            MaNV,
-            MaKB: examinationId
-        });
+        `,
+      {
+        TrieuChung,
+        ChanDoan,
+        NgayTaiKham,
+        MaNV,
+        MaKB: parseInt(examinationId),
+      }
+    );
 
-        return result.rowsAffected[0] > 0;
+    // Verify exam still exists after update
+    const checkAfterUpdate = await this.execute(
+      `SELECT MaKB FROM Kham_benh WHERE MaKB = @MaKB`,
+      { MaKB: parseInt(examinationId) }
+    );
+
+    if (
+      !checkAfterUpdate.recordset ||
+      checkAfterUpdate.recordset.length === 0
+    ) {
+      throw new Error(
+        `CRITICAL: Examination ${examinationId} was deleted during update`
+      );
     }
 
-    async addPrescription(examinationId, prescriptionData) {
-        const { MaSP, SoLuong } = prescriptionData;
-        
-        const result = await this.execute(`
-            INSERT INTO Toa_thuoc (MaKB, MaSP, SoLuong)
-            VALUES (@MaKB, @MaSP, @SoLuong)
-        `, {
-            MaKB: examinationId,
-            MaSP,
-            SoLuong
-        });
+    return result.rowsAffected[0] > 0;
+  }
 
-        return result.rowsAffected[0] > 0;
-    }
+  async addPrescription(examinationId, prescriptionData) {
+    const { MaSP, SoLuong } = prescriptionData;
 
-    async createVaccination(vaccinationData) {
-        const { MaCN, MaDV, MaTC, MaNV, NgayTiem } = vaccinationData;
-        
-        const result = await this.execute(`
-            INSERT INTO Tiem_phong (MaCN, MaDV, MaTC, MaNV, NgayTiem)
-            OUTPUT INSERTED.MaTP
-            VALUES (@MaCN, @MaDV, @MaTC, @MaNV, @NgayTiem)
-        `, {
-            MaCN,
-            MaDV,
-            MaTC,
-            MaNV,
-            NgayTiem
-        });
+    const result = await this.execute(
+      `
+    SET NOCOUNT ON;
+    
+    IF NOT EXISTS (SELECT 1 FROM Toa_thuoc WHERE MaKB = @MaKB AND MaSP = @MaSP)
+    BEGIN
+      INSERT INTO Toa_thuoc (MaKB, MaSP, SoLuong)
+      VALUES (@MaKB, @MaSP, @SoLuong);
+    END
+    `,
+      {
+        MaKB: examinationId,
+        MaSP,
+        SoLuong: SoLuong || 1,
+      }
+    );
 
-        return result.recordset[0];
-    }
+    return result.rowsAffected[0] > 0;
+  }
 
-    async updateVaccination(vaccinationId, updateData) {
-        const { MaNV } = updateData;
-        
-        const result = await this.execute(`
+  async getPrescriptions(examinationId) {
+    const result = await this.execute(
+      `
+            SELECT 
+                tt.MaKB,
+                sp.MaSP,
+                sp.TenSP,
+                gsp.SoTien as Gia,
+                tt.SoLuong
+            FROM Toa_thuoc tt
+            INNER JOIN San_pham sp ON tt.MaSP = sp.MaSP
+            LEFT JOIN (
+              SELECT MaSP, SoTien, NgayApDung,
+                ROW_NUMBER() OVER (PARTITION BY MaSP ORDER BY NgayApDung DESC) as rn
+              FROM Gia_san_pham
+            ) gsp ON sp.MaSP = gsp.MaSP AND gsp.rn = 1
+            WHERE tt.MaKB = @MaKB
+        `,
+      { MaKB: examinationId }
+    );
+
+    return result.recordset || [];
+  }
+
+  async createVaccination(vaccinationData) {
+    const { MaCN, MaDV, MaTC, NgayTiem } = vaccinationData;
+
+    const result = await this.execute(
+      `
+            INSERT INTO Tiem_phong (MaCN, MaDV, MaTC, NgayTiem)
+            VALUES (@MaCN, @MaDV, @MaTC, @NgayTiem);
+            
+            SELECT SCOPE_IDENTITY() AS MaTP;
+        `,
+      {
+        MaCN,
+        MaDV,
+        MaTC,
+        NgayTiem,
+      }
+    );
+
+    return result.recordset[0];
+  }
+
+  async updateVaccination(vaccinationId, updateData, doctorId) {
+    // Update MaNV (doctor assignment)
+    await this.execute(
+      `
             UPDATE Tiem_phong
             SET MaNV = @MaNV
             WHERE MaTP = @MaTP
-        `, {
-            MaNV,
-            MaTP: vaccinationId
-        });
+        `,
+      {
+        MaNV: doctorId,
+        MaTP: vaccinationId,
+      }
+    );
 
-        return result.rowsAffected[0] > 0;
+    // Update chi tiết tiêm phòng (LieuLuong, TrangThai)
+    for (const detail of updateData) {
+      const { MaSP, LieuLuong, TrangThai } = detail;
+      const result = await this.execute(
+        `
+                UPDATE Chi_tiet_tiem_phong
+                SET LieuLuong = @LieuLuong,
+                    TrangThai = @TrangThai
+                WHERE MaTP = @MaTP AND MaSP = @MaSP
+            `,
+        {
+          LieuLuong,
+          TrangThai,
+          MaTP: vaccinationId,
+          MaSP,
+        }
+      );
+      // eslint-disable-next-line no-console
+      console.log(
+        `ServiceRepository.updateVaccination: Updated Chi_tiet_tiem_phong MaTP=${vaccinationId} MaSP=${MaSP} rowsAffected=${result.rowsAffected[0]}`
+      );
     }
 
-    async addVaccinationDetail(vaccinationId, detailData) {
-        const { MaSP, LieuLuong, TrangThai, MaGoi } = detailData;
-        
-        const result = await this.execute(`
-            INSERT INTO Chi_tiet_tiem_phong (MaTP, MaSP, LieuLuong, TrangThai, MaGoi)
-            VALUES (@MaTP, @MaSP, @LieuLuong, @TrangThai, @MaGoi)
-        `, {
-            MaTP: vaccinationId,
-            MaSP,
-            LieuLuong,
-            TrangThai,
-            MaGoi
-        });
+    return true;
+  }
 
-        return result.rowsAffected[0] > 0;
-    }
+  async addVaccinationDetail(vaccinationId, detailData) {
+    const { MaSP, MaGoi } = detailData;
 
-    async updateVaccinationDetail(vaccinationDetailId, updateData) {
-        const { MaSP, LieuLuong, TrangThai } = updateData;
-        
-        const result = await this.execute(`
+    const result = await this.execute(
+      `
+            INSERT INTO Chi_tiet_tiem_phong (MaTP, MaSP, MaGoi)
+            VALUES (@MaTP, @MaSP, @MaGoi)
+        `,
+      {
+        MaTP: vaccinationId,
+        MaSP,
+        MaGoi,
+      }
+    );
+
+    return result.rowsAffected[0] > 0;
+  }
+
+  async updateVaccinationDetail(vaccinationDetailId, updateData) {
+    const { MaSP, LieuLuong, TrangThai } = updateData;
+
+    const result = await this.execute(
+      `
             UPDATE Chi_tiet_tiem_phong
             SET LieuLuong = @LieuLuong,
                 TrangThai = @TrangThai
             WHERE MaTP = @MaTP AND MaSP = @MaSP
-        `, {
-            LieuLuong,
-            TrangThai,
-            MaTP: vaccinationDetailId,
-            MaSP
-        });
+        `,
+      {
+        LieuLuong,
+        TrangThai,
+        MaTP: vaccinationDetailId,
+        MaSP,
+      }
+    );
 
-        return result.rowsAffected[0] > 0;
-    }
+    return result.rowsAffected[0] > 0;
+  }
 
-    async createVaccinationPackage(packageData) {
-        const { MaKH, NgayBatDau, NgayKetThuc, UuDai } = packageData;
-        
-        const result = await this.execute(`
+  async createVaccinationPackage(packageData) {
+    const { MaKH, NgayBatDau, NgayKetThuc, UuDai } = packageData;
+
+    const result = await this.execute(
+      `
             INSERT INTO Goi_tiem (MaKH, NgayBatDau, NgayKetThuc, UuDai)
             OUTPUT INSERTED.MaGoi
             VALUES (@MaKH, @NgayBatDau, @NgayKetThuc, @UuDai)
-        `, {
-            MaKH,
-            NgayBatDau,
-            NgayKetThuc,
-            UuDai
-        });
+        `,
+      {
+        MaKH,
+        NgayBatDau,
+        NgayKetThuc,
+        UuDai,
+      }
+    );
 
-        return result.recordset[0];
-    }
+    return result.recordset[0];
+  }
 
-    async getVaccinationPackages(customerId) {
-        const result = await this.execute(`
+  async getVaccinationPackages(customerId) {
+    const result = await this.execute(
+      `
             SELECT 
                 gt.MaGoi,
                 gt.NgayBatDau,
                 gt.NgayKetThuc,
                 gt.UuDai,
                 CASE 
-                    WHEN CAST(GETDATE() AS DATE) BETWEEN gt.NgayBatDau AND gt.NgayKetThuc 
-                    THEN N'Đang áp dụng'
                     WHEN CAST(GETDATE() AS DATE) > gt.NgayKetThuc 
-                    THEN N'Đã hết hạn'
-                    ELSE N'Chưa áp dụng'
-                END as TrangThai
+                    THEN N'Hoàn thành'
+                    WHEN CAST(GETDATE() AS DATE) >= gt.NgayBatDau 
+                    THEN N'Đang thực hiện'
+                    ELSE N'Chưa bắt đầu'
+                END as TrangThai,
+                -- Get first pet info (if multiple vaccinations, just show one pet)
+                (SELECT TOP 1 tc.Ten 
+                 FROM Chi_tiet_tiem_phong cttp
+                 INNER JOIN Tiem_phong tp ON cttp.MaTP = tp.MaTP
+                 INNER JOIN Thu_cung tc ON tp.MaTC = tc.MaTC
+                 WHERE cttp.MaGoi = gt.MaGoi
+                ) as TenThuCung,
+                (SELECT TOP 1 tc.Loai + ' ' + tc.Giong
+                 FROM Chi_tiet_tiem_phong cttp
+                 INNER JOIN Tiem_phong tp ON cttp.MaTP = tp.MaTP
+                 INNER JOIN Thu_cung tc ON tp.MaTC = tc.MaTC
+                 WHERE cttp.MaGoi = gt.MaGoi
+                ) as LoaiThuCung,
+                -- Count total vaccinations in package
+                (SELECT COUNT(*)
+                 FROM Chi_tiet_tiem_phong cttp
+                 WHERE cttp.MaGoi = gt.MaGoi
+                ) as TongSoMui,
+                -- Count completed vaccinations
+                (SELECT COUNT(*)
+                 FROM Chi_tiet_tiem_phong cttp
+                 WHERE cttp.MaGoi = gt.MaGoi AND cttp.TrangThai = N'Đã tiêm'
+                ) as SoMuiHoanThanh
             FROM Goi_tiem gt
             WHERE gt.MaKH = @MaKH
             ORDER BY gt.NgayBatDau DESC
-        `, { MaKH: customerId });
+        `,
+      { MaKH: customerId }
+    );
 
-        return result.recordset;
-    }
+    return result.recordset;
+  }
 
-    async updateServicePrice(serviceId, price, effectiveDate) {
-        await this.executeProcedure('Update_GiaDV', {
-            MaDV: serviceId,
-            SoTien: price,
-            NgayApDung: effectiveDate
-        });
-        
-        return true;
-    }
+  async getVaccinationPackageDetails(packageId) {
+    const result = await this.execute(
+      `
+            SELECT 
+                cttp.MaTP,
+                cttp.MaSP,
+                sp.TenSP as TenVaccine,
+                cttp.LieuLuong,
+                cttp.TrangThai,
+                tp.NgayTiem
+            FROM Chi_tiet_tiem_phong cttp
+            INNER JOIN San_pham sp ON cttp.MaSP = sp.MaSP
+            INNER JOIN Tiem_phong tp ON cttp.MaTP = tp.MaTP
+            WHERE cttp.MaGoi = @MaGoi
+            ORDER BY tp.NgayTiem DESC
+        `,
+      { MaGoi: packageId }
+    );
 
-    async getServicePriceHistory(serviceId) {
-        const result = await this.execute(`
+    return result.recordset;
+  }
+
+  async updateServicePrice(serviceId, price, effectiveDate) {
+    await this.executeProcedure("Update_GiaDV", {
+      MaDV: serviceId,
+      SoTien: price,
+      NgayApDung: effectiveDate,
+    });
+
+    return true;
+  }
+
+  async getServicePriceHistory(serviceId) {
+    const result = await this.execute(
+      `
             SELECT 
                 gd.NgayApDung,
                 gd.SoTien
             FROM Gia_dich_vu gd
             WHERE gd.MaDV = @MaDV
             ORDER BY gd.NgayApDung DESC
-        `, { MaDV: serviceId });
+        `,
+      { MaDV: serviceId }
+    );
 
-        return result.recordset;
-    }
+    return result.recordset;
+  }
 
-    async getMedicalExamination(examinationId) {
-        const result = await this.execute(`
+  async getMedicalExamination(examinationId) {
+    const result = await this.execute(
+      `
             SELECT 
                 kb.MaKB,
                 kb.MaCN,
@@ -246,13 +411,174 @@ class ServiceRepository extends BaseRepository {
                 kb.NgayTaiKham
             FROM Kham_benh kb
             WHERE kb.MaKB = @MaKB
-        `, { MaKB: examinationId });
+        `,
+      { MaKB: examinationId }
+    );
 
-        return result.recordset[0];
+    return result.recordset[0];
+  }
+
+  async getExaminations(filters = {}) {
+    const {
+      MaCN = null,
+      MaNV = null,
+      MaTC = null,
+      FromDate = null,
+      ToDate = null,
+    } = filters;
+
+    const result = await this.execute(
+      `
+            SELECT 
+                kb.MaKB,
+                kb.MaCN,
+                kb.MaDV,
+                dv.TenDV,
+                ISNULL(gdv.SoTien, 0) as GiaDichVu,
+                kb.MaTC,
+                tc.Ten as TenThuCung,
+                tc.Loai + ' ' + tc.Giong as LoaiThuCung,
+                tc.MaKH,
+                kh.HoTen as TenKhachHang,
+                kb.MaNV,
+                nv.HoTen as TenBacSi,
+                kb.NgayKham,
+                kb.TrieuChung,
+                kb.ChanDoan,
+                kb.NgayTaiKham
+            FROM Kham_benh kb
+            INNER JOIN Thu_cung tc ON kb.MaTC = tc.MaTC
+            INNER JOIN Khach_hang kh ON tc.MaKH = kh.MaKH
+            LEFT JOIN Nhan_vien nv ON kb.MaNV = nv.MaNV
+            LEFT JOIN Dich_vu dv ON kb.MaDV = dv.MaDV
+            LEFT JOIN (
+              SELECT MaDV, SoTien, NgayApDung,
+                ROW_NUMBER() OVER (PARTITION BY MaDV ORDER BY NgayApDung DESC) as rn
+              FROM Gia_dich_vu
+            ) gdv ON dv.MaDV = gdv.MaDV AND gdv.rn = 1
+            WHERE (@MaCN IS NULL OR kb.MaCN = @MaCN)
+            AND (@MaNV IS NULL OR kb.MaNV = @MaNV OR kb.MaNV IS NULL)
+            AND (@MaTC IS NULL OR kb.MaTC = @MaTC)
+            AND (@FromDate IS NULL OR kb.NgayKham >= @FromDate)
+            AND (@ToDate IS NULL OR kb.NgayKham <= @ToDate)
+            ORDER BY kb.NgayKham DESC
+        `,
+      {
+        MaCN,
+        MaNV,
+        MaTC,
+        FromDate,
+        ToDate,
+      }
+    );
+
+    return result.recordset;
+  }
+
+  async getExaminationsWithMedicines(filters = {}) {
+    const {
+      MaCN = null,
+      MaNV = null,
+      MaTC = null,
+      FromDate = null,
+      ToDate = null,
+    } = filters;
+
+    const result = await this.execute(
+      `
+            SELECT 
+                kb.MaKB,
+                kb.MaCN,
+                kb.MaDV,
+                dv.TenDV,
+                ISNULL(gdv.SoTien, 0) as GiaDichVu,
+                kb.MaTC,
+                tc.Ten as TenThuCung,
+                tc.Loai + ' ' + tc.Giong as LoaiThuCung,
+                tc.MaKH,
+                kh.HoTen as TenKhachHang,
+                kb.MaNV,
+                nv.HoTen as TenBacSi,
+                kb.NgayKham,
+                kb.TrieuChung,
+                kb.ChanDoan,
+                kb.NgayTaiKham
+            FROM Kham_benh kb
+            INNER JOIN Thu_cung tc ON kb.MaTC = tc.MaTC
+            INNER JOIN Khach_hang kh ON tc.MaKH = kh.MaKH
+            LEFT JOIN Nhan_vien nv ON kb.MaNV = nv.MaNV
+            LEFT JOIN Dich_vu dv ON kb.MaDV = dv.MaDV
+            LEFT JOIN (
+              SELECT MaDV, SoTien, NgayApDung,
+                ROW_NUMBER() OVER (PARTITION BY MaDV ORDER BY NgayApDung DESC) as rn
+              FROM Gia_dich_vu
+            ) gdv ON dv.MaDV = gdv.MaDV AND gdv.rn = 1
+            WHERE (@MaCN IS NULL OR kb.MaCN = @MaCN)
+            AND (@MaNV IS NULL OR kb.MaNV = @MaNV)
+            AND (@MaTC IS NULL OR kb.MaTC = @MaTC)
+            AND (@FromDate IS NULL OR kb.NgayKham >= @FromDate)
+            AND (@ToDate IS NULL OR kb.NgayKham <= @ToDate)
+            ORDER BY kb.NgayKham DESC
+        `,
+      {
+        MaCN,
+        MaNV,
+        MaTC,
+        FromDate,
+        ToDate,
+      }
+    );
+
+    const exams = result.recordset;
+    // Fetch medicines for each exam if there are any exams
+    if (exams && exams.length > 0) {
+      try {
+        const medicinesResult = await this.execute(
+          `
+            SELECT 
+                tt.MaKB,
+                sp.MaSP,
+                sp.TenSP,
+                gsp.SoTien as Gia,
+                tt.SoLuong
+            FROM Toa_thuoc tt
+            INNER JOIN San_pham sp ON tt.MaSP = sp.MaSP
+            INNER JOIN (
+              SELECT MaSP, SoTien, NgayApDung,
+                ROW_NUMBER() OVER (PARTITION BY MaSP ORDER BY NgayApDung DESC) as rn
+              FROM Gia_san_pham
+            ) gsp ON sp.MaSP = gsp.MaSP AND gsp.rn = 1
+            WHERE tt.MaKB IN (
+              ${exams.map((_, i) => `@MaKB${i}`).join(",")}
+            )
+          `,
+          exams.reduce((params, exam, i) => {
+            params[`MaKB${i}`] = exam.MaKB;
+            return params;
+          }, {})
+        );
+
+        const medicines = medicinesResult.recordset || [];
+
+        // Attach medicines to each exam
+        exams.forEach((exam) => {
+          exam.Medicines = medicines.filter((m) => m.MaKB === exam.MaKB);
+        });
+      } catch (err) {
+        console.error("Error fetching medicines:", err);
+        // Continue without medicines if query fails
+        exams.forEach((exam) => {
+          exam.Medicines = [];
+        });
+      }
     }
 
-    async getVaccination(vaccinationId) {
-        const result = await this.execute(`
+    return exams;
+  }
+
+  async getVaccination(vaccinationId) {
+    const result = await this.execute(
+      `
             SELECT 
                 tp.MaTP,
                 tp.MaCN,
@@ -262,13 +588,98 @@ class ServiceRepository extends BaseRepository {
                 tp.NgayTiem
             FROM Tiem_phong tp
             WHERE tp.MaTP = @MaTP
-        `, { MaTP: vaccinationId });
+        `,
+      { MaTP: vaccinationId }
+    );
 
-        return result.recordset[0];
-    }
+    return result.recordset[0];
+  }
 
-    async getAvailableVeterinarians(branchId, date) {
-        const result = await this.execute(`
+  async getVaccinationDetails(vaccinationId) {
+    const result = await this.execute(
+      `
+            SELECT 
+                CTTP.MaSP AS MaSP,
+                TC.Ten AS TenThuCung,
+                SP.TenSP AS TenVaccine,
+                CTTP.LieuLuong AS LieuLuong,
+                CTTP.TrangThai AS TrangThai,
+                CASE 
+                    WHEN CTTP.MaGoi IS NULL THEN N'Tiêm lẻ' 
+                    ELSE CAST(CTTP.MaGoi AS NVARCHAR(10)) 
+                END AS GoiTiem,
+                TP.NgayTiem AS NgayTiem,
+                GT.NgayKetThuc AS NgayKetThuc
+            FROM Chi_tiet_tiem_phong CTTP
+            JOIN Tiem_phong TP ON CTTP.MaTP = TP.MaTP
+            JOIN Thu_cung TC ON TP.MaTC = TC.MaTC
+            JOIN San_pham SP ON CTTP.MaSP = SP.MaSP
+            LEFT JOIN Goi_tiem GT ON CTTP.MaGoi = GT.MaGoi
+            WHERE CTTP.MaTP = @MaTP
+            ORDER BY TP.NgayTiem DESC
+        `,
+      { MaTP: vaccinationId }
+    );
+
+    return result.recordset;
+  }
+
+  async getVaccinations(filters = {}) {
+    const {
+      MaCN = null,
+      MaNV = null,
+      MaTC = null,
+      FromDate = null,
+      ToDate = null,
+    } = filters;
+
+    const result = await this.execute(
+      `
+      SELECT
+        tp.MaTP,
+        tp.MaCN,
+        tp.MaDV,
+        dv.TenDV,
+        tp.MaTC,
+        tc.Ten as TenThuCung,
+        tc.Loai + ' ' + tc.Giong as LoaiThuCung,
+        tc.MaKH,
+        kh.HoTen as TenKhachHang,
+        tp.MaNV,
+        nv.HoTen as TenBacSi,
+        tp.NgayTiem
+      FROM Tiem_phong tp
+      INNER JOIN Thu_cung tc ON tp.MaTC = tc.MaTC
+      INNER JOIN Khach_hang kh ON tc.MaKH = kh.MaKH
+      LEFT JOIN Nhan_vien nv ON tp.MaNV = nv.MaNV
+      LEFT JOIN Dich_vu dv ON tp.MaDV = dv.MaDV
+      LEFT JOIN Lich_su_nhan_vien ls ON nv.MaNV = ls.MaNV 
+        AND ls.MaCN = tp.MaCN
+        AND ls.NgayBD <= tp.NgayTiem
+        AND (ls.NgayKT IS NULL OR ls.NgayKT >= tp.NgayTiem)
+      WHERE (@MaCN IS NULL OR tp.MaCN = @MaCN)
+      AND (@MaNV IS NULL OR tp.MaNV = @MaNV OR tp.MaNV IS NULL)
+      AND (@MaTC IS NULL OR tp.MaTC = @MaTC)
+      AND (@FromDate IS NULL OR tp.NgayTiem >= @FromDate)
+      AND (@ToDate IS NULL OR tp.NgayTiem <= @ToDate)
+      AND (tp.MaNV IS NULL OR ls.MaNV IS NOT NULL)
+      ORDER BY tp.NgayTiem DESC
+    `,
+      {
+        MaCN,
+        MaNV,
+        MaTC,
+        FromDate,
+        ToDate,
+      }
+    );
+
+    return result.recordset;
+  }
+
+  async getAvailableVeterinarians(branchId, date) {
+    const result = await this.execute(
+      `
             SELECT 
                 nv.MaNV,
                 nv.HoTen,
@@ -279,36 +690,76 @@ class ServiceRepository extends BaseRepository {
             AND ls.MaCN = @MaCN
             AND ls.NgayBD <= @NgayKham
             AND (ls.NgayKT IS NULL OR ls.NgayKT >= @NgayKham)
-        `, { 
-            MaCN: branchId,
-            NgayKham: date
-        });
+        `,
+      {
+        MaCN: branchId,
+        NgayKham: date,
+      }
+    );
 
-        return result.recordset;
+    return result.recordset;
+  }
+
+  async deletePrescription(examinationId, medicineId) {
+    // Validate parameters
+    if (!examinationId || !medicineId) {
+      throw new Error("examinationId and medicineId are required");
     }
 
-    async getDoctorSchedule(doctorId, date) {
-        const result = await this.execute(`
-            SELECT 
-                kb.MaKB,
-                kb.NgayKham,
-                tc.Ten as TenThuCung,
-                kh.HoTen as TenKhachHang,
-                dv.TenDV
-            FROM Kham_benh kb
-            JOIN Thu_cung tc ON kb.MaTC = tc.MaTC
-            JOIN Khach_hang kh ON tc.MaKH = kh.MaKH
-            JOIN Dich_vu dv ON kb.MaDV = dv.MaDV
-            WHERE kb.MaNV = @MaNV
-            AND kb.NgayKham = @NgayKham
-            ORDER BY kb.NgayKham
-        `, { 
-            MaNV: doctorId,
-            NgayKham: date
-        });
+    const result = await this.execute(
+      `
+    DELETE FROM Toa_thuoc
+    WHERE MaKB = @MaKB AND MaSP = @MaSP;
+    `,
+      {
+        MaKB: parseInt(examinationId),
+        MaSP: parseInt(medicineId),
+      }
+    );
 
-        return result.recordset;
+    return result.rowsAffected[0] > 0;
+  }
+
+  async deletePrescriptionsByExamination(examinationId) {
+    // Validate parameter
+    if (!examinationId) {
+      throw new Error("examinationId is required");
     }
+
+    // First, check if exam exists
+    const checkResult = await this.execute(
+      `SELECT MaKB FROM Kham_benh WHERE MaKB = @MaKB`,
+      { MaKB: parseInt(examinationId) }
+    );
+
+    if (!checkResult.recordset || checkResult.recordset.length === 0) {
+      throw new Error(`Examination ${examinationId} not found`);
+    }
+
+    const result = await this.execute(
+      `
+    DELETE FROM Toa_thuoc
+    WHERE MaKB = @MaKB;
+    `,
+      {
+        MaKB: parseInt(examinationId),
+      }
+    );
+
+    // Verify exam still exists after delete
+    const verifyResult = await this.execute(
+      `SELECT MaKB FROM Kham_benh WHERE MaKB = @MaKB`,
+      { MaKB: parseInt(examinationId) }
+    );
+
+    if (!verifyResult.recordset || verifyResult.recordset.length === 0) {
+      throw new Error(
+        `CRITICAL: Examination ${examinationId} was accidentally deleted during prescription deletion`
+      );
+    }
+
+    return result.rowsAffected[0];
+  }
 }
 
 module.exports = ServiceRepository;
