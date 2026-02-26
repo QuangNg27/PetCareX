@@ -243,4 +243,4 @@ Role‑based authorization is enforced in middleware and routes to protect staff
 
 ## 13. License / Usage
 
-This project was created for an academic Advanced Database course. Use it for learning, extension, or demonstration purposes as allowed by your course or institution policies.
+This project was created for an academic Advanced Database course. Use it for learning, extension, or demonstration purposes as allowed by the course or institution policies.
